@@ -199,33 +199,42 @@ withtoge/
 
 ---
 
-## 六、仍存在的问题
+## 六、Codex 审查发现 + 修复（2026-06-15）
 
-### 1. Claude Code spawn 崩溃（当前最紧急）⚠️
+### 🔴 根因 1：modelKey 当成真实模型名（已修）
 
-**现象**：cyberboss 通过 `child_process.spawn(claude, args, {shell: true, windowsHide: true})` 启动 Claude → 几秒后进程崩溃 → 5 个 MCP 子进程变僵尸 → kill-zombies 杀 → 下轮 spawn 又崩 → 循环。
+**位置**：[app.js:1818](src/core/app.js#L1818) / [claudecode/index.js:19-21](src/adapters/runtime/claudecode/index.js#L19-L21)
 
-**已排除**：
-- Claude CLI 本身正常（手动跑 `claude --mcp-config .mcp.json -p test` 完全 OK）
-- 不是模型问题（DeepSeek 和 Opus 都崩）
-- 不是 MCP 配置问题（4 个 MCP 服务器手动跑都能连上）
+`restoreBoundThreadSubscriptions` 调用 `listModelThreadIds()` 拿到 modelKey（`"opus"`），然后传给 `resumeThread({ model: "opus" })` → `ensureClient("opus")` → `resolveModel("opus")` 直接返回 `"opus"` → Claude CLI 收到 `--model opus`。
 
-**怀疑方向**：
-- `shell: true` + `windowsHide: true` 的组合在 Windows 上可能导致问题
-- CLAUDE.md / 系统指令的内容可能触发 Claude 内部错误
-- `--resume` 参数与过期 session ID 的组合
+但 `MODEL_ROUTES` 路由表只认 `"claude-opus-4-6"`，`"opus"` 匹配不上 → 不走 55API → 走默认 API → 启动行为和你手动跑 `claude --model claude-opus-4-6` 完全不同。
 
-### 2. 系统消息死循环重试
+**修复**：[claudecode/index.js](src/adapters/runtime/claudecode/index.js) `resolveModel()` 加 short key → full name 映射：`"opus"` → `"claude-opus-4-6"`、`"haiku"` → `"claude-haiku-4-5"`。
 
-`flushPendingSystemMessages` 失败就 requeue，没有最大重试次数。如果所有 dispatch 持续失败，消息永久留在队列里。
+### 🔴 根因 2：shell: true spawn 进程树脆弱 + close 不清残留（已修）
 
-### 3. 启动恢复静默失败
+**位置**：[process-client.js:77](src/adapters/runtime/claudecode/process-client.js#L77) / [process-client.js:117-128](src/adapters/runtime/claudecode/process-client.js#L117-L128)
 
-`restoreBoundThreadSubscriptions` 所有 resume 调用失败也无声无息（`.catch(() => {})`）。
+`spawn(claude, args, { shell: true })` 实际 spawn 的是 `cmd.exe /c "claude.cmd ..."`，不是 Claude 本身。cmd.exe → claude.cmd → claude.exe → MCP 子进程，四层进程链。
 
-### 4. 延迟回复无限堆积
+原本 `close` 事件只做 `child = null`，不杀残留进程树。Claude 崩了 → cmd.exe 退出 → close 触发 → MCP 子进程全部变成孤儿。只有主动 `close()` 才调 `killWindowsProcessTree`。
 
-`DeferredSystemReplyStore` 没有 TTL 或最大条数限制。
+**修复**：[process-client.js](src/adapters/runtime/claudecode/process-client.js) 在 `close` 事件（非主动关闭时）也调 `killWindowsProcessTree(exitedPid)`，杀掉整棵 cmd.exe → claude.exe → MCP 子树。
+
+### 🟡 修 3：启动恢复失败静默吞错
+
+**位置**：[app.js:1819](src/core/app.js#L1819)
+
+`restoreBoundThreadSubscriptions` → `resumeThread().catch(() => {})` 失败完全无声。
+
+**修复**：`.catch()` 加 `console.error` 日志，记 threadId / modelKey / workspaceRoot / error。
+
+### 🔵 已确认（未修，记录）
+
+- **系统消息无重试上限**：[app.js:927](src/core/app.js#L927) / [system-message-queue-store.js:77](src/core/system-message-queue-store.js#L77) — 失败就 requeue，无 attempts/TTL
+- **延迟回复无 TTL**：[deferred-system-reply-store.js:36](src/core/deferred-system-reply-store.js#L36) — 还有 2026-06-04 的旧失败回复残留
+- **MCP 进程爆炸已证实**：当前 92 mcp-datetime + 88 mcpbrowser + 23 cyberboss_tools + 22 native_devtools + 22 todo_mcp — 修复 1+2 后应大幅减少
+- **Turn Gate 3 分钟释放**：[turn-gate-store.js:52](src/core/turn-gate-store.js#L52) — 存在且有效，止血 OK
 
 ---
 

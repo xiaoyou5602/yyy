@@ -115,7 +115,8 @@ class ClaudeCodeProcessClient {
     });
 
     child.on("close", (code) => {
-      untrackChildPid(child.pid);
+      const exitedPid = child.pid;
+      untrackChildPid(exitedPid);
       this.rejectSessionWaiters(new Error(`claudecode process closed with code ${code ?? "unknown"}`));
       this._alive = false;
       this.child = null;
@@ -123,6 +124,11 @@ class ClaudeCodeProcessClient {
       if (this.suppressNextCloseEvent) {
         this.suppressNextCloseEvent = false;
         return;
+      }
+      // Kill residual process tree (MCP children, etc.) on unexpected close.
+      // Expected close (via this.close()) sets suppressNextCloseEvent and handles cleanup itself.
+      if (process.platform === "win32" && exitedPid) {
+        killWindowsProcessTree(exitedPid).catch(() => {});
       }
       this.emit({ type: "process.close", code, sessionId: this.activeThreadId || this.sessionId, turnId: this.pendingTurnId }, null);
     });

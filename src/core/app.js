@@ -1816,7 +1816,9 @@ class CyberbossApp {
               threadId: normalizedThreadId,
               workspaceRoot: normalizedWorkspaceRoot,
               model: modelKey,
-            }).catch(() => {});
+            }).catch((err) => {
+              console.error(`[cyberboss] resume failed thread=${normalizedThreadId} model=${modelKey} workspace=${normalizedWorkspaceRoot} error=${err?.message || err}`);
+            });
           }
         } else {
           const normalizedThreadId = normalizeCommandArgument(

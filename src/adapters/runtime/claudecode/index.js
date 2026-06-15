@@ -16,8 +16,19 @@ function createClaudeCodeRuntimeAdapter(config) {
   const configuredModel = normalizeText(config.claudeModel);
   let globalListener = null;
 
+  const MODEL_KEY_TO_NAME = {
+    ds: "",
+    opus: "claude-opus-4-6",
+    haiku: "claude-haiku-4-5",
+  };
+
   function resolveModel(model = "") {
-    return configuredModel || normalizeText(model);
+    const normalized = normalizeText(model);
+    // Resolve short keys like "opus" → "claude-opus-4-6"
+    if (MODEL_KEY_TO_NAME.hasOwnProperty(normalized)) {
+      return MODEL_KEY_TO_NAME[normalized] || configuredModel || normalized;
+    }
+    return configuredModel || normalized;
   }
 
   function toModelKey(model) {
