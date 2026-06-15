@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/css/main.css?v=24">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
+<link rel="stylesheet" href="/css/games.css?v=1">
 </head>
 <body>
 
@@ -500,6 +501,77 @@
 <!-- ═══ BUBBLE TEA PAGE ═══ -->
 <div id="bubbletea-page"></div>
 
+<!-- ═══ GAMES PAGE ═══ -->
+<div id="games-page">
+  <header>
+    <button id="games-back-btn" title="返回聊天">&#8592;</button>
+    <h1>小游戏</h1>
+    <div style="flex:1"></div>
+  </header>
+  <nav class="games-tabs" id="games-tabs">
+    <button class="games-tab active" data-game="wheel">&#127920; 转盘</button>
+    <button class="games-tab" data-game="dice">&#127922; 骰子</button>
+    <button class="games-tab" data-game="coin">&#129689; 硬币</button>
+    <button class="games-tab" data-game="random">&#127919; 随机数</button>
+  </nav>
+  <div class="games-body" id="games-body">
+    <!-- 转盘 -->
+    <div class="game-panel active" id="game-wheel">
+      <div class="game-stage">
+        <div class="wheel-wrap">
+          <canvas id="wheel-canvas"></canvas>
+          <div class="wheel-pointer-wrap"><div class="wheel-pointer"></div></div>
+        </div>
+      </div>
+      <button class="game-action-btn" id="wheel-spin-btn">开始旋转</button>
+      <div class="game-result" id="wheel-result"></div>
+      <details class="game-controls" id="wheel-controls">
+        <summary>自定义</summary>
+        <div class="game-controls-body"></div>
+      </details>
+    </div>
+    <!-- 骰子 -->
+    <div class="game-panel" id="game-dice">
+      <div class="game-stage" id="dice-stage"></div>
+      <button class="game-action-btn" id="dice-roll-btn">掷骰子</button>
+      <div class="game-result" id="dice-result"></div>
+      <details class="game-controls" id="dice-controls">
+        <summary>自定义</summary>
+        <div class="game-controls-body"></div>
+      </details>
+    </div>
+    <!-- 硬币 -->
+    <div class="game-panel" id="game-coin">
+      <div class="game-stage" id="coin-stage">
+        <div class="coin-wrap">
+          <div class="coin" id="coin-el">
+            <div class="coin-face front">&#129689;</div>
+            <div class="coin-face back">&#127381;</div>
+          </div>
+        </div>
+      </div>
+      <button class="game-action-btn" id="coin-flip-btn">抛硬币</button>
+      <div class="game-result" id="coin-result"></div>
+      <details class="game-controls" id="coin-controls">
+        <summary>自定义</summary>
+        <div class="game-controls-body"></div>
+      </details>
+    </div>
+    <!-- 随机数 -->
+    <div class="game-panel" id="game-random">
+      <div class="game-stage">
+        <div class="random-display" id="random-display">?</div>
+      </div>
+      <button class="game-action-btn" id="random-roll-btn">生成随机数</button>
+      <div class="game-result" id="random-result"></div>
+      <details class="game-controls" id="random-controls">
+        <summary>自定义</summary>
+        <div class="game-controls-body"></div>
+      </details>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ BOOKMARKS PAGE ═══ -->
 <div id="bookmarks-page" style="display:none">
   <header>
@@ -594,6 +666,7 @@ const giftsPage = document.getElementById("gifts-page");
 const cameraPage = document.getElementById("camera-page");
 const mcpPage = document.getElementById("mcp-page");
 const bookmarksPage = document.getElementById("bookmarks-page");
+var gamesPage = document.getElementById("games-page");
 const messagesEl = document.getElementById("messages");
 const typingEl = document.getElementById("typing-indicator");
 const inputEl = document.getElementById("input");
@@ -655,6 +728,12 @@ function showPage(page) {
   }
   if (page === "meditation") initMeditation();
   if (page === "graffiti") initGraffiti();
+  if (page === "games") {
+    gamesPage.classList.add("show");
+    if (typeof initGames === "function") initGames();
+  } else {
+    gamesPage.classList.remove("show");
+  }
 }
 
 document.getElementById("menu-btn").addEventListener("click", toggleSidebar);
@@ -662,6 +741,7 @@ document.getElementById("menu-btn").addEventListener("click", toggleSidebar);
 document.getElementById("back-btn").addEventListener("click", () => showPage("chat"));
 document.getElementById("med-back-btn").addEventListener("click", () => { stopMeditation(); showPage("chat"); });
 document.getElementById("graf-back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("games-back-btn").addEventListener("click", () => showPage("chat"));
 
 /* ── settings ── */
 let settings = { nickname: "", wallpaper: "", model: "" };
@@ -777,7 +857,7 @@ function applyModelTheme(model) {
 function sidebarNavigate(target) {
   closeSidebar();
   if (target === "bubbletea") { showPage("bubbletea"); return; }
-  if (target === "games") { showPage("chat"); return; }
+  if (target === "games") { showPage("games"); return; }
   showPage(target);
 }
 
@@ -1704,5 +1784,6 @@ window.updateKe = function () {
 <script src="/js/page-tokens.js"></script>
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
+<script src="/js/games.js"></script>
 </body>
 </html>
