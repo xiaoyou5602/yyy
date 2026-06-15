@@ -82,6 +82,8 @@ withtoge/
 
 **影响**：Claude 死了 → MCP 子进程（npx mcp-datetime、mcpbrowser 等）脱离父进程树 → 变成僵尸 → 下一次 spawn 又产生新僵尸 → 指数累积。6 月 15 日下午一次 kill-zombies 杀了 31 个僵尸进程。
 
+**用户侧症状**：APP/网页端显示"连接中…"，无法发消息、无法进行任何操作。WebSocket 连接本身是通的（HTML 页面能加载），但因为没有可用的 Claude session，消息发出去没有回复，前端状态卡在"连接中"。
+
 ### 问题 B：孤儿 Session
 
 **根因**（已在 6/11 迭代修复）：系统 checkin 触发 `attachClientToThread()` 时无条件 `--resume`，旧 session 过期 → Claude 返回新 session → 聊一句结束 → 变成孤儿。
