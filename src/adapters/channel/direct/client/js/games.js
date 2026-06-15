@@ -475,22 +475,25 @@
   }
 
   /* ── Public init ── */
+  var _binded = false;
   window.initGames = function () {
     bindTabs();
     loadSettings();
     switchGameTab(currentGame);
 
-    // Bind action buttons (remove old listeners by cloning)
+    if (_binded) return;
+    _binded = true;
+
     var wheelBtn = document.getElementById("wheel-spin-btn");
-    if (wheelBtn) { var wc = wheelBtn.cloneNode(true); wheelBtn.parentNode.replaceChild(wc, wheelBtn); wc.addEventListener("click", spinWheel); }
+    if (wheelBtn) wheelBtn.addEventListener("click", spinWheel);
 
     var diceBtn = document.getElementById("dice-roll-btn");
-    if (diceBtn) { var dc = diceBtn.cloneNode(true); diceBtn.parentNode.replaceChild(dc, diceBtn); dc.addEventListener("click", rollDice); }
+    if (diceBtn) diceBtn.addEventListener("click", rollDice);
 
     var coinBtn = document.getElementById("coin-flip-btn");
-    if (coinBtn) { var cc = coinBtn.cloneNode(true); coinBtn.parentNode.replaceChild(cc, coinBtn); cc.addEventListener("click", flipCoin); }
+    if (coinBtn) coinBtn.addEventListener("click", flipCoin);
 
     var randomBtn = document.getElementById("random-roll-btn");
-    if (randomBtn) { var rc = randomBtn.cloneNode(true); randomBtn.parentNode.replaceChild(rc, randomBtn); rc.addEventListener("click", generateRandom); }
+    if (randomBtn) randomBtn.addEventListener("click", generateRandom);
   };
 })();
