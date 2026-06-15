@@ -1,0 +1,129 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.toge.alarm"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:4:5-67
+11-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:4:22-64
+12    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+12-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:5:5-77
+12-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:5:22-74
+13    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+13-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:6:5-81
+13-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:6:22-78
+14    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+14-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:7:5-79
+14-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:7:22-76
+15    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+15-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:8:5-74
+15-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:8:22-71
+16    <uses-permission android:name="android.permission.VIBRATE" />
+16-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:9:5-66
+16-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:9:22-63
+17    <uses-permission android:name="android.permission.WAKE_LOCK" />
+17-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:10:5-68
+17-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:10:22-65
+18    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+18-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:11:5-75
+18-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:11:22-72
+19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+19-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:12:5-77
+19-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:12:22-74
+20    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+20-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:13:5-89
+20-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:13:22-86
+21
+22    <permission
+22-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+23        android:name="com.toge.alarm.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+23-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+24        android:protectionLevel="signature" />
+24-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+25
+26    <uses-permission android:name="com.toge.alarm.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+26-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+26-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+27
+28    <application
+28-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:15:5-54:19
+29        android:allowBackup="true"
+29-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:16:9-35
+30        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+30-->[androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+31        android:debuggable="true"
+32        android:extractNativeLibs="false"
+33        android:label="@string/app_name"
+33-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:17:9-41
+34        android:supportsRtl="true"
+34-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:18:9-35
+35        android:usesCleartextTraffic="true" >
+35-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:19:9-44
+36        <activity
+36-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:21:9-29:20
+37            android:name="com.toge.alarm.MainActivity"
+37-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:22:13-41
+38            android:exported="true"
+38-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:23:13-36
+39            android:launchMode="singleTask" >
+39-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:24:13-44
+40            <intent-filter>
+40-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:25:13-28:29
+41                <action android:name="android.intent.action.MAIN" />
+41-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:26:17-69
+41-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:26:25-66
+42
+43                <category android:name="android.intent.category.LAUNCHER" />
+43-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:27:17-77
+43-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:27:27-74
+44            </intent-filter>
+45        </activity>
+46        <activity
+46-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:31:9-36:43
+47            android:name="com.toge.alarm.RingActivity"
+47-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:32:13-41
+48            android:exported="false"
+48-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:33:13-37
+49            android:launchMode="singleTask"
+49-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:34:13-44
+50            android:showWhenLocked="true"
+50-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:35:13-42
+51            android:turnScreenOn="true" />
+51-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:36:13-40
+52
+53        <service
+53-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:38:9-41:58
+54            android:name="com.toge.alarm.AlarmService"
+54-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:39:13-41
+55            android:exported="false"
+55-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:40:13-37
+56            android:foregroundServiceType="specialUse" />
+56-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:41:13-55
+57
+58        <receiver
+58-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:43:9-45:40
+59            android:name="com.toge.alarm.AlarmReceiver"
+59-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:44:13-42
+60            android:exported="false" />
+60-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:45:13-37
+61        <receiver
+61-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:47:9-53:20
+62            android:name="com.toge.alarm.BootReceiver"
+62-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:48:13-41
+63            android:exported="true" >
+63-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:49:13-36
+64            <intent-filter>
+64-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:50:13-52:29
+65                <action android:name="android.intent.action.BOOT_COMPLETED" />
+65-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:51:17-79
+65-->C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:51:25-76
+66            </intent-filter>
+67        </receiver>
+68    </application>
+69
+70</manifest>

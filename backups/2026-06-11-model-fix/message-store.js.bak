@@ -1,0 +1,68 @@
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+function createMessageStore(stateDir) {
+  const storeDir = path.join(stateDir, "chat-history");
+
+  function ensureDir() {
+    if (!fs.existsSync(storeDir)) {
+      fs.mkdirSync(storeDir, { recursive: true });
+    }
+  }
+
+  function formatShanghaiDate(date) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  }
+
+  function getFilePath(dateStr) {
+    return path.join(storeDir, `${dateStr}.json`);
+  }
+
+  function loadDay(dateStr) {
+    const fp = getFilePath(dateStr);
+    if (!fs.existsSync(fp)) return [];
+    try { return JSON.parse(fs.readFileSync(fp, "utf8")); } catch { return []; }
+  }
+
+  function saveDay(dateStr, messages) {
+    ensureDir();
+    fs.writeFileSync(getFilePath(dateStr), JSON.stringify(messages, null, 2), "utf8");
+  }
+
+  return {
+    save({ channel, from, text, time, images }) {
+      const now = new Date();
+      const dateStr = formatShanghaiDate(now);
+      const messages = loadDay(dateStr);
+      messages.push({
+        id: `msg-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        channel,
+        from,
+        text: String(text || "").slice(0, 2000),
+        time: time || now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: now.toISOString(),
+        images: Array.isArray(images) ? images.slice(0, 5) : undefined,
+      });
+      saveDay(dateStr, messages.slice(-500));
+    },
+
+    load(days = 7) {
+      const all = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        all.push(...loadDay(formatShanghaiDate(d)));
+      }
+      all.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+      return all;
+    },
+  };
+}
+
+module.exports = { createMessageStore };

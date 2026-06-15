@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>克</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="克">
+<meta name="theme-color" content="#F7F4EF">
+<link rel="stylesheet" href="/css/main.css?v=23">
+<link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
+<link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
+</head>
+<body>
+
+<!-- ═══ UPDATE BANNER ═══ -->
+<div id="update-banner" onclick="updateKe()" style="
+  display:none; position:fixed; bottom:0; left:0; right:0;
+  z-index:9999; padding:14px; text-align:center;
+  background:#E85D3F; color:#fff; font-size:15px;
+  font-family:var(--font-body); cursor:pointer;
+">克更新好了，点我刷新~</div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="sidebar-drawer">
+  <div class="sidebar-inner">
+    <!-- UFO decoration -->
+    <img class="sidebar-ufo" src="img/ufo.png" alt="" aria-hidden="true">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-text">
+        <span class="logo-line1">Toge's</span>
+        <span class="logo-line2">Home</span>
+        <span class="logo-sparkle">&#10022;</span>
+      </div>
+    </div>
+
+    <!-- Model switcher -->
+    <div class="sidebar-models">
+      <div class="sidebar-model-card active" data-model="" onclick="selectSidebarModel(this)" style="--color: #FF6B00">
+        <div class="sidebar-model-icon"><span>◎</span></div>
+        <div class="sidebar-model-info">
+          <div class="sidebar-model-name">DeepSeek</div>
+          <div class="sidebar-model-tag">端口接入</div>
+        </div>
+      </div>
+      <div class="sidebar-model-card" data-model="claude-opus-4-6" onclick="selectSidebarModel(this)" style="--color: #69D15A">
+        <div class="sidebar-model-icon"><span>◎</span></div>
+        <div class="sidebar-model-info">
+          <div class="sidebar-model-name">Opus 4.6</div>
+          <div class="sidebar-model-tag">55api</div>
+        </div>
+      </div>
+      <div class="sidebar-model-card" data-model="claude-haiku-4-5" onclick="selectSidebarModel(this)" style="--color: #FF6B9D">
+        <div class="sidebar-model-icon"><span>♢</span></div>
+        <div class="sidebar-model-info">
+          <div class="sidebar-model-name">Haiku 4.5</div>
+          <div class="sidebar-model-tag">轻量</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Function menu -->
+    <div class="sidebar-menu-wrap">
+      <div class="sidebar-menu-scroll" id="sidebar-menu-scroll">
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('graffiti')">
+          <span class="sidebar-menu-icon">&#11088;</span>
+          <span class="sidebar-menu-label">涂鸦墙</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('mcp')">
+          <span class="sidebar-menu-icon">&#128126;</span>
+          <span class="sidebar-menu-label">MCP娱乐室</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('gifts')">
+          <span class="sidebar-menu-icon">&#127823;</span>
+          <span class="sidebar-menu-label">礼物房</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('meditation')">
+          <span class="sidebar-menu-icon">&#9729;&#65039;</span>
+          <span class="sidebar-menu-label">梦境</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('bookmarks')">
+          <span class="sidebar-menu-icon">&#128153;</span>
+          <span class="sidebar-menu-label">收藏夹</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('bubbletea')">
+          <span class="sidebar-menu-icon">🧋</span>
+          <span class="sidebar-menu-label">奶茶记录</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+        <div class="sidebar-menu-item" onclick="sidebarNavigate('games')">
+          <span class="sidebar-menu-icon">&#127922;</span>
+          <span class="sidebar-menu-label">小游戏</span>
+          <span class="sidebar-menu-arrow">›</span>
+        </div>
+      </div>
+      <div class="sidebar-menu-fade"></div>
+    </div>
+
+    <!-- Bottom buttons -->
+    <div class="sidebar-bottom">
+      <button class="sidebar-btn sidebar-btn-cal" onclick="closeSidebar(); showPage('calendar')">日历</button>
+      <button class="sidebar-btn sidebar-btn-more">更多</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHAT PAGE ═══ -->
+<div id="chat-page" class="show">
+  <header>
+    <button id="menu-btn" title="日历">&#9776;</button>
+    <h1 id="header-title">克</h1>
+    <div class="status-wrap">
+      <div id="status-dot"></div>
+      <span id="status-text">连接中…</span>
+    </div>
+    <button id="search-btn" title="搜索记录">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button id="settings-btn" title="设置">&#9881;</button>
+  </header>
+
+  <div id="messages"></div>
+  <div id="typing-indicator"><span id="typing-dots"><span></span><span></span><span></span></span></div>
+  <div id="image-preview"></div>
+
+  <!-- Crab desk pet -->
+  <div class="desk-pet" id="desk-pet">
+    <div class="desk-pet-body" id="desk-pet-body"></div>
+    <div class="desk-pet-shadow"></div>
+  </div>
+
+  <!-- Selection bar (created dynamically) -->
+  <div id="selection-bar"></div>
+
+  <footer>
+    <textarea id="input" rows="1" placeholder="说点什么…"></textarea>
+    <input type="file" id="file-input" multiple hidden>
+    <button id="image-btn" title="添加图片或文件">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+    </button>
+    <button id="send-btn" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </footer>
+</div>
+
+<!-- ═══ MEMORY PAGE ═══ -->
+<div id="memory-page">
+  <header>
+    <button id="back-btn" title="返回聊天">&#8592;</button>
+    <h1>记忆</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div id="memory-tabs">
+    <button class="active" data-tab="diary">日记</button>
+    <button data-tab="rollups">周报</button>
+    <button data-tab="memory">记忆碎片</button>
+  </div>
+  <div id="memory-content"><div class="empty-state">加载中…</div></div>
+</div>
+
+<!-- ═══ CALENDAR PAGE ═══ -->
+<div id="calendar-page"></div>
+
+
+<!-- ═══ MEDITATION PAGE ═══ -->
+<div id="meditation-page">
+  <header>
+    <button id="med-back-btn" title="返回聊天">&#8592;</button>
+    <h1>冥想</h1>
+    <div style="flex:1"></div>
+  </header>
+
+  <!-- Scene layer -->
+  <div class="med-scene">
+    <div class="med-window">
+      <div class="med-window-mullion"></div>
+      <div class="med-window-sill"></div>
+    </div>
+    <div class="med-light-beam"></div>
+    <div class="med-rug">
+      <div class="med-rug-pattern"></div>
+    </div>
+    <div class="med-plant left">
+      <div class="med-plant-stem"></div>
+      <div class="med-plant-leaf"></div>
+      <div class="med-plant-leaf"></div>
+    </div>
+    <div class="med-plant right">
+      <div class="med-plant-stem"></div>
+      <div class="med-plant-leaf"></div>
+      <div class="med-plant-leaf"></div>
+    </div>
+    <div class="med-particle" style="top:20%;left:15%;animation-delay:0s;"></div>
+    <div class="med-particle" style="top:30%;left:35%;animation-delay:2s;"></div>
+    <div class="med-particle" style="top:25%;left:55%;animation-delay:4s;"></div>
+    <div class="med-particle" style="top:35%;left:70%;animation-delay:1s;"></div>
+    <div class="med-particle" style="top:40%;left:25%;animation-delay:5s;"></div>
+    <div class="med-particle" style="top:15%;left:60%;animation-delay:3s;"></div>
+    <div class="med-particle" style="top:45%;left:45%;animation-delay:6s;"></div>
+
+    <!-- Cat stage -->
+    <div class="med-cat-stage" id="med-cat-stage">
+      <div class="med-cat-wrap sitting" id="med-cat">
+        <!-- Standing/sitting cat SVG injected by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- UI overlay -->
+  <div class="med-ui">
+    <div class="med-timer" id="med-timer">05:00</div>
+    <div class="med-status-card">
+      <div class="med-status-dot" id="med-status-dot"></div>
+      <span class="med-status-text" id="med-phase">准备开始</span>
+      <span class="med-status-label" id="med-status-label"></span>
+    </div>
+    <div class="med-controls">
+      <button class="med-btn" id="med-skip" title="跳过">&#9654;&#9654;</button>
+      <button class="fish-btn" id="med-play" title="开始">
+                <svg width="220" height="72" viewBox="0 0 260 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="fish-shadow" x="-10%" y="-20%" width="130%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <!-- Fish body silhouette -->
+  <path d="M228,40
+           L252,18
+           C244,25 238,32 234,36
+           C180,28 120,22 52,26
+           C34,27 22,33 16,40
+           C22,47 34,53 52,54
+           C120,58 180,52 234,44
+           C238,48 244,55 252,62
+           L228,40 Z"
+        fill="#1a1a1a" filter="url(#fish-shadow)"/>
+  <!-- "开始专注" text centered -->
+  <text x="130" y="46" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="18" font-weight="600" fill="#fff" letter-spacing="4">开始专注</text>
+</svg>
+              </button>
+      <button class="med-btn" id="med-reset" title="重置">&#8634;</button>
+    </div>
+    <div class="med-durations" id="med-durations">
+      <button class="med-dur" data-min="3">3 分钟</button>
+      <button class="med-dur active" data-min="5">5 分钟</button>
+      <button class="med-dur" data-min="10">10 分钟</button>
+      <button class="med-dur" data-min="15">15 分钟</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ GRAFFITI PAGE ═══ -->
+<div id="graffiti-page">
+  <header>
+    <button id="graf-back-btn" title="返回聊天">&#8592;</button>
+    <h1>涂鸦</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="graffiti-bg"></div>
+  <canvas id="graf-canvas"></canvas>
+  <div class="graf-toolbar">
+    <div class="graf-colors" id="graf-colors"></div>
+    <div class="graf-controls">
+      <label>大小</label>
+      <input type="range" id="graf-size" min="5" max="30" value="14">
+      <label>密度</label>
+      <input type="range" id="graf-density" min="10" max="40" value="22">
+      <button class="graf-btn" id="graf-clear">清除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <h2>设置</h2>
+    <div class="setting-row">
+      <label>你的昵称</label>
+      <input id="setting-nickname" type="text" placeholder="输入昵称…" maxlength="20">
+    </div>
+    <div class="setting-row">
+      <label>背景壁纸</label>
+      <div class="wallpaper-control">
+        <input id="setting-wallpaper" type="text" placeholder="粘贴图片链接，或上传本地图片">
+        <button id="wallpaper-upload-btn" class="wallpaper-upload" type="button">上传图片</button>
+      </div>
+      <input id="setting-wallpaper-file" type="file" accept="image/*" hidden>
+      <div id="wallpaper-preview" class="wallpaper-preview"></div>
+      <div class="setting-hint">留空并保存可恢复默认背景；上传图片会保存在本机浏览器里</div>
+    </div>
+    <div class="setting-row">
+      <label>AI 模型</label>
+      <select id="setting-model">
+        <option value="">默认（DeepSeek 端口接入）</option>
+        <option value="claude-opus-4-6">claude-opus-4-6（55api）</option>
+        <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+      </select>
+      <div class="setting-hint">切换克背后的大模型，下次对话生效</div>
+    </div>
+    <div class="setting-row" style="text-align:center;margin-top:8px;">
+      <a href="#" id="settings-worldbook-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#128214; 编辑世界书（人设）</a>
+    </div>
+    <div class="setting-row" style="text-align:center;margin-top:4px;">
+      <a href="#" id="settings-tweak-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#127912; 打开视觉调参台</a>
+    </div>
+    <div class="settings-actions">
+      <button id="settings-cancel">取消</button>
+      <button id="settings-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TWEAK PANEL ═══ -->
+<div id="tweak-overlay">
+  <div id="tweak-panel">
+    <div class="tweak-header">
+      <h2>&#127912; 视觉调参台</h2>
+      <button class="tweak-close" id="tweak-close">&times;</button>
+    </div>
+    <div class="tweak-body" id="tweak-body"></div>
+    <div class="tweak-footer">
+      <button class="btn btn-reset" id="tweak-reset">&#8634; 重置</button>
+      <button class="btn btn-copy" id="tweak-copy">复制 CSS</button>
+      <button class="btn btn-done" id="tweak-done">完成</button>
+    </div>
+  </div>
+</div>
+<button id="tweak-trigger" title="视觉调参台" style="display:none;">&#127912;</button>
+
+<!-- ═══ WORLDBOOK PAGE ═══ -->
+<div id="worldbook-page">
+  <header>
+    <button id="wb-back-btn" title="返回设置">&#8592;</button>
+    <h1>世界书</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="worldbook-body">
+    <section class="wb-section">
+      <h3>AI 人设</h3>
+      <div class="wb-field">
+        <label>名字</label>
+        <input id="wb-ai-name" type="text" placeholder="克" maxlength="20">
+      </div>
+      <div class="wb-field">
+        <label>性格</label>
+        <textarea id="wb-ai-personality" rows="3" placeholder="温柔、幽默、细心…"></textarea>
+      </div>
+      <div class="wb-field">
+        <label>说话风格</label>
+        <textarea id="wb-ai-speaking" rows="3" placeholder="用'咱'自称，喜欢用emoji…"></textarea>
+      </div>
+      <div class="wb-field">
+        <label>背景故事</label>
+        <textarea id="wb-ai-background" rows="3" placeholder="来自海滩的程序员小螃蟹…"></textarea>
+      </div>
+    </section>
+    <section class="wb-section">
+      <h3>用户画像</h3>
+      <div class="wb-field">
+        <label>称呼</label>
+        <input id="wb-user-name" type="text" placeholder="toge" maxlength="20">
+      </div>
+      <div class="wb-field">
+        <label>描述</label>
+        <textarea id="wb-user-description" rows="3" placeholder="数字媒体/交互设计专业，ADHD…"></textarea>
+      </div>
+      <div class="wb-field">
+        <label>偏好</label>
+        <textarea id="wb-user-preferences" rows="2" placeholder="喜欢简洁回答、对技术话题感兴趣…"></textarea>
+      </div>
+    </section>
+    <section class="wb-section">
+      <h3>自定义规则</h3>
+      <textarea id="wb-rules" rows="5" placeholder="每行一条规则&#10;每天早上主动问候&#10;重要消息用醒目的方式提醒"></textarea>
+    </section>
+    <div class="wb-actions">
+      <button id="wb-cancel">取消</button>
+      <button id="wb-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GIFTS PAGE ═══ -->
+<div id="gifts-page">
+  <header>
+    <button id="gift-back-btn" title="返回聊天">&#8592;</button>
+    <h1>礼物</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="gifts-grid" id="gifts-grid">
+    <div class="empty-state">还没有礼物，让克给你送一个吧~</div>
+  </div>
+</div>
+
+<!-- ═══ GIFT POPUP ═══ -->
+<div id="gift-popup">
+  <div class="gift-card" id="gift-card">
+    <div class="gift-card-img-wrap">
+      <img id="gift-card-img" src="" alt="">
+    </div>
+    <h2 id="gift-card-title"></h2>
+    <p id="gift-card-msg"></p>
+    <button id="gift-card-claim">领取</button>
+  </div>
+</div>
+
+<!-- ═══ CAMERA PAGE ═══ -->
+<div id="camera-page">
+  <header>
+    <button id="cam-back-btn" title="返回聊天">&#8592;</button>
+    <h1>摄像头</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="cam-body">
+    <div class="cam-preview-wrap">
+      <video id="cam-preview" autoplay playsinline muted></video>
+      <canvas id="cam-canvas" hidden></canvas>
+    </div>
+    <div class="cam-controls">
+      <button id="cam-start-btn">打开摄像头</button>
+      <button id="cam-capture-btn" disabled>拍照分析</button>
+      <button id="cam-guard-btn">哨兵模式</button>
+    </div>
+    <div id="cam-result" class="cam-result"></div>
+  </div>
+</div>
+
+<!-- ═══ MCP PLAYROOM PAGE ═══ -->
+<div id="mcp-page">
+  <header>
+    <button id="mcp-back-btn" title="返回聊天">&#8592;</button>
+    <h1>MCP 娱乐室</h1>
+    <div style="flex:1"></div>
+    <button id="mcp-cam-btn" title="摄像头">&#128247;</button>
+  </header>
+  <div class="mcp-body">
+    <section class="mcp-section">
+      <h3>已连接的服务器</h3>
+      <div id="mcp-server-list"></div>
+    </section>
+    <section class="mcp-section">
+      <h3>添加服务器</h3>
+      <div class="mcp-add-form">
+        <input id="mcp-add-name" type="text" placeholder="服务器名称" maxlength="30">
+        <input id="mcp-add-command" type="text" placeholder="命令 (如: npx -y @anthropic/mcp-server)" maxlength="200">
+        <button onclick="addMcpServer()">添加</button>
+      </div>
+    </section>
+    <section class="mcp-section">
+      <h3>行动日志</h3>
+      <div id="mcp-action-log" class="mcp-action-log">
+        <div class="empty-state">暂无记录</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ═══ BUBBLE TEA PAGE ═══ -->
+<div id="bubbletea-page"></div>
+
+<!-- ═══ BOOKMARKS PAGE ═══ -->
+<div id="bookmarks-page" style="display:none">
+  <header>
+    <button id="bm-back-btn" title="返回聊天">&#8592;</button>
+    <h1>收藏夹</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="bookmarks-body" id="bookmarks-body">
+    <div class="empty-state">还没有收藏过对话</div>
+  </div>
+</div>
+
+<!-- ═══ SEARCH OVERLAY ═══ -->
+<div id="search-overlay">
+  <div id="search-panel">
+    <h3>搜索聊天记录</h3>
+    <div class="search-input-wrap">
+      <input id="search-input" type="text" placeholder="输入关键词…" maxlength="60">
+      <button id="search-close">&times;</button>
+    </div>
+    <div id="search-results"><p class="search-empty">输入关键词开始搜索</p></div>
+    <div id="search-more">加载更多…</div>
+  </div>
+</div>
+
+<!-- ═══ LETTER MODAL ═══ -->
+<div id="letter-modal">
+  <div class="letter-overlay" onclick="closeLetter()"></div>
+  <div id="letter-card">
+    <!-- Top-left return address -->
+    <div class="letter-from">
+      FROM: 克 的 收 藏 夹<br>
+      Toge's Home · <span id="letter-date-from">收藏于</span>
+    </div>
+
+    <!-- Top-right faint watermark -->
+    <div class="letter-watermark">珍藏</div>
+
+    <!-- RECEIVED stamp -->
+    <div class="letter-stamp" id="letter-stamp">RECE<br>IVED</div>
+
+    <!-- Center seal / badge -->
+    <div class="letter-seal-wrap">
+      <div class="letter-seal">
+        <span>&#9993;</span>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="letter-title">
+      <span>Letters We'll Keep</span>
+    </div>
+    <div class="letter-date">
+      —— <span id="letter-date-sub">收藏于</span> ——
+    </div>
+
+    <!-- Message content -->
+    <div class="letter-body" id="letter-body"></div>
+
+    <!-- Lip print accent -->
+    <div class="letter-lip">&#128139;</div>
+
+    <!-- Bottom fold line -->
+    <div class="letter-footer">
+      <button class="letter-jump-btn" onclick="jumpToConversation()">
+        <span class="letter-jump-dot"></span>
+        跳转当前对话
+      </button>
+    </div>
+
+    <!-- Close button -->
+    <div class="letter-close" onclick="closeLetter()">&times;</div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+const STORAGE_KEY = "withtoge-chat-history";
+function getStorageKey() {
+  const m = (settings.model || "").trim();
+  return m ? `withtoge-chat-history-${m}` : STORAGE_KEY;
+}
+const SETTINGS_KEY = "withtoge-chat-settings";
+
+const chatPage = document.getElementById("chat-page");
+const memoryPage = document.getElementById("memory-page");
+const calendarPage = document.getElementById("calendar-page");
+const meditationPage = document.getElementById("meditation-page");
+const graffitiPage = document.getElementById("graffiti-page");
+const worldbookPage = document.getElementById("worldbook-page");
+const giftsPage = document.getElementById("gifts-page");
+const cameraPage = document.getElementById("camera-page");
+const mcpPage = document.getElementById("mcp-page");
+const bookmarksPage = document.getElementById("bookmarks-page");
+const messagesEl = document.getElementById("messages");
+const typingEl = document.getElementById("typing-indicator");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("send-btn");
+const imageBtn = document.getElementById("image-btn");
+const fileInput = document.getElementById("file-input");
+const imagePreview = document.getElementById("image-preview");
+const statusDot = document.getElementById("status-dot");
+const statusText = document.getElementById("status-text");
+const headerTitle = document.getElementById("header-title");
+
+let ws = null;
+let reconnectTimer = null;
+let reconnectDelay = 1000;
+let pendingFiles = [];
+let streamingMsgEl = null;
+let streamingText = "";
+
+/* ── Page switching ── */
+let currentPage = "chat";
+function showPage(page) {
+  currentPage = page;
+  chatPage.classList.toggle("show", page === "chat");
+  if (page === "calendar" && window._componentRegistry) {
+    window._componentRegistry.switchTo("calendar");
+  } else {
+    var calComp = window._componentRegistry && window._componentRegistry.getAll().calendar;
+    if (calComp && calComp.hide) calComp.hide();
+    calendarPage.classList.toggle("show", page === "calendar");
+    if (page === "calendar") renderCalendar();
+  }
+  memoryPage.classList.toggle("show", page === "memory");
+  meditationPage.classList.toggle("show", page === "meditation");
+  graffitiPage.classList.toggle("show", page === "graffiti");
+  worldbookPage.classList.toggle("show", page === "worldbook");
+  if (page === "worldbook") initWorldbook();
+  giftsPage.classList.toggle("show", page === "gifts");
+  if (page === "gifts") loadGifts();
+  cameraPage.classList.toggle("show", page === "camera");
+  if (page === "camera") initCamera();
+  mcpPage.classList.toggle("show", page === "mcp");
+  if (page === "mcp") initMcpPlayroom();
+  if (page === "bubbletea" && window._componentRegistry) {
+    window._componentRegistry.switchTo("bubbletea");
+  } else {
+    var btComp = window._componentRegistry && window._componentRegistry.getAll().bubbletea;
+    if (btComp && btComp.hide) btComp.hide();
+  }
+  if (page === "bookmarks") {
+    bookmarksPage.style.display = "flex";
+    renderBookmarksList();
+  } else {
+    bookmarksPage.style.display = "none";
+  }
+  if (page === "memory") {
+    if (window._memoryTab) { memoryTab = window._memoryTab; window._memoryTab = null; }
+    loadMemoryTab(memoryTab);
+  }
+  if (page === "meditation") initMeditation();
+  if (page === "graffiti") initGraffiti();
+}
+
+document.getElementById("menu-btn").addEventListener("click", toggleSidebar);
+
+document.getElementById("back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("med-back-btn").addEventListener("click", () => { stopMeditation(); showPage("chat"); });
+document.getElementById("graf-back-btn").addEventListener("click", () => showPage("chat"));
+
+/* ── settings ── */
+let settings = { nickname: "", wallpaper: "", model: "" };
+function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch { return {}; } }
+function saveSettings(s) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} }
+function cssImageUrl(src) {
+  return `url("${String(src).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`;
+}
+function updateWallpaperPreview(src) {
+  const preview = document.getElementById("wallpaper-preview");
+  if (!preview) return;
+  if (src) {
+    preview.style.backgroundImage = cssImageUrl(src);
+    preview.classList.add("show");
+  } else {
+    preview.style.backgroundImage = "";
+    preview.classList.remove("show");
+  }
+}
+function applySettings(s) {
+  settings = s;
+  const n = s.nickname || "克";
+  headerTitle.textContent = n;
+  document.title = n;
+  if (s.wallpaper) {
+    document.body.style.backgroundImage = cssImageUrl(s.wallpaper);
+    document.body.classList.add("has-wallpaper");
+  } else {
+    document.body.style.backgroundImage = "";
+    document.body.classList.remove("has-wallpaper");
+  }
+  applyModelTheme(s.model || "");
+}
+settings = loadSettings(); applySettings(settings);
+
+/* ── Sidebar ── */
+function toggleSidebar() {
+  const overlay = document.getElementById("sidebar-overlay");
+  const drawer = document.getElementById("sidebar-drawer");
+  const open = overlay.classList.contains("show");
+  if (open) { closeSidebar(); } else { openSidebar(); }
+}
+function openSidebar() {
+  document.getElementById("sidebar-overlay").classList.add("show");
+  document.getElementById("sidebar-drawer").classList.add("show");
+  syncSidebarModel();
+}
+function closeSidebar() {
+  document.getElementById("sidebar-overlay").classList.remove("show");
+  document.getElementById("sidebar-drawer").classList.remove("show");
+}
+function syncSidebarModel() {
+  const cur = (settings.model || "").trim();
+  document.querySelectorAll(".sidebar-model-card").forEach(card => {
+    const m = (card.dataset.model || "").trim();
+    card.classList.toggle("active", m === cur);
+  });
+}
+function selectSidebarModel(el) {
+  const model = (el.dataset.model || "").trim();
+  const oldModel = (settings.model || "").trim();
+  // Save current history to old model's key before switching
+  if (oldModel !== model && history.length > 0) {
+    const oldKey = getStorageKey();
+    localStorage.setItem(oldKey, JSON.stringify(history.slice(-500)));
+  }
+  document.querySelectorAll(".sidebar-model-card").forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+  settings.model = model;
+  saveSettings(settings);
+  document.getElementById("setting-model").value = model;
+  applyModelTheme(model);
+  // Switch chat history if model changed
+  if (oldModel !== model) {
+    switchModelHistory();
+    setTimeout(() => syncHistoryFromServer(), 300);
+  }
+}
+function switchModelHistory() {
+  const msgs = document.getElementById("messages");
+  msgs.innerHTML = "";
+  history = [];
+  let localMsgs = [];
+  try { localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]"); } catch {}
+  for (const m of localMsgs) renderMsg(m, false);
+  scrollBottom();
+}
+function applyModelTheme(model) {
+  const root = document.documentElement;
+  root.classList.remove("model-deepseek", "model-opus", "model-haiku");
+  if (!model) {
+    root.classList.add("model-deepseek");
+  } else if (model === "claude-opus-4-6") {
+    root.classList.add("model-opus");
+  } else if (model === "claude-haiku-4-5") {
+    root.classList.add("model-haiku");
+  }
+  // Update header status label
+  const label = !model ? "DeepSeek" : (model === "claude-opus-4-6" ? "Opus 4.6" : "Haiku 4.5");
+  if (statusText.textContent.startsWith("在线")) {
+    statusText.textContent = `在线 · ${label}`;
+  }
+}
+function sidebarNavigate(target) {
+  closeSidebar();
+  if (target === "bubbletea") { showPage("bubbletea"); return; }
+  if (target === "games") { showPage("chat"); return; }
+  showPage(target);
+}
+
+/* ── Selection & Bookmark ── */
+const BM_KEY = "withtoge_bookmarks";
+let selecting = false;
+let selectedMsgs = new Set();
+
+function loadBookmarks() {
+  try { return JSON.parse(localStorage.getItem(BM_KEY) || "[]"); } catch { return []; }
+}
+function saveBookmarks(bm) {
+  try { localStorage.setItem(BM_KEY, JSON.stringify(bm)); } catch {}
+}
+
+function enterSelectMode(firstMsgId) {
+  selecting = true;
+  selectedMsgs = new Set();
+  if (firstMsgId) selectedMsgs.add(firstMsgId);
+  document.body.classList.add("selecting");
+  const bar = document.getElementById("selection-bar");
+  bar.innerHTML = `<button class="sel-btn sel-cancel" onclick="cancelSelection()">取消</button>
+    <span class="sel-count" id="sel-count">已选 ${selectedMsgs.size} 条</span>
+    <button class="sel-btn sel-bookmark" onclick="bookmarkSelected()">收藏</button>
+    <button class="sel-btn sel-delete" onclick="deleteSelected()">删除</button>`;
+  updateSelectionUI();
+}
+
+function exitSelectMode() {
+  // 记住退出前第一条可见消息
+  var msgs = messagesEl.querySelectorAll(".msg");
+  var anchorId = null;
+  for (var i = 0; i < msgs.length; i++) {
+    var r = msgs[i].getBoundingClientRect();
+    if (r.top >= 0 && r.bottom <= window.innerHeight) { anchorId = msgs[i].getAttribute("data-msg-id"); break; }
+  }
+  selecting = false;
+  selectedMsgs = new Set();
+  document.body.classList.remove("selecting");
+  document.querySelectorAll(".msg.selected").forEach(el => el.classList.remove("selected"));
+  // 过渡完成后滚回原位
+  if (anchorId) {
+    setTimeout(function() {
+      var el = document.querySelector('.msg[data-msg-id="' + anchorId + '"]');
+      if (el) el.scrollIntoView({ block: "start" });
+    }, 300);
+  }
+}
+
+function cancelSelection() { exitSelectMode(); }
+
+function toggleMsgSelection(msgId) {
+  if (!selecting) return;
+  if (selectedMsgs.has(msgId)) {
+    selectedMsgs.delete(msgId);
+  } else {
+    selectedMsgs.add(msgId);
+  }
+  if (selectedMsgs.size === 0) { exitSelectMode(); return; }
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  document.getElementById("sel-count").textContent = `已选 ${selectedMsgs.size} 条`;
+  document.querySelectorAll(".msg").forEach(el => {
+    const id = el.getAttribute("data-msg-id");
+    el.classList.toggle("selected", selectedMsgs.has(id));
+  });
+}
+
+function bookmarkSelected() {
+  if (selectedMsgs.size === 0) return;
+  const bm = loadBookmarks();
+  const entries = [];
+  document.querySelectorAll(".msg.selected").forEach(el => {
+    const id = el.getAttribute("data-msg-id");
+    const from = el.classList.contains("you") ? "you" : "ke";
+    const bubble = el.querySelector(".msg-bubble");
+    const text = bubble ? bubble.textContent.replace(/\d{1,2}:\d{2}$/, "").trim() : (el.textContent.replace(/\d{1,2}:\d{2}$/, "").trim());
+    const timeEl = el.querySelector(".time");
+    const time = timeEl ? timeEl.textContent : "";
+    entries.push({ id, from, text, time });
+  });
+  bm.push({
+    id: `bm-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    messages: entries
+  });
+  saveBookmarks(bm);
+  exitSelectMode();
+  // Brief toast
+  showToast("已收藏 " + entries.length + " 条");
+}
+
+function deleteSelected() {
+  if (selectedMsgs.size === 0) return;
+  showConfirmDialog(
+    `确定删除选中的 ${selectedMsgs.size} 条消息吗？`,
+    "删除",
+    "取消",
+    () => {
+      // 从 localMsgs 中移除
+      localMsgs = localMsgs.filter(m => !selectedMsgs.has(m.id));
+      saveHistory(localMsgs);
+      // 从 DOM 中移除
+      selectedMsgs.forEach(id => {
+        const el = document.querySelector(`.msg[data-msg-id="${id}"]`);
+        if (el) el.remove();
+      });
+      exitSelectMode();
+      showToast("已删除 " + selectedMsgs.size + " 条");
+    }
+  );
+}
+
+// Confirm dialog
+function showConfirmDialog(msg, confirmText, cancelText, onConfirm) {
+  const overlay = document.createElement("div");
+  overlay.className = "confirm-overlay";
+  overlay.innerHTML = `<div class="confirm-dialog">
+    <p class="confirm-msg">${msg}</p>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-cancel">${cancelText}</button>
+      <button class="confirm-btn confirm-ok">${confirmText}</button>
+    </div>
+  </div>`;
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  overlay.querySelector(".confirm-cancel").addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".confirm-ok").addEventListener("click", () => { overlay.remove(); onConfirm(); });
+  document.body.appendChild(overlay);
+}
+
+// Approval dialog
+function showApprovalDialog(approval) {
+  const overlay = document.createElement("div");
+  overlay.className = "approval-overlay";
+
+  const reason = approval.reason || "";
+  const command = approval.command || (approval.commandTokens && approval.commandTokens.join(" ")) || "";
+  const kind = approval.kind || "";
+
+  overlay.innerHTML = `<div class="approval-dialog">
+    <div class="approval-icon">&#128274;</div>
+    <div class="approval-title">克想要执行操作</div>
+    ${reason ? `<div class="approval-reason">${esc(reason)}</div>` : ""}
+    ${command ? `<div class="approval-command">${esc(command)}</div>` : ""}
+    <div class="approval-actions">
+      <button class="approval-btn approval-yes">允许一次</button>
+      ${kind !== "mcp_tool_call" ? '<button class="approval-btn approval-always">总是允许</button>' : ""}
+      <button class="approval-btn approval-no">拒绝</button>
+    </div>
+  </div>`;
+
+  function respond(decision) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "approval_response", requestId: approval.requestId, decision }));
+    }
+    overlay.remove();
+  }
+
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector(".approval-yes").addEventListener("click", function() { respond("yes"); });
+  var alwaysBtn = overlay.querySelector(".approval-always");
+  if (alwaysBtn) alwaysBtn.addEventListener("click", function() { respond("always"); });
+  overlay.querySelector(".approval-no").addEventListener("click", function() { respond("no"); });
+  document.body.appendChild(overlay);
+}
+
+// 双击进入/退出多选（手机和电脑都用双击）
+messagesEl.addEventListener("dblclick", (e) => {
+  const msg = e.target.closest(".msg");
+  if (!msg) return;
+  const msgId = msg.getAttribute("data-msg-id");
+  if (!msgId) return;
+  if (selecting) { exitSelectMode(); return; }
+  enterSelectMode(msgId);
+});
+
+// Click to toggle in select mode, click empty space to exit
+messagesEl.addEventListener("click", (e) => {
+  if (!selecting) return;
+  const msg = e.target.closest(".msg");
+  if (!msg) { exitSelectMode(); return; }
+  const msgId = msg.getAttribute("data-msg-id");
+  if (msgId) toggleMsgSelection(msgId);
+});
+
+// Escape key to exit select mode
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && selecting) exitSelectMode();
+});
+
+// Toast
+function showToast(text) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = text;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 1800);
+}
+
+// Bookmarks page
+function renderBookmarksList() {
+  const bm = loadBookmarks();
+  const body = document.getElementById("bookmarks-body");
+  if (!bm.length) {
+    body.innerHTML = '<div class="empty-state">还没有收藏过对话</div>';
+    return;
+  }
+  let html = "";
+  bm.slice().reverse().forEach((b, idx) => {
+    const preview = b.messages.slice(0, 3).map(m => `<span class="bm-msg-preview ${m.from}">${esc(m.from === "you" ? "你" : "克")}: ${esc(m.text.slice(0, 50))}${m.text.length > 50 ? "..." : ""}</span>`).join("");
+    const msgCount = b.messages.length;
+    const date = new Date(b.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    html += `<div class="bookmark-item" data-bm-id="${b.id}" onclick="openBookmarkLetter('${b.id}')">
+      <div class="bm-item-header">
+        <span class="bm-item-date">${date}</span>
+        <span class="bm-item-count">${msgCount} 条</span>
+      </div>
+      <div class="bm-item-preview">${preview}</div>
+    </div>`;
+  });
+  body.innerHTML = html;
+}
+
+let currentBookmarkId = null;
+
+function openBookmarkLetter(bmId) {
+  const bm = loadBookmarks().find(b => b.id === bmId);
+  if (!bm) return;
+  currentBookmarkId = bmId;
+  const dateStr = new Date(bm.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const dateFull = "收藏于 " + dateStr;
+
+  // Fill date elements
+  const df = document.getElementById("letter-date-from");
+  const ds = document.getElementById("letter-date-sub");
+  if (df) df.textContent = dateFull;
+  if (ds) ds.textContent = dateFull;
+
+  // Render messages
+  const body = document.getElementById("letter-body");
+  let html = "";
+  bm.messages.forEach((m) => {
+    const role = m.from === "you" ? "you" : "ke";
+    html += `<div class="letter-msg ${role}">
+      <div class="letter-msg-label">${m.from === "you" ? "✧ 你" : "✧ 克"}</div>
+      <div class="letter-msg-text">${esc(m.text)}</div>
+      <div class="letter-msg-time">${esc(m.time)}</div>
+    </div>`;
+  });
+  body.innerHTML = html;
+
+  // Show & animate
+  const modal = document.getElementById("letter-modal");
+  modal.style.display = "flex";
+  modal.style.opacity = "0";
+  modal.style.transition = "opacity 0.3s";
+  requestAnimationFrame(() => { modal.style.opacity = "1"; });
+}
+
+function closeLetter() {
+  const modal = document.getElementById("letter-modal");
+  modal.style.opacity = "0";
+  setTimeout(() => {
+    modal.style.display = "none";
+    currentBookmarkId = null;
+  }, 250);
+}
+
+function jumpToConversation() {
+  closeLetter();
+  showPage("chat");
+}
+
+document.getElementById("bm-back-btn").addEventListener("click", () => showPage("chat"));
+
+/* ── End Selection & Bookmark ── */
+
+
+document.getElementById("settings-btn").addEventListener("click", () => {
+  document.getElementById("setting-nickname").value = settings.nickname || "";
+  document.getElementById("setting-wallpaper").value = settings.wallpaper || "";
+  document.getElementById("setting-model").value = settings.model || "";
+  updateWallpaperPreview(settings.wallpaper || "");
+  document.getElementById("settings-overlay").classList.add("show");
+  document.getElementById("setting-nickname").focus();
+});
+document.getElementById("setting-wallpaper").addEventListener("input", (e) => {
+  updateWallpaperPreview(e.target.value.trim());
+});
+document.getElementById("wallpaper-upload-btn").addEventListener("click", () => {
+  document.getElementById("setting-wallpaper-file").click();
+});
+document.getElementById("setting-wallpaper-file").addEventListener("change", () => {
+  const input = document.getElementById("setting-wallpaper-file");
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    document.getElementById("setting-wallpaper").value = dataUrl;
+    updateWallpaperPreview(dataUrl);
+    input.value = "";
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById("settings-cancel").addEventListener("click", () => {
+  document.getElementById("settings-overlay").classList.remove("show");
+});
+document.getElementById("settings-save").addEventListener("click", () => {
+  const ns = {
+    nickname: document.getElementById("setting-nickname").value.trim(),
+    wallpaper: document.getElementById("setting-wallpaper").value.trim(),
+    model: document.getElementById("setting-model").value.trim(),
+  };
+  saveSettings(ns); applySettings(ns);
+  document.getElementById("settings-overlay").classList.remove("show");
+});
+document.getElementById("settings-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "settings-overlay") document.getElementById("settings-overlay").classList.remove("show");
+});
+document.getElementById("settings-worldbook-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("settings-overlay").classList.remove("show");
+  showPage("worldbook");
+});
+document.getElementById("wb-back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("gift-back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("cam-back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("mcp-back-btn").addEventListener("click", () => showPage("chat"));
+document.getElementById("mcp-cam-btn").addEventListener("click", () => showPage("camera"));
+document.getElementById("settings-tweak-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("settings-overlay").classList.remove("show");
+  document.getElementById("tweak-overlay").classList.add("show");
+  // buildUI is called inside the tweak panel's open logic — trigger a rebuild
+  var ev = new Event('click');
+  document.getElementById('tweak-trigger').dispatchEvent(ev);
+});
+
+/* ── image handling ── */
+imageBtn.addEventListener("click", async () => {
+  if (window.showOpenFilePicker) {
+    try {
+      const handles = await window.showOpenFilePicker({ multiple: true });
+      for (const handle of handles) {
+        const file = await handle.getFile();
+        addPendingFile(file);
+      }
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return;
+    }
+  }
+  fileInput.click();
+});
+fileInput.addEventListener("change", () => {
+  for (const file of fileInput.files) addPendingFile(file);
+  fileInput.value = "";
+});
+
+async function addPendingFile(file) {
+  if (file.type.startsWith("image/")) {
+    const data = await readFileAsBase64(file);
+    pendingFiles.push({ kind: "image", data, fileName: file.name, contentType: file.type });
+  } else {
+    const data = await readFileAsBase64(file);
+    pendingFiles.push({ kind: "file", data, fileName: file.name, contentType: file.type || "application/octet-stream" });
+  }
+  renderPreviews();
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.slice(reader.result.indexOf(",") + 1);
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function removePendingFile(index) {
+  pendingFiles.splice(index, 1);
+  renderPreviews();
+}
+
+function renderPreviews() {
+  imagePreview.innerHTML = "";
+  if (!pendingFiles.length) { imagePreview.classList.remove("show"); return; }
+  imagePreview.classList.add("show");
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const f = pendingFiles[i];
+    const div = document.createElement("div");
+    div.className = "preview-item";
+    if (f.kind === "image") {
+      div.innerHTML = `<img src="data:${f.contentType};base64,${f.data}" alt="${escAttr(f.fileName)}"><button class="remove-btn" data-index="${i}">&times;</button>`;
+    } else {
+      div.className = "preview-item file-preview";
+      div.innerHTML = `<div class="file-icon">&#128196;</div><span class="file-name">${escAttr(f.fileName)}</span><button class="remove-btn" data-index="${i}">&times;</button>`;
+    }
+    div.querySelector(".remove-btn").addEventListener("click", (e) => { e.stopPropagation(); removePendingFile(i); });
+    imagePreview.appendChild(div);
+  }
+}
+
+/* ── paste ── */
+document.addEventListener("paste", (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      e.preventDefault();
+      addPendingFile(item.getAsFile());
+    }
+  }
+});
+
+/* ── drag & drop ── */
+messagesEl.addEventListener("dragover", (e) => { e.preventDefault(); messagesEl.classList.add("drag-over"); });
+messagesEl.addEventListener("dragleave", () => { messagesEl.classList.remove("drag-over"); });
+messagesEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  messagesEl.classList.remove("drag-over");
+  for (const file of e.dataTransfer.files) addPendingFile(file);
+});
+
+/* ── history ── */
+let history = [];
+
+async function initHistory() {
+  // Load from server API first, then fall back to localStorage
+  let serverMsgs = [];
+  try {
+    const m = (settings.model || "").trim();
+    const q = `?days=7&model=${encodeURIComponent(m)}`;
+    const res = await fetch(`/api/messages${q}`);
+    if (res.ok) serverMsgs = await res.json();
+  } catch {}
+
+  // One-time cleanup: clear model-specific keys contaminated by old initHistory
+  if (!localStorage.getItem("cyberboss-chat-v2")) {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("withtoge-chat-history-") && key !== STORAGE_KEY) {
+        localStorage.removeItem(key);
+      }
+    }
+    localStorage.setItem("cyberboss-chat-v2", "1");
+  }
+
+  let localMsgs = [];
+  try { localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]"); } catch { localMsgs = []; }
+  // One-time migration from old date-based keys
+  if (!localStorage.getItem("cyberboss-chat-migrated")) {
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const oldKey = `cyberboss-chat-${d.toISOString().slice(0, 10)}`;
+      try {
+        const old = JSON.parse(localStorage.getItem(oldKey) || "[]");
+        if (old.length) { localMsgs = [...old, ...localMsgs]; localStorage.removeItem(oldKey); }
+      } catch {}
+    }
+    localStorage.setItem("cyberboss-chat-migrated", "1");
+  }
+
+  // Merge: server messages take priority, dedup by id/timestamp
+  const seen = new Set();
+  const merged = [];
+  for (const m of [...serverMsgs, ...localMsgs]) {
+    const key = m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(m);
+  }
+  merged.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+  history = merged;
+  for (const m of history) renderMsg(m, false);
+  scrollBottom();
+  // Don't persist server-fetched messages to model-specific key
+}
+
+async function syncHistoryFromServer() {
+  let serverMsgs = [];
+  try {
+    const m = (settings.model || "").trim();
+    const q = `?days=7&model=${encodeURIComponent(m)}`;
+    const res = await fetch(`/api/messages${q}`, { cache: "no-store" });
+    if (res.ok) serverMsgs = await res.json();
+  } catch {
+    return;
+  }
+  if (!Array.isArray(serverMsgs) || !serverMsgs.length) return;
+  const seen = new Set(history.map((m) => m.id || (m.timestamp || "") + (m.text || "").slice(0, 40)));
+  const missing = [];
+  for (const m of serverMsgs) {
+    const key = m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    missing.push(m);
+  }
+  missing.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+  for (const m of missing) {
+    renderMsg(m, false);
+    history.push(m);
+  }
+  if (missing.some((m) => m.from === "ke")) {
+    hideTyping();
+  }
+}
+
+function saveHistory(h) { try { localStorage.setItem(getStorageKey(), JSON.stringify(h.slice(-500))); } catch {} }
+
+initHistory();
+
+let _msgIdx = 0;
+function renderMsg(msg, save = true) {
+  const div = document.createElement("div");
+  div.className = `msg ${msg.from === "you" ? "you" : "ke"}`;
+  const msgId = msg.id || `msg-${Date.now()}-${_msgIdx++}-${Math.random().toString(36).slice(2,6)}`;
+  div.setAttribute("data-msg-id", msgId);
+  if (!msg.id) msg.id = msgId;
+  if (msg.from === "ke") {
+    let html = `<div class="msg-inner">
+      <div class="avatar-sm"><img src="/icon.png" alt="克"></div>
+      <div class="msg-bubble">${esc(msg.text)}`;
+    if (msg.images && msg.images.length > 0) html += renderImageTags(msg.images, msg.from);
+    html += `<div class="time">${msg.time || now()}</div></div></div>`;
+    div.innerHTML = html;
+  } else {
+    let html = esc(msg.text);
+    if (msg.images && msg.images.length > 0) html += renderImageTags(msg.images, msg.from);
+    html += `<div class="time">${msg.time || now()}</div>`;
+    div.innerHTML = html;
+  }
+  messagesEl.appendChild(div);
+  scrollBottom();
+  if (save) { history.push(msg); saveHistory(history); }
+  return div;
+}
+
+function renderImageTags(images, from) {
+  if (!images || !images.length) return "";
+  const cls = images.length === 1 ? "single" : "";
+  return `<div class="img-wrap">${images.map((img) => {
+    const src = img.thumb || (img.path ? `/api/media/${img.path}` : "") || (img.data ? `data:${img.contentType || "image/png"};base64,${img.data}` : "");
+    return src ? `<img src="${src}" class="${cls}" alt="图片" loading="lazy">` : "";
+  }).join("")}</div>`;
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML.replace(/\n/g, "<br>"); }
+function escAttr(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
+function scrollBottom() { requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }); }
+
+/* ── status ── */
+function online(v) {
+  if (v) {
+    statusDot.className = "on"; sendBtn.disabled = false;
+    applyModelTheme(settings.model || "");
+    inputEl.focus();
+  } else {
+    statusDot.className = ""; statusText.textContent = "离线"; sendBtn.disabled = true;
+  }
+}
+
+function showTyping() { typingEl.classList.add("show"); scrollBottom(); }
+function hideTyping() { typingEl.classList.remove("show"); }
+
+var pageHidden = document.hidden;
+document.addEventListener('visibilitychange', () => { pageHidden = document.hidden; });
+
+function notify(text) {
+  if (!document.hidden && !pageHidden) return;
+  if (window.Android && window.Android.notifyMessage) {
+    window.Android.notifyMessage(text);
+    return;
+  }
+  if (Notification.permission !== "granted") return;
+  try { new Notification(settings.nickname || "克", { body: text.slice(0, 200) }); } catch {}
+}
+
+/* ── send ── */
+function send() {
+  streamingMsgEl = null; streamingText = "";
+  const text = inputEl.value.trim();
+  const hasContent = pendingFiles.length > 0;
+  if ((!text && !hasContent) || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const payload = { type: "message", messageId: `m-${Date.now()}-${Math.random().toString(36).slice(2,8)}` };
+  if (text) payload.text = text;
+  const images = pendingFiles.filter((f) => f.kind === "image");
+  const files = pendingFiles.filter((f) => f.kind === "file");
+  if (images.length) {
+    payload.images = images.map((img) => ({ data: img.data, fileName: img.fileName, contentType: img.contentType }));
+  }
+  if (files.length) {
+    payload.files = files.map((f) => ({ data: f.data, fileName: f.fileName, contentType: f.contentType }));
+  }
+  if (settings.model) payload.model = settings.model;
+  ws.send(JSON.stringify(payload));
+  let label = text || "";
+  if (!label && images.length) label = "[图片]";
+  if (!label && files.length) label = `[文件] ${files.map((f) => f.fileName).join(", ")}`;
+  renderMsg({
+    from: "you",
+    text: label,
+    images: images.map((img) => ({
+      thumb: `data:${img.contentType};base64,${img.data}`,
+      contentType: img.contentType,
+    })),
+    time: now(),
+  });
+  pendingFiles = [];
+  renderPreviews();
+  inputEl.value = ""; inputEl.style.height = "auto";
+  showTyping();
+}
+
+inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+inputEl.addEventListener("input", () => { inputEl.style.height = "auto"; inputEl.style.height = Math.min(inputEl.scrollHeight, 130) + "px"; });
+sendBtn.addEventListener("click", send);
+
+if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+
+/* ── WebSocket ── */
+function connect() {
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  try { ws = new WebSocket(WS_URL); } catch (_) { scheduleReconnect(); return; }
+  ws.onopen = () => { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } syncHistoryFromServer(); };
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      switch (msg.type) {
+      case "text":
+        if (msg.done) {
+          hideTyping();
+          if (streamingMsgEl) {
+            streamingText += msg.text;
+            const bubble = streamingMsgEl.querySelector(".msg-bubble");
+            if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
+            history.push({ from:"ke", text:streamingText, time: now() });
+            saveHistory(history);
+            notify(streamingText);
+            streamingMsgEl = null;
+            streamingText = "";
+          } else {
+            const div = renderMsg({ from:"ke", text:msg.text, time: now() });
+            if (div) notify(msg.text);
+          }
+        } else {
+          if (!streamingMsgEl) {
+            hideTyping();
+            streamingMsgEl = renderMsg({ from:"ke", text:msg.text, time: now() }, false);
+            streamingText = msg.text;
+          } else {
+            streamingText += msg.text;
+            const bubble = streamingMsgEl.querySelector(".msg-bubble");
+            if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
+          }
+          scrollBottom();
+        }
+        break;
+      case "typing": msg.status === 1 ? showTyping() : hideTyping(); break;
+      case "file": renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); break;
+      case "error": renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() }); break;
+      case "approval": showApprovalDialog(msg); break;
+      case "pong": break;
+    }
+    } catch {}
+  };
+  ws.onclose = () => { online(false); scheduleReconnect(); };
+  ws.onerror = () => { ws.close(); };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  statusText.textContent = `重连中 (${Math.round(reconnectDelay/1000)}s)…`;
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; reconnectDelay = Math.min(reconnectDelay*1.5, 30000); connect(); }, reconnectDelay);
+}
+
+setInterval(() => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type:"ping" })); }, 30_000);
+connect();
+/* ── Service Worker ── */
+if ("serviceWorker" in navigator) {
+  let swReg = null;
+  navigator.serviceWorker.register("/sw.js?v=22").then((reg) => {
+    swReg = reg;
+    // Check if there's already a new worker waiting
+    if (reg.waiting) showUpdateBanner(reg.waiting);
+    // Listen for new workers
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener("statechange", () => {
+        if (w.state === "installed" && navigator.serviceWorker.controller) {
+          showUpdateBanner(w);
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // If the controller changes (user updated), reload
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    window.location.reload();
+  });
+}
+
+let swWaiting = null;
+function showUpdateBanner(worker) {
+  swWaiting = worker;
+  const banner = document.getElementById("update-banner");
+  if (banner) { banner.style.display = "flex"; banner.textContent = "克更新好了，点我刷新~"; }
+}
+window.updateKe = function () {
+  if (swWaiting) {
+    swWaiting.postMessage({ type: "SKIP_WAITING" });
+  }
+};
+</script>
+<script src="/js/component-registry.js"></script>
+<script src="/components/calendar/calendar.js"></script>
+<script src="/js/pet.js"></script>
+<script src="/js/memory.js"></script>
+<script src="/js/calendar.js"></script>
+<script src="/js/meditation.js"></script>
+<script src="/js/graffiti.js"></script>
+<script src="/js/search.js"></script>
+<script src="/js/worldbook.js"></script>
+<script src="/js/gifts.js"></script>
+<script src="/js/camera.js"></script>
+<script src="/js/mcp-playroom.js"></script>
+<script src="/js/tweak.js"></script>
+<script src="/components/bubbletea/bubbletea.js"></script>
+</body>
+</html>

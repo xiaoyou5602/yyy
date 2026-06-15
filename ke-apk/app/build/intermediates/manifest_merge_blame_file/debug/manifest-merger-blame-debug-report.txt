@@ -1,0 +1,77 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.cyberboss.ke"
+4    android:versionCode="12"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:4:5-67
+11-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:4:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:5:5-79
+12-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:5:22-76
+13    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+13-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:6:5-77
+13-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:6:22-74
+14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+14-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:7:5-77
+14-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:7:22-74
+15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+15-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:8:5-87
+15-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:8:22-84
+16
+17    <application
+17-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:10:5-33:19
+18        android:allowBackup="true"
+18-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:11:9-35
+19        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+19-->[androidx.core:core:1.1.0] C:\Users\youzi\.gradle\caches\transforms-4\dae6abfadc1f6d185d167e23bff9fc80\transformed\core-1.1.0\AndroidManifest.xml:24:18-86
+20        android:debuggable="true"
+21        android:extractNativeLibs="false"
+22        android:icon="@mipmap/icon"
+22-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:13:9-36
+23        android:label="克"
+23-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:12:9-26
+24        android:networkSecurityConfig="@xml/network_security_config"
+24-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:17:9-69
+25        android:supportsRtl="true"
+25-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:14:9-35
+26        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+26-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:15:9-67
+27        android:usesCleartextTraffic="true" >
+27-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:16:9-44
+28        <activity
+28-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:19:9-27:20
+29            android:name="com.cyberboss.ke.MainActivity"
+29-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:20:13-41
+30            android:configChanges="orientation|screenSize|keyboardHidden"
+30-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:22:13-74
+31            android:exported="true" >
+31-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:21:13-36
+32            <intent-filter>
+32-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:23:13-26:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:24:17-69
+33-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:24:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:25:17-77
+35-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:25:27-74
+36            </intent-filter>
+37        </activity>
+38
+39        <service
+39-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:29:9-32:56
+40            android:name="com.cyberboss.ke.KeNotificationService"
+40-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:30:13-50
+41            android:exported="false"
+41-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:31:13-37
+42            android:foregroundServiceType="dataSync" />
+42-->C:\Users\youzi\withtoge\ke-apk\app\src\main\AndroidManifest.xml:32:13-53
+43    </application>
+44
+45</manifest>

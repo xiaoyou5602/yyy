@@ -1,0 +1,9 @@
+com.cyberboss.ke.app-webkit-1.9.0-0 C:\Users\youzi\.gradle\caches\transforms-4\607b36845c767115f770758a13896386\transformed\webkit-1.9.0\res
+com.cyberboss.ke.app-core-1.1.0-1 C:\Users\youzi\.gradle\caches\transforms-4\dae6abfadc1f6d185d167e23bff9fc80\transformed\core-1.1.0\res
+com.cyberboss.ke.app-pngs-2 C:\Users\youzi\withtoge\ke-apk\app\build\generated\res\pngs\debug
+com.cyberboss.ke.app-resValues-3 C:\Users\youzi\withtoge\ke-apk\app\build\generated\res\resValues\debug
+com.cyberboss.ke.app-packageDebugResources-4 C:\Users\youzi\withtoge\ke-apk\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.cyberboss.ke.app-packageDebugResources-5 C:\Users\youzi\withtoge\ke-apk\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.cyberboss.ke.app-merged_res-6 C:\Users\youzi\withtoge\ke-apk\app\build\intermediates\merged_res\debug
+com.cyberboss.ke.app-debug-7 C:\Users\youzi\withtoge\ke-apk\app\src\debug\res
+com.cyberboss.ke.app-main-8 C:\Users\youzi\withtoge\ke-apk\app\src\main\res

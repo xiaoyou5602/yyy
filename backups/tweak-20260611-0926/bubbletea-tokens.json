@@ -1,0 +1,16 @@
+{
+  "component": "bubbletea",
+  "tokens": {
+    "bt-bg": { "label": "页面背景", "value": "#FFF9F5", "group": "背景" },
+    "bt-surface": { "label": "卡片背景", "value": "#FFFFFF", "group": "背景" },
+    "bt-text": { "label": "主文字色", "value": "#4A3728", "group": "文字" },
+    "bt-text-muted": { "label": "次要文字色", "value": "#B0A090", "group": "文字" },
+    "bt-accent": { "label": "强调色", "value": "#D4846A", "group": "色彩" },
+    "bt-accent-soft": { "label": "强调色浅底", "value": "#FDF0EA", "group": "色彩" },
+    "bt-accent2": { "label": "辅助绿色", "value": "#A8C8B0", "group": "色彩" },
+    "bt-cal-today-bg": { "label": "今日背景", "value": "#FDF0EA", "group": "日历" },
+    "bt-cal-tea-bg": { "label": "奶茶日背景", "value": "#FFF0E8", "group": "日历" },
+    "bt-radius": { "label": "大圆角", "value": "16px", "group": "形状" },
+    "bt-radius-sm": { "label": "小圆角", "value": "10px", "group": "形状" }
+  }
+}

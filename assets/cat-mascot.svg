@@ -1,0 +1,105 @@
+<svg width="1280" height="280" viewBox="0 0 1280 280" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="280" rx="24" fill="#FFF5EE"/>
+  <!-- Labels -->
+  <text x="100" y="30" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B2B2B">默认</text>
+  <text x="356" y="30" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B2B2B">困困</text>
+  <text x="612" y="30" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B2B2B">开心</text>
+  <text x="868" y="30" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B2B2B">发呆</text>
+  <text x="1124" y="30" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B2B2B">思考</text>
+
+<g transform="translate(20,20)">
+  <ellipse cx="128" cy="215" rx="48" ry="10" fill="rgba(0,0,0,0.05)"/>
+  <path d="M170,172 C190,172 200,186 194,200 C188,214 168,214 162,200" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="148" rx="46" ry="52" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <circle cx="128" cy="92" r="42" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <path d="M98,60 L84,32 L112,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M158,60 L172,32 L144,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="110" cy="90" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="146" cy="90" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="110" cy="91" r="5" fill="#2B2B2B"/>
+  <circle cx="146" cy="91" r="5" fill="#2B2B2B"/>
+  <path d="M122,112 Q128,118 134,112" fill="none" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="104" x2="102" y2="102" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="116" x2="102" y2="114" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="102" x2="174" y2="104" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="114" x2="174" y2="116" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="108" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+  <ellipse cx="148" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+</g>
+
+<g transform="translate(276,20)">
+  <ellipse cx="128" cy="215" rx="48" ry="10" fill="rgba(0,0,0,0.05)"/>
+  <path d="M170,172 C190,178 194,200 186,220 C180,228 168,228 164,218" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="148" rx="46" ry="52" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <circle cx="128" cy="92" r="42" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <path d="M98,60 L84,32 L112,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M158,60 L172,32 L144,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M95,92 Q110,100 125,92" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M131,92 Q146,100 161,92" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M124,114 Q128,116 132,114" fill="none" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round"/>
+  <line x1="82" y1="104" x2="102" y2="102" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="116" x2="102" y2="114" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="102" x2="174" y2="104" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="114" x2="174" y2="116" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="108" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+  <ellipse cx="148" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+</g>
+
+<g transform="translate(532,20)">
+  <ellipse cx="128" cy="215" rx="48" ry="10" fill="rgba(0,0,0,0.05)"/>
+  <path d="M170,172 C190,160 196,142 190,125" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="148" rx="46" ry="52" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <circle cx="128" cy="92" r="42" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <path d="M98,60 L84,32 L112,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M158,60 L172,32 L144,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M95,97 Q110,84 125,97" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M131,97 Q146,84 161,97" fill="none" stroke="#2B2B2B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M118,110 Q128,120 138,110" fill="none" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="104" x2="102" y2="102" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="116" x2="102" y2="114" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="102" x2="174" y2="104" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="114" x2="174" y2="116" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="108" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+  <ellipse cx="148" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+</g>
+
+<g transform="translate(788,20)">
+  <ellipse cx="128" cy="215" rx="48" ry="10" fill="rgba(0,0,0,0.05)"/>
+  <path d="M170,172 C190,172 200,186 194,200 C188,214 168,214 162,200" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="148" rx="46" ry="52" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <circle cx="128" cy="92" r="42" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <path d="M98,60 L84,32 L112,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M158,60 L172,32 L144,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="110" cy="90" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="146" cy="90" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="108" cy="91" r="5" fill="#2B2B2B"/>
+  <circle cx="150" cy="91" r="4" fill="#2B2B2B"/>
+  <path d="M120,114 Q126,118 132,112" fill="none" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round"/>
+  <line x1="82" y1="104" x2="102" y2="102" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="116" x2="102" y2="114" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="102" x2="174" y2="104" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="114" x2="174" y2="116" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="108" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+  <ellipse cx="148" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+</g>
+
+<g transform="translate(1044,20)">
+  <ellipse cx="128" cy="215" rx="48" ry="10" fill="rgba(0,0,0,0.05)"/>
+  <path d="M170,172 C190,172 200,186 194,200 C188,214 168,214 162,200" fill="none" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="148" rx="46" ry="52" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <circle cx="128" cy="92" r="42" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6"/>
+  <path d="M98,60 L84,32 L112,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M158,60 L172,32 L144,52Z" fill="#BDBDBD" stroke="#2B2B2B" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="110" cy="88" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="146" cy="88" r="15" fill="#FFF" stroke="#2B2B2B" stroke-width="5"/>
+  <circle cx="114" cy="85" r="5" fill="#2B2B2B"/>
+  <circle cx="150" cy="85" r="5" fill="#2B2B2B"/>
+  <path d="M124,112 Q130,116 136,110" fill="none" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="104" x2="102" y2="102" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="82" y1="116" x2="102" y2="114" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="102" x2="174" y2="104" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <line x1="154" y1="114" x2="174" y2="116" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="108" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+  <ellipse cx="148" cy="192" rx="12" ry="8" fill="#FFF5EE" stroke="#2B2B2B" stroke-width="5"/>
+</g>
+</svg>

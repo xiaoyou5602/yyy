@@ -1,0 +1,178 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:2:1-55:12
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:2:1-55:12
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:2:1-55:12
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:2:1-55:12
+MERGED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:17:1-30:12
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\305df038b4ce3512284e56ff2077328a\transformed\core-ktx-1.12.0\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.annotation:annotation-experimental:1.3.0] C:\Users\youzi\.gradle\caches\transforms-4\a1dde33152580af30808e0e0ce487a71\transformed\annotation-experimental-1.3.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\youzi\.gradle\caches\transforms-4\c2261ed6028b7f6e2e8c3200084caece\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\youzi\.gradle\caches\transforms-4\98bf21bd2855e4146c36ae10fa119862\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] C:\Users\youzi\.gradle\caches\transforms-4\6168067857a1146ae7d7820450bdbebf\transformed\lifecycle-runtime-2.3.1\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\youzi\.gradle\caches\transforms-4\de4d2918c030ba493c820410545da31a\transformed\core-runtime-2.1.0\AndroidManifest.xml:17:1-24:12
+	package
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+	android:versionName
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+	android:versionCode
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+	xmlns:android
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:4:5-67
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:4:22-64
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:5:5-77
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:5:22-74
+uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:6:5-81
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:6:22-78
+uses-permission#android.permission.SCHEDULE_EXACT_ALARM
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:7:5-79
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:7:22-76
+uses-permission#android.permission.USE_EXACT_ALARM
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:8:5-74
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:8:22-71
+uses-permission#android.permission.VIBRATE
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:9:5-66
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:9:22-63
+uses-permission#android.permission.WAKE_LOCK
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:10:5-68
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:10:22-65
+uses-permission#android.permission.DISABLE_KEYGUARD
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:11:5-75
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:11:22-72
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:12:5-77
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:12:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:13:5-89
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:13:22-86
+application
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:15:5-54:19
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:15:5-54:19
+MERGED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:28:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\youzi\.gradle\caches\transforms-4\c2261ed6028b7f6e2e8c3200084caece\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\youzi\.gradle\caches\transforms-4\c2261ed6028b7f6e2e8c3200084caece\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+	android:extractNativeLibs
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+	android:supportsRtl
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:18:9-35
+	android:label
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:17:9-41
+	android:allowBackup
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:16:9-35
+	android:usesCleartextTraffic
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:19:9-44
+activity#com.toge.alarm.MainActivity
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:21:9-29:20
+	android:launchMode
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:24:13-44
+	android:exported
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:23:13-36
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:22:13-41
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:25:13-28:29
+action#android.intent.action.MAIN
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:26:17-69
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:26:25-66
+category#android.intent.category.LAUNCHER
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:27:17-77
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:27:27-74
+activity#com.toge.alarm.RingActivity
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:31:9-36:43
+	android:turnScreenOn
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:36:13-40
+	android:showWhenLocked
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:35:13-42
+	android:launchMode
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:34:13-44
+	android:exported
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:33:13-37
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:32:13-41
+service#com.toge.alarm.AlarmService
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:38:9-41:58
+	android:exported
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:40:13-37
+	android:foregroundServiceType
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:41:13-55
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:39:13-41
+receiver#com.toge.alarm.AlarmReceiver
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:43:9-45:40
+	android:exported
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:45:13-37
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:44:13-42
+receiver#com.toge.alarm.BootReceiver
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:47:9-53:20
+	android:exported
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:49:13-36
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:48:13-41
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:50:13-52:29
+action#android.intent.action.BOOT_COMPLETED
+ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:51:17-79
+	android:name
+		ADDED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml:51:25-76
+uses-sdk
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+MERGED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\305df038b4ce3512284e56ff2077328a\transformed\core-ktx-1.12.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\305df038b4ce3512284e56ff2077328a\transformed\core-ktx-1.12.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.3.0] C:\Users\youzi\.gradle\caches\transforms-4\a1dde33152580af30808e0e0ce487a71\transformed\annotation-experimental-1.3.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.3.0] C:\Users\youzi\.gradle\caches\transforms-4\a1dde33152580af30808e0e0ce487a71\transformed\annotation-experimental-1.3.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\youzi\.gradle\caches\transforms-4\c2261ed6028b7f6e2e8c3200084caece\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\youzi\.gradle\caches\transforms-4\c2261ed6028b7f6e2e8c3200084caece\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\youzi\.gradle\caches\transforms-4\98bf21bd2855e4146c36ae10fa119862\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\youzi\.gradle\caches\transforms-4\98bf21bd2855e4146c36ae10fa119862\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] C:\Users\youzi\.gradle\caches\transforms-4\6168067857a1146ae7d7820450bdbebf\transformed\lifecycle-runtime-2.3.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] C:\Users\youzi\.gradle\caches\transforms-4\6168067857a1146ae7d7820450bdbebf\transformed\lifecycle-runtime-2.3.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\youzi\.gradle\caches\transforms-4\de4d2918c030ba493c820410545da31a\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\youzi\.gradle\caches\transforms-4\de4d2918c030ba493c820410545da31a\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
+	android:targetSdkVersion
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\youzi\withtoge\alarm-apk\app\src\main\AndroidManifest.xml
+permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+permission#com.toge.alarm.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+uses-permission#com.toge.alarm.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.12.0] C:\Users\youzi\.gradle\caches\transforms-4\db0da8369b4573b55caee892c85a11b6\transformed\core-1.12.0\AndroidManifest.xml:26:22-94

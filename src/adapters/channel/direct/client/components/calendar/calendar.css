@@ -1,0 +1,244 @@
+/* ── Calendar Component ── */
+/* 所有选择器 scoped 在 .calendar-root 内 */
+
+.calendar-root {
+  display: flex; flex-direction: column;
+  height: 100%;
+  background: var(--cal-page-bg, var(--bg));
+  position: relative;
+}
+
+/* ── Header ── */
+.calendar-root .cal-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 20px var(--cal-header-pb);
+  background: transparent;
+  flex-shrink: 0;
+}
+.calendar-root #cal-back-btn {
+  background: none; border: none; color: var(--text-muted); font-size: 18px;
+  cursor: pointer; padding: 2px 6px; border-radius: 6px; line-height: 1;
+  transition: color 0.15s, background 0.15s; flex-shrink: 0;
+}
+.calendar-root #cal-back-btn:hover { color: var(--accent); background: var(--accent-soft); }
+
+/* ── Month Title ── */
+.calendar-root .cal-month-title {
+  font-size: var(--cal-title-size);
+  margin: 0; font-weight: 700; letter-spacing: 0.02em;
+  background: linear-gradient(135deg, var(--cal-title-grad-1) 0%, var(--cal-title-grad-2) 60%, var(--cal-title-grad-3) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; text-shadow: none;
+}
+
+/* ── Nav ── */
+.calendar-root .cal-nav-row { display: flex; align-items: center; gap: 8px; }
+.calendar-root .cal-nav-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  cursor: pointer; border-radius: 50%;
+  transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-xs);
+}
+.calendar-root .cal-nav-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.calendar-root .cal-nav-btn svg { width: 16px; height: 16px; }
+.calendar-root .cal-today-btn {
+  padding: 6px 16px; background: var(--accent-soft); color: var(--accent);
+  border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: var(--font-body); border-radius: var(--radius-full);
+  transition: background 0.15s;
+}
+.calendar-root .cal-today-btn:hover { background: var(--accent-soft); }
+
+/* ── Cat ── */
+.calendar-root .cal-cat {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  cursor: pointer; opacity: 0.85; transition: opacity 0.2s, transform 0.3s;
+  animation: cal-cat-float 2.4s ease-in-out infinite;
+}
+.calendar-root .cal-cat:hover { opacity: 1; animation-play-state: paused; }
+@keyframes cal-cat-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.calendar-root .cal-cat.petted { animation: cal-cat-petted 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes cal-cat-petted {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25) rotate(8deg); }
+  100% { transform: scale(1); }
+}
+
+/* ── Weekdays ── */
+.calendar-root .cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 0 12px 8px; flex-shrink: 0;
+}
+.calendar-root .cal-weekdays span {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+/* ── Grid ── */
+.calendar-root .calendar-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: var(--cal-grid-gap); padding: 0 12px; flex-shrink: 0;
+}
+.calendar-root .cal-day-cell {
+  aspect-ratio: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 2px; border-radius: var(--cal-day-radius);
+  cursor: pointer; transition: background 0.15s;
+  position: relative; min-height: var(--cal-day-cell-h); gap: 1px;
+}
+.calendar-root .cal-day-cell:hover { background: rgba(0,0,0,0.03); }
+.calendar-root .cal-day-cell.other-month { opacity: 0.20; pointer-events: none; }
+.calendar-root .cal-day-cell.today { background: var(--accent); }
+.calendar-root .cal-day-cell.today .cal-day-num { color: #fff; font-weight: 700; }
+.calendar-root .cal-day-cell.today .cal-day-sub { color: rgba(255,255,255,0.8); }
+.calendar-root .cal-day-cell.selected { background: var(--accent); }
+.calendar-root .cal-day-cell.selected .cal-day-num { color: #fff; font-weight: 700; }
+.calendar-root .cal-day-cell.selected .cal-day-sub { color: rgba(255,255,255,0.8); }
+.calendar-root .cal-day-num {
+  font-size: var(--cal-day-num-size); font-weight: 600;
+  color: var(--cal-weekday-color);
+  line-height: 1.1; font-family: var(--font-body);
+}
+.calendar-root .cal-day-cell.weekend .cal-day-num { color: var(--cal-weekend-color); }
+.calendar-root .cal-day-cell.weekend .cal-day-sub { color: var(--cal-weekend-color); }
+.calendar-root .cal-day-sub {
+  font-size: 10px; font-weight: 400; color: var(--cal-weekday-color);
+  line-height: 1.2; text-align: center;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.calendar-root .cal-day-dots {
+  display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 100%;
+  position: absolute; bottom: 3px;
+}
+.calendar-root .cal-day-dot {
+  width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0;
+}
+.calendar-root .cal-day-cell.selected .cal-day-dot,
+.calendar-root .cal-day-cell.today .cal-day-dot { filter: brightness(2); }
+
+/* ── Day Panel ── */
+.calendar-root .calendar-day-panel {
+  padding: 0 20px 20px;
+  background: var(--cal-panel-bg);
+  border-top: 1px solid var(--border-soft);
+}
+.calendar-root .cal-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0 var(--cal-panel-header-pb);
+  background: var(--cal-panel-bg);
+}
+.calendar-root .cal-panel-date { font-size: 19px; color: var(--text); margin: 0; font-weight: 600; }
+.calendar-root .cal-panel-weekday { font-size: 13px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+.calendar-root .cal-add-btn {
+  padding: 7px 16px; border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--text-muted);
+  font-size: 12px; font-weight: 500; font-family: var(--font-body);
+  cursor: pointer; transition: all 0.15s;
+}
+.calendar-root .cal-add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.calendar-root .cal-add-btn:active { transform: scale(0.97); }
+
+/* ── Plan List ── */
+.calendar-root .plan-list { display: flex; flex-direction: column; gap: var(--cal-plan-gap); }
+.calendar-root .plan-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 12px 18px; border-radius: var(--radius);
+  background: var(--cal-plan-bg);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.15s, transform 0.15s;
+  position: relative; overflow: hidden;
+}
+.calendar-root .plan-item:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.calendar-root .plan-item:active { transform: scale(0.99); }
+.calendar-root .plan-item.done { opacity: 0.55; }
+.calendar-root .plan-item.done .plan-title { text-decoration: line-through; color: var(--text-muted); }
+.calendar-root .plan-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid #d0d0d0; flex-shrink: 0;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.calendar-root .plan-check:hover { border-color: var(--accent); }
+.calendar-root .plan-item.done .plan-check {
+  background: var(--accent); border-color: var(--accent);
+}
+.calendar-root .plan-item.done .plan-check::after {
+  content: ""; display: block; width: 5px; height: 9px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+.calendar-root .plan-color {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: 3px 0 0 3px; flex-shrink: 0;
+}
+.calendar-root .plan-info { flex: 1; min-width: 0; margin-left: 4px; }
+.calendar-root .plan-title { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.4; }
+.calendar-root .plan-time { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.calendar-root .plan-delete {
+  background: none; border: none; color: #ccc; cursor: pointer;
+  font-size: 16px; padding: 4px; border-radius: var(--radius-xs); flex-shrink: 0;
+  transition: color 0.15s; line-height: 1;
+}
+.calendar-root .plan-delete:hover { color: #d32f2f; }
+
+/* ── Plan Empty ── */
+.calendar-root .plan-empty {
+  text-align: center; padding: 50px 16px; color: var(--text-subtle);
+}
+.calendar-root .plan-empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.7; }
+.calendar-root .plan-empty-text { font-size: 13px; line-height: 1.6; }
+
+/* ── Plan FAB ── */
+.calendar-root .plan-fab {
+  position: absolute; bottom: 24px; right: 20px;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--accent); color: #fff; border: none;
+  font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(232,93,63,0.35);
+  transition: background 0.15s, transform 0.1s;
+  z-index: 5;
+}
+.calendar-root .plan-fab:hover { background: #d44d31; }
+.calendar-root .plan-fab:active { transform: scale(0.94); }
+
+/* ── Scroll Wrapper ── */
+.calendar-root .cal-scroll-wrap {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Hub ── */
+.calendar-root .cal-hub {
+  display: flex; gap: 12px; padding: 20px; flex-shrink: 0;
+}
+.calendar-root .cal-hub-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 12px; border-radius: var(--radius);
+  background: var(--cal-hub-bg);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs); cursor: pointer;
+  font-family: var(--font-body); transition: box-shadow 0.15s, transform 0.15s;
+}
+.calendar-root .cal-hub-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.calendar-root .cal-hub-item:active { transform: scale(0.97); }
+.calendar-root .cal-hub-icon { font-size: 28px; }
+.calendar-root .cal-hub-label { font-size: 13px; font-weight: 600; color: var(--text); }
+
+
+
+.calendar-root .cal-mcp-hint {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 0 10px; flex-shrink: 0;
+  color: var(--text-subtle); font-size: 12px;
+  transition: color 0.2s;
+}
+.calendar-root .cal-mcp-hint-arrow {
+  display: inline-block; transition: transform 0.3s;
+}
+.calendar-root .cal-mcp-hint.pulling { color: var(--accent); }

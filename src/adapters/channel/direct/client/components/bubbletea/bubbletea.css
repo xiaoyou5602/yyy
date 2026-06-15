@@ -1,0 +1,412 @@
+/* ── Bubble Tea Tracker ── */
+/* fonts */
+@font-face {
+  font-family: "Yomogi";
+  src: url("/clawd-assets/fonts/Yomogi-Regular.ttf") format("truetype");
+  font-weight: normal;
+}
+@font-face {
+  font-family: "Aurora";
+  src: url("/clawd-assets/fonts/Aurora.ttf") format("truetype");
+  font-weight: normal;
+}
+
+/* ── tokens ── */
+:root {
+  --bt-bg: #FFF9F5;
+  --bt-surface: #FFFFFF;
+  --bt-text: #4A3728;
+  --bt-text-muted: #B0A090;
+  --bt-accent: #D4846A;
+  --bt-accent-soft: #FDF0EA;
+  --bt-accent2: #A8C8B0;
+  --bt-cal-today-bg: #FDF0EA;
+  --bt-cal-tea-bg: #FFF0E8;
+  --bt-card-border: #F0E6DC;
+  --bt-shadow: 0 2px 12px rgba(180,140,120,0.1);
+  --bt-shadow-card: 0 3px 16px rgba(180,140,120,0.12);
+  --bt-radius: 16px;
+  --bt-radius-sm: 10px;
+  --bt-font-title: "Aurora", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --bt-font-cal: "Yomogi", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ── page layout ── */
+#bubbletea-page {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bt-bg);
+  flex-direction: column;
+  overflow: hidden;
+}
+#bubbletea-page.show {
+  display: flex;
+}
+
+.bt-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bt-surface);
+  border-bottom: 1px solid var(--bt-card-border);
+  flex-shrink: 0;
+}
+.bt-header button {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--bt-text);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.bt-header h1 {
+  flex: 1;
+  font-family: var(--bt-font-title);
+  font-size: 22px;
+  color: var(--bt-accent);
+  font-weight: normal;
+  letter-spacing: 2px;
+}
+.bt-header .bt-add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bt-accent);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  line-height: 1;
+}
+
+.bt-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── calendar ── */
+.bt-cal {
+  background: var(--bt-surface);
+  border-radius: var(--bt-radius);
+  padding: 16px;
+  box-shadow: var(--bt-shadow);
+}
+.bt-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.bt-cal-nav button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--bt-text-muted);
+  padding: 2px 8px;
+}
+.bt-cal-nav .bt-cal-month {
+  font-family: var(--bt-font-title);
+  font-size: 18px;
+  color: var(--bt-text);
+  min-width: 100px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.bt-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  color: var(--bt-text-muted);
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+.bt-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.bt-cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--bt-radius-sm);
+  cursor: pointer;
+  position: relative;
+  font-family: var(--bt-font-cal);
+  font-size: 15px;
+  color: var(--bt-text);
+  transition: background 0.15s;
+}
+.bt-cal-cell:hover {
+  background: var(--bt-accent-soft);
+}
+.bt-cal-cell.other-month {
+  color: var(--bt-text-muted);
+  opacity: 0.4;
+  cursor: default;
+}
+.bt-cal-cell.today {
+  background: var(--bt-cal-today-bg);
+  font-weight: bold;
+}
+.bt-cal-cell.selected {
+  background: var(--bt-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--bt-accent);
+}
+.bt-cal-cell .bt-date-num {
+  position: relative;
+  z-index: 1;
+}
+.bt-cal-cell.has-tea .bt-date-num {
+  display: none;
+}
+.bt-cal-cell .bt-tea-dot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── day panel ── */
+.bt-day-panel {
+  background: var(--bt-surface);
+  border-radius: var(--bt-radius);
+  padding: 16px;
+  box-shadow: var(--bt-shadow);
+}
+.bt-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.bt-day-date {
+  font-family: var(--bt-font-title);
+  font-size: 17px;
+  color: var(--bt-text);
+  letter-spacing: 1px;
+}
+.bt-day-empty {
+  text-align: center;
+  color: var(--bt-text-muted);
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+/* ── tea cards ── */
+.bt-tea-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bt-tea-card {
+  background: var(--bt-surface);
+  border: 1px solid var(--bt-card-border);
+  border-radius: var(--bt-radius);
+  padding: 14px 16px;
+  box-shadow: var(--bt-shadow-card);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.bt-tea-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.bt-tea-info {
+  flex: 1;
+  min-width: 0;
+}
+.bt-tea-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bt-text);
+  margin-bottom: 4px;
+}
+.bt-tea-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.bt-tea-tag {
+  font-size: 11px;
+  background: var(--bt-accent-soft);
+  color: var(--bt-accent);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.bt-tea-tag.green {
+  background: #EDF5EE;
+  color: #6BA37A;
+}
+.bt-tea-rating {
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+.bt-tea-notes {
+  font-size: 12px;
+  color: var(--bt-text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+.bt-tea-time {
+  font-size: 11px;
+  color: var(--bt-text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── stats bar ── */
+.bt-stats {
+  background: var(--bt-surface);
+  border-radius: var(--bt-radius);
+  padding: 14px 16px;
+  box-shadow: var(--bt-shadow);
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--bt-text-muted);
+}
+.bt-stats strong {
+  color: var(--bt-accent);
+  font-size: 18px;
+  font-family: var(--bt-font-cal);
+}
+
+/* ── add form modal ── */
+.bt-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(60,40,25,0.35);
+  backdrop-filter: blur(4px);
+  justify-content: center;
+  align-items: flex-end;
+  padding: 16px;
+}
+.bt-modal-overlay.show {
+  display: flex;
+}
+.bt-modal {
+  background: var(--bt-surface);
+  border-radius: 20px 20px 6px 6px;
+  padding: 20px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+.bt-modal h3 {
+  font-family: var(--bt-font-title);
+  font-size: 18px;
+  color: var(--bt-accent);
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+.bt-form-row {
+  margin-bottom: 12px;
+}
+.bt-form-row label {
+  display: block;
+  font-size: 12px;
+  color: var(--bt-text-muted);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.bt-form-row input,
+.bt-form-row select,
+.bt-form-row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--bt-card-border);
+  border-radius: var(--bt-radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--bt-text);
+  background: var(--bt-bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.bt-form-row input:focus,
+.bt-form-row select:focus,
+.bt-form-row textarea:focus {
+  border-color: var(--bt-accent);
+}
+.bt-form-row textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+.bt-form-row select {
+  cursor: pointer;
+}
+.bt-form-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.bt-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.bt-form-actions button {
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+.bt-form-cancel {
+  background: var(--bt-bg);
+  color: var(--bt-text);
+}
+.bt-form-save {
+  background: var(--bt-accent);
+  color: #fff;
+}
+
+/* ── empty state ── */
+.bt-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--bt-text-muted);
+}
+.bt-empty-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+.bt-empty p {
+  font-size: 13px;
+  line-height: 1.6;
+}
