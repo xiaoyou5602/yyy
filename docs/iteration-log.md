@@ -3,6 +3,122 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-16 · 自启动修复 —— .bat → .vbs + .lnk
+
+- **背景**：toge 重启电脑后，cloudflared 隧道和 cyberboss 都没自动启动。排查发现启动文件夹的两个 `.bat` 脚本（`cyberboss-start.bat`、`cloudflared-tunnel.bat`）虽然存在，但重启后没有执行——端口 9726 未监听，cloudflared 进程不存在。
+- **为什么 .bat 没跑**：Windows 启动文件夹对 `.bat` 文件的处理不稳定，可能在 PATH 完全加载前就尝试执行，也可能被安全策略拦截。同文件夹的 `.lnk` 快捷方式（Clash Verge）一直正常工作，说明 `.lnk` 比 `.bat` 更可靠。
+- **为什么不能关机后继续运行**：这是物理限制——Windows 关机时会终止所有进程然后断电，本地服务没法在电脑关机后存活。要 24 小时不掉线只能把服务部署到云服务器。
+
+### 方案：.vbs 启动器 + .lnk 快捷方式
+
+启动文件夹只留一个 `Cyberboss.lnk` → `wscript.exe //B startup-launcher.vbs` → VBS 脚本按顺序启动：kill-zombies → cloudflared → guardian（guardian 自己会管理 cloudflared 和 cyberboss 的监控和重启）。
+
+**启动链**：
+```
+Windows 登录
+  → Startup\Cyberboss.lnk
+    → wscript.exe //B startup-launcher.vbs
+      1. kill-zombies.ps1（同步等待）
+      2. cloudflared tunnel（后台启动）
+      3. start-guardian.ps1（后台，监控 9726 + cloudflared）
+```
+
+### 尝试过但失败的方向
+
+- **任务计划程序（schtasks）**：`schtasks /create /sc onlogon` → "拒绝访问"，当前账户无权限创建计划任务，需要管理员。不折腾。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `scripts/startup-launcher.vbs` | **新建**：VBS 启动脚本，按顺序启动 zombie-killer → cloudflared → guardian |
+| `Startup\Cyberboss.lnk` | **新建**：指向 `wscript.exe` 的快捷方式，替换旧的 .bat 文件 |
+| `Startup\cyberboss-start.bat` | **删除**：不可靠的 bat 启动脚本 |
+| `Startup\cloudflared-tunnel.bat` | **删除**：guardian 已管理 cloudflared，不需要单独启动 |
+
+### 设计决策
+
+- **不用计划任务**：需要管理员权限，不适合日常使用
+- **不用 .bat**：启动文件夹对 .lnk 支持更好
+- **VBS 不用 node**：VBS 是 Windows 原生脚本引擎，不依赖 PATH，比 node 脚本更适合登录时执行
+- **cloudflared 双保险**：VBS 先启动 cloudflared，guardian 接手后每 30s 检查一次，双重保障
+
+---
+
+## 2026-06-15~16 · Codex 审查 + 三个根因修复 + 前端冻结
+
+- **背景**：toge 周末出门两天，服务第一天就挂了联系不上。回来修了一轮（cloudflared 监控、uncaughtException 退出），但 APP 端始终"连接中"、完全无法操作。写了审查文档扔给 Codex，Codex 精准定位了两个后端根因，我们自己又发现了一个前端根因。
+
+### 发现一：cloudflared 140+ 实例爆炸
+
+**现象**：Guardian 的 `Test-CloudflaredAlive` 通过 `Get-CimInstance` 匹配命令行来判断 cloudflared 是否在跑。但 Windows 返回的命令行经常截断或格式不同 → 每次都误判"不在跑" → 每 30 秒启动一个新 cloudflared → 累积到 **140+ 个实例**争抢同一个隧道 → WebSocket 连接极不稳定。
+
+**修复**：`Test-CloudflaredAlive` 简化为只检查 `cloudflared.exe` 进程是否存在，不再匹配命令行。修完后稳定在 1 个实例。
+
+**教训**：Windows `Get-CimInstance` 的命令行不可靠，不要用它做关键判断。
+
+### 发现二：Codex 审查 —— modelKey 当成真实模型名
+
+**位置**：[app.js:1818](src/core/app.js#L1818) / [claudecode/index.js:19-21](src/adapters/runtime/claudecode/index.js#L19-L21)
+
+`restoreBoundThreadSubscriptions` 调 `listModelThreadIds()` 拿到 modelKey `"opus"` → 传给 `resumeThread({ model: "opus" })` → Claude CLI 收到 `--model opus`。但路由表 `MODEL_ROUTES` 只认 `"claude-opus-4-6"`，`"opus"` 匹配不上 → 不走 55API → 启动行为和你手动跑完全不同。
+
+**修复**：[claudecode/index.js](src/adapters/runtime/claudecode/index.js) `resolveModel()` 加 short key → full name 映射表：`"opus"` → `"claude-opus-4-6"`、`"haiku"` → `"claude-haiku-4-5"`。
+
+### 发现三：Codex 审查 —— shell: true 进程树脆弱 + close 不清残留
+
+**位置**：[process-client.js:77](src/adapters/runtime/claudecode/process-client.js#L77) / [process-client.js:117](src/adapters/runtime/claudecode/process-client.js#L117)
+
+`spawn(claude, args, { shell: true })` 实际 spawn 的是 `cmd.exe /c "claude.cmd ..."`，不是 Claude 本身。四层进程链（cmd.exe → claude.cmd → claude.exe → MCP 子进程）中任何一环断了，MCP 子进程全变孤儿。
+
+原本 `close` 事件只设 `child = null`，不杀残留。只有主动 `close()` 才调 `killWindowsProcessTree`。异常崩溃时 cmd.exe 退出 → close 事件触发 → MCP 子进程留在系统里当僵尸。
+
+Codex 也确认了当前机器上 MCP 进程爆炸：92 mcp-datetime + 88 mcpbrowser + 23 cyberboss_tools + 22 native_devtools + 22 todo_mcp。
+
+**修复**：[process-client.js](src/adapters/runtime/claudecode/process-client.js) `close` 事件中（非主动关闭时）调 `killWindowsProcessTree(exitedPid)` 杀整棵树。
+
+### 发现四：前端完全冻结 —— const/var 重复声明
+
+**现象**：APP 和网页端都显示"连接中"，且**完全无法点击任何东西**。不是 WebSocket 连不上（手动测 wss:// 正常的），是整个 JS 脚本块解析失败。
+
+**根因**：[index.html:675](src/adapters/channel/direct/client/index.html#L675) `const messagesEl = document.getElementById("messages")`；[index.html:1169](src/adapters/channel/direct/client/index.html#L1169) toge 新加的滚动按钮代码里又写了 `var messagesEl = document.getElementById("messages")`。`const` 不能被 `var` 重复声明 → **SyntaxError** → 整个 `<script>` 块解析失败 → 所有 JS 函数（`online()`、`connect()`、`closeSidebar()`、`scrollBottom()` 等）全没定义 → 页面彻底冻住。
+
+**修复**：删掉第 1169 行的重复声明，直接复用已有的 `const messagesEl`。
+
+### 验证结果
+
+| 检查项 | 修复前 | 修复后 |
+|--------|--------|--------|
+| Cloudflared 实例 | 140+ | 1 |
+| MCP 僵尸 / 次 | 5-31 | 0 |
+| Cyberboss 进程 | 66 | 1 |
+| Claude 稳定性 | 每 5s 崩 | 稳定 3+ 分钟 |
+| HTTP | 200 | 200 |
+| 隧道 WebSocket | - | Claude 回复正常 |
+| 前端 JS | SyntaxError | 全部 OK |
+
+### Codex 提到的待修项（不紧急，记录）
+
+- 系统消息无重试上限（`flushPendingSystemMessages` 无限 requeue）
+- 延迟回复无 TTL（`DeferredSystemReplyStore` 还有 06-04 旧记录）
+- 启动恢复失败静默吞错（`.catch(() => {})`）— 已加 `console.error` 日志
+
+### Git 规范落地
+
+今天 toge 设了 Git 规范：每次写代码必须 commit，一个功能一个 commit，格式 `<动词><名词>：<说明>`。今天 3 个 commit 都按这个格式走的。
+
+### 改动文件汇总
+
+| 文件 | 改动 |
+|------|------|
+| `src/adapters/runtime/claudecode/index.js` | `resolveModel` 加 short key → full name 映射 |
+| `src/adapters/runtime/claudecode/process-client.js` | `close` 事件加 `killWindowsProcessTree` |
+| `src/core/app.js` | `restoreBoundThreadSubscriptions` 失败加日志 |
+| `scripts/start-guardian.ps1` | `Test-CloudflaredAlive` 简化为进程存在检测；3 处 cloudflared 检查点 |
+| `src/index.js` | `uncaughtException` handler 加 `process.exit(1)` |
+| `src/adapters/channel/direct/client/index.html` | 删 `messagesEl` 重复声明 |
+| `docs/backend-review-for-codex.md` | 新建：架构总览 + 问题链 + 防御体系 + Codex 发现 |
+
 ## 2026-06-15 · 后端全面审查 + Cloudflared 监控 + 异常退出修复
 
 - **背景**：toge 周末出门两天，服务第一天就挂了联系不上。修好后她说"再整体看一遍后端逻辑，用更全面的视角看看还有没有会出错的点"。
