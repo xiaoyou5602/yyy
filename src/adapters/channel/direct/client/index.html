@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=24">
+<link rel="stylesheet" href="/css/main.css?v=25">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -141,6 +141,11 @@
 
   <!-- Selection bar (created dynamically) -->
   <div id="selection-bar"></div>
+
+  <!-- Scroll-to-bottom button -->
+  <button id="scroll-bottom-btn" title="回到最新" onclick="scrollToBottom()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
 
   <footer>
     <textarea id="input" rows="1" placeholder="说点什么…"></textarea>
@@ -1132,11 +1137,54 @@ function closeLetter() {
 }
 
 function jumpToConversation() {
+  var bmId = currentBookmarkId;
   closeLetter();
   showPage("chat");
+  if (!bmId) return;
+  var bm = loadBookmarks().find(function(b) { return b.id === bmId; });
+  if (!bm || !bm.messages || !bm.messages.length) return;
+  var msgId = bm.messages[0].id;
+  var tries = 0;
+  function tryJump() {
+    var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');
+    if (el) {
+      el.scrollIntoView({ behavior: "instant", block: "center" });
+      el.style.transition = "box-shadow 0.3s";
+      el.style.boxShadow = "0 0 0 4px var(--accent-soft)";
+      setTimeout(function() { el.style.boxShadow = ""; }, 2000);
+      // Show scroll-to-bottom button after jumping
+      setTimeout(function() { updateScrollToBottomBtn(); }, 100);
+    } else if (tries < 5) {
+      tries++;
+      setTimeout(tryJump, 200);
+    }
+  }
+  setTimeout(tryJump, 150);
 }
 
 document.getElementById("bm-back-btn").addEventListener("click", () => showPage("chat"));
+
+/* ── Scroll-to-bottom ── */
+var scrollBottomBtn = document.getElementById("scroll-bottom-btn");
+// messagesEl already declared as const above — reuse it
+
+function updateScrollToBottomBtn() {
+  var atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
+  scrollBottomBtn.classList.toggle("show", !atBottom);
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+}
+
+messagesEl.addEventListener("scroll", updateScrollToBottomBtn);
+
+// Check on page switch too (for when "跳转对话" is used)
+window.addEventListener("page-changed", function(e) {
+  if (e.detail && e.detail.page === "chat") {
+    setTimeout(updateScrollToBottomBtn, 400);
+  }
+});
 
 /* ── End Selection & Bookmark ── */
 
@@ -1735,7 +1783,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=23").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=24").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
