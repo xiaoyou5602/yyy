@@ -70,6 +70,8 @@ function Start-CloudflaredTunnel {
     }
     Write-Host "[guardian] Starting cloudflared tunnel..."
     Start-Process -FilePath $cloudflaredExe -ArgumentList "tunnel", "--config", $cloudflaredConfig, "run" -NoNewWindow
+    # Give cloudflared a moment to appear in the process table
+    Start-Sleep -Seconds 3
     return $true
 }
 

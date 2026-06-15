@@ -3,6 +3,51 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-15 · 后端全面审查 + Cloudflared 监控 + 异常退出修复
+
+- **背景**：toge 周末出门两天，服务第一天就挂了联系不上。修好后她说"再整体看一遍后端逻辑，用更全面的视角看看还有没有会出错的点"。
+
+### 全面审查结果
+
+审查了全部核心模块（`app.js`、`claudecode/index.js`、`process-client.js`、`tool-host.js`、`mcp-stdio-server.js`、`consolidation-scheduler.js`、`session-store.js`、`thread-state-store.js`、`system-message-queue-store.js`、`deferred-system-reply-store.js`、`inbound-turn.js`、`config.js`、`index.js`）。
+
+**已妥善处理（无需改动）**：
+- MCP 僵尸进程 → `kill-zombies.ps1` 每 10 分钟 + 重启前运行，带父进程校验
+- Turn Gate 卡死 → 3 分钟自动超时释放（已验证）
+- PID 锁残留 → Guardian 清理 `logs/running.pid` + 启动 bat 先杀僵尸
+- 系统消息创建孤儿 → `allowSpawn: false`，无活跃 session 跳过
+- Session 替换丢上下文 → `acceptReportedSessionId` 接受新 session 而非杀进程
+
+**发现并修复 2 个风险**：
+
+### 1. Cloudflared 隧道无人监控（高危）
+
+- **问题**：Guardian 只监控端口 9726（cyberboss），完全不监控 cloudflared。cloudflared 崩溃 → 隧道死 → toge 无法连接，但 cyberboss 正常运行 Guardian 不会重启。这正是 toge 周末遇到的情况
+- **修复**：`scripts/start-guardian.ps1` 新增 `Test-CloudflaredAlive`（检查进程命令行含 tunnel + config.yml）+ `Start-CloudflaredTunnel` 函数。三层检查：
+  1. 主循环入口：cloudflared 不在 → 启动
+  2. 监控循环内：每 30 秒（3 ticks）检查一次，不在 → 重启
+  3. cyberboss 重启前：确保 cloudflared 在跑
+- **验证**：前台运行 guardian，观察到 cloudflared 不在时成功启动，输出 `[guardian] cloudflared tunnel not running. Starting...`
+- **修复一个并发 bug**：`Start-CloudflaredTunnel` 后 cloudflared 进程表出现需 1-2 秒，期间第二次检查会误判再启动一个。加了 3 秒等待
+
+### 2. uncaughtException 不退出进程（中危）
+
+- **问题**：[src/index.js:110-113](src/index.js#L110-L113) 全局 `uncaughtException` 处理器只设 `process.exitCode = 1`，不调用 `process.exit()`。如果事件循环中发生致命错误，进程可能半死不活但端口还在监听 → Guardian 检测到端口通就不会重启 → 僵尸状态
+- **修复**：加了 `setTimeout(() => { process.exit(1); }, 100).unref()`，100ms 延迟给日志写入时间，`unref()` 防止定时器阻止退出
+
+### 审查中发现但不紧急的问题（未修，记录下来）
+
+- 系统消息死循环重试：dispatch 失败 → requeue → 下轮再试，没最大重试次数
+- 启动恢复静默失败：`restoreBoundThreadSubscriptions` 所有 resume 失败也无声
+- 延迟回复无限堆积：`DeferredSystemReplyStore` 没 TTL，长期不发消息会累积
+
+### 改动文件汇总
+
+| 文件 | 改动 |
+|------|------|
+| `scripts/start-guardian.ps1` | 新增 `Test-CloudflaredAlive`、`Start-CloudflaredTunnel`；3 处 cloudflared 检查点（入口/监控/重启前） |
+| `src/index.js` | `uncaughtException` handler 加 `setTimeout(() => process.exit(1), 100).unref()` |
+
 ## 2026-06-12 · Turn Gate 永久锁死修复 + 僵尸清理完善
 
 - **背景**：toge 离开电脑几小时回来 → APP 消息全部不回。排查发现根因是：Claude Code 进程偷偷死了 → `TurnGateStore.pendingScopeKeys` 里 scopeKey 永远不会释放 → `routePreparedInbound` 对后续所有消息返回 `blocked=true` → 消息队列全卡住。之前没有超时机制，锁了就永久锁死。
