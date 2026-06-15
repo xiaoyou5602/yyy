@@ -42,20 +42,12 @@ function Test-CyberbossAlive {
 
 # Check if cloudflared tunnel is running
 function Test-CloudflaredAlive {
-    $alive = $false
     try {
         $procs = Get-Process cloudflared -ErrorAction SilentlyContinue
-        foreach ($p in $procs) {
-            try {
-                $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)").CommandLine
-                if ($cmd -match "tunnel" -and $cmd -match $cloudflaredConfig) {
-                    $alive = $true
-                    break
-                }
-            } catch {}
-        }
-    } catch {}
-    return $alive
+        return ($procs -and $procs.Count -gt 0)
+    } catch {
+        return $false
+    }
 }
 
 # Start cloudflared tunnel
@@ -70,8 +62,6 @@ function Start-CloudflaredTunnel {
     }
     Write-Host "[guardian] Starting cloudflared tunnel..."
     Start-Process -FilePath $cloudflaredExe -ArgumentList "tunnel", "--config", $cloudflaredConfig, "run" -NoNewWindow
-    # Give cloudflared a moment to appear in the process table
-    Start-Sleep -Seconds 3
     return $true
 }
 
