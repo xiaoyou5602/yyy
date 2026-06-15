@@ -5,6 +5,17 @@
 
 目录：`C:\Users\youzi\withtoge\`
 
+## Git 规范
+
+> ⚠️ 项目已 git init。**每次写代码必须 commit。** 所有模型/端口都要遵守。
+
+- **改代码前先看状态**：`git status` 确认工作区干净，`git log --oneline -5` 了解最近的改动
+- **一个功能一个 commit**：改完一个完整功能就 commit（`git add <具体文件>`），commit message 用中文简短写清楚
+- **commit message 格式**：`<动词><名词>：<说明>`，例如 `加转盘游戏 Canvas 实现`、`修骰子动画卡顿`
+- **验收通过立刻 commit**：不要拖到下个 session
+- **不提交敏感文件**：`.env`、`node_modules/` 已在 .gitignore，add 前确认
+- **迭代日志 ≠ Git commit**：commit 边走边打（记账），迭代日志收工时统一写（财报）。迭代写 WHY 和故事线，commit 记 WHAT 和代码变更
+
 ## 启动与运维
 
 ```
