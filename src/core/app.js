@@ -498,7 +498,17 @@ class CyberbossApp {
     }
     const threadId = this.getActiveThreadId(bindingKey, workspaceRoot);
     const threadState = threadId ? this.threadStateStore.getThreadState(threadId) : null;
-    return threadState?.status === "running" || hasRpcId(threadState?.pendingApproval?.requestId);
+    if (threadState?.status === "running") {
+      const THREAD_RUNNING_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — auto-reset stuck thread state
+      const updatedAt = threadState.updatedAt ? new Date(threadState.updatedAt).getTime() : 0;
+      if (Date.now() - updatedAt > THREAD_RUNNING_TIMEOUT_MS) {
+        console.warn(`[turn-dispatch] auto-resetting stuck thread state threadId=${threadState.threadId} age=${Math.round((Date.now() - updatedAt) / 1000)}s`);
+        this.threadStateStore.resetThreadState(threadId);
+        return false;
+      }
+      return true;
+    }
+    return hasRpcId(threadState?.pendingApproval?.requestId);
   }
 
   async dispatchPreparedTurn({ bindingKey, workspaceRoot, prepared }) {

@@ -89,6 +89,17 @@ class ThreadStateStore {
     return this.stateByThreadId.get(threadId) || null;
   }
 
+  resetThreadState(threadId) {
+    const current = this.stateByThreadId.get(threadId);
+    if (!current) return;
+    this.stateByThreadId.set(threadId, {
+      ...current,
+      status: "idle",
+      pendingApproval: null,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   resolveApproval(threadId, status = "running") {
     const current = this.stateByThreadId.get(threadId);
     if (!current) {
