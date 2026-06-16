@@ -659,6 +659,15 @@ function getStorageKey() {
   const m = (settings.model || "").trim();
   return m ? `withtoge-chat-history-${m}` : STORAGE_KEY;
 }
+function msgMatchesModel(msg) {
+  const msgModel = String(msg.model || "").trim();
+  const curModel = (settings.model || "").trim();
+  return msgModel === curModel;
+}
+function getStorageKeyForModel(model) {
+  const m = (model || "").trim();
+  return m ? `withtoge-chat-history-${m}` : STORAGE_KEY;
+}
 const SETTINGS_KEY = "withtoge-chat-settings";
 
 const chatPage = document.getElementById("chat-page");
@@ -1731,6 +1740,18 @@ function connect() {
       const msg = JSON.parse(ev.data);
       switch (msg.type) {
       case "text":
+        if (!msgMatchesModel(msg)) {
+          // Save to the correct model's localStorage but don't render
+          if (msg.done) {
+            const mKey = getStorageKeyForModel(msg.model || "");
+            try {
+              let msgs = JSON.parse(localStorage.getItem(mKey) || "[]");
+              msgs.push({ from:"ke", text:msg.text, time: msg.time || now(), model: msg.model || "" });
+              localStorage.setItem(mKey, JSON.stringify(msgs.slice(-500)));
+            } catch {}
+          }
+          break;
+        }
         if (msg.done) {
           hideTyping();
           if (streamingMsgEl) {
@@ -1759,11 +1780,17 @@ function connect() {
           scrollBottom();
         }
         break;
-      case "typing": msg.status === 1 ? showTyping() : hideTyping(); break;
-      case "file": renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); break;
+      case "typing":
+        if (msgMatchesModel(msg)) msg.status === 1 ? showTyping() : hideTyping();
+        break;
+      case "file":
+        if (msgMatchesModel(msg)) { renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); }
+        break;
       case "sticker": renderStickerMsg(msg); break;
       case "error": renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() }); break;
-      case "approval": showApprovalDialog(msg); break;
+      case "approval":
+        if (msgMatchesModel(msg)) showApprovalDialog(msg);
+        break;
       case "pong": break;
     }
     } catch {}
