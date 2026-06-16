@@ -3,6 +3,79 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-16 · 贴纸系统接入 APP/Web 前端
+
+- **背景**：贴纸系统从微信端带来，之前只能在微信发。toge 想在 APP 端也能收发贴纸。当前 `cyberboss_sticker_send` MCP 工具发的是 `{ type: "file" }`，前端渲染成 `[文件] xxx.gif` 而非 GIF 图，也没有贴纸选择面板。
+
+### 后端：3 个 API + WebSocket 贴纸消息
+
+**ws-server.js 新增 6 个路由**（在 Static pages 之前）：
+- `GET /api/stickers` — 从 `index.json` 返回贴纸列表
+- `GET /api/stickers/tags` — 从 `tags.json` 返回标签列表
+- `GET /api/stickers/{id}.gif` — 直接 serve GIF，`Cache-Control: no-cache` 防浏览器缓存
+- `PATCH /api/stickers/{id}` — 标签编辑（addTag / removeTag），自动同步 tags.json
+- `POST /api/stickers/upload` — multipart 上传，自动分配 `stk_NNN` ID
+- `DELETE /api/stickers/{id}.gif` — 删除 GIF + 索引条目
+
+新增 4 个 helper：`deleteSticker`、`addSticker`、`patchSticker`、`syncTagsJson`。
+
+**direct/index.js**：新增 `sendSticker` 方法 + `sticker_send` WS 消息处理 → broadcast `{ type: "sticker", stickerId, from }`。
+
+**channel-file-service.js** + **sticker-service.js**：direct channel 走 sticker 消息类型，不再走 file 类型。
+
+**tool-host.js**：`cyberboss_sticker_send` 描述去掉"WeChat"改为"当前聊天"。
+
+### 前端：贴纸面板 + 更多面板 + 标签编辑
+
+**入口调整**：贴纸从 footer 输入栏移到侧边栏"更多"按钮 → 更多面板（card 布局：贴纸 + 记忆两个入口）。
+
+**贴纸面板**：
+- 底部弹出（`bottom-panel-hidden` / `bottom-panel-open`）
+- 顶部标签 tab 横滚 → 3 列 GIF 网格 → 点击发送
+- 每张贴纸带标签行：已有标签（点 × 删除）+ 添加按钮（输入新标签）
+- 删除按钮（hover 显示，移动端常显）
+- 上传按钮 + 隐藏 file input
+
+**贴纸消息渲染**：`ws.onmessage` 新增 `case "sticker"` → `<img>` 在聊天气泡中显示 GIF。
+
+**Scroll-to-bottom 按钮**：右下角半透明下箭头，滚动超过 120px 时出现，点击平滑滚回底部。
+
+**信件跳转修复**：`jumpToConversation()` 现在真正找到收藏消息的 DOM 元素并即时跳转（`behavior: "instant"`），加 5 次重试应对 DOM 未就绪。
+
+### 修了 5 个 bug
+
+1. **贴纸面板手机端常显 + 关不掉**：`display: flex` 写在默认样式里，即使 `translateY(100%)` 也渲染。修复：`display` 移到 `.bottom-panel-open` 里，加 `visibility: hidden/visible`。
+
+2. **贴纸 GIF 被裁切（3 轮迭代）**：根因是 `.sticker-item` 有 `overflow: hidden`。最终去掉容器 overflow，border-radius 移到 img 上。同时从 2 列改 3 列、去掉 `aspect-ratio` + `min-height`。
+
+3. **上传什么图都是同一张（缓存 bug）**：根因是 `parseMultipart` 用了 `buf.toString("binary")` → split → `Buffer.from(body, "binary")` 做字符串往返，二进制 GIF 数据被破坏。修复：重写为纯 Buffer 操作（`Buffer.indexOf` 找 boundary），数据全程保持在 Buffer 里。验证：20011 字节入 = 20011 字节出。
+
+4. **前端完全冻结**：`const messagesEl` 和 `var messagesEl` 重复声明 → SyntaxError → 整个 script 块解析失败。修复：删掉重复的 `var` 声明。
+
+5. **信件"跳转对话"导航失败**：原来只调 `closeLetter()` + `showPage("chat")`，没有实际滚动。修复：找收藏消息 DOM → 即时跳转。
+
+### 设计决策
+
+- **贴纸放"更多"而非 footer**：toge 不发贴纸，不占用输入栏空间
+- **3 列网格**：移动端友好，120px 的 GIF 够看清又不占太多空间
+- **标签编辑在贴纸卡片上就地完成**：不需要单独的编辑页面
+- **binary-safe 解析**：不信任字符串往返，Buffer.indexOf 一步到位
+- **`no-cache` 而非 `max-age`**：贴纸会增删改，浏览器必须每次验证
+
+### 改动文件汇总
+
+| 文件 | 改动 |
+|------|------|
+| `src/adapters/channel/direct/ws-server.js` | 6 个贴纸 API 路由 + 4 个 helper + binary-safe parseMultipart |
+| `src/adapters/channel/direct/index.js` | `sendSticker` + `sticker_send` WS handler |
+| `src/services/channel-file-service.js` | `sendStickerToCurrentChat` 方法 |
+| `src/services/sticker-service.js` | `sendToCurrentChat` 增加 direct 贴纸广播 |
+| `src/tools/tool-host.js` | `cyberboss_sticker_send` 描述更新 |
+| `src/adapters/channel/direct/client/index.html` | 贴纸面板 + 更多面板 + 标签编辑 + 贴纸渲染 + scroll-to-bottom + 信件跳转修复 + 重复声明修复 |
+| `src/adapters/channel/direct/client/css/main.css` | bottom-panel 系统 + 贴纸网格/标签 + 更多面板 + scroll-to-bottom 按钮 + 移动端适配 |
+
+---
+
 ## 2026-06-16 · 自启动修复 + cloudflared Windows Service 化
 
 - **背景**：toge 重启电脑后，cloudflared 隧道和 cyberboss 都没自动启动。排查发现启动文件夹的两个 `.bat` 脚本（`cyberboss-start.bat`、`cloudflared-tunnel.bat`）虽然存在，但重启后没有执行——端口 9726 未监听，cloudflared 进程不存在。
