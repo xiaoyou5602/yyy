@@ -99,7 +99,7 @@ function createClaudeCodeRuntimeAdapter(config) {
     }
   });
 
-  async function ensureClient(workspaceRoot, model = "") {
+  async function ensureClient(workspaceRoot, model = "", reason = "user_message") {
     const modelKey = toModelKey(model);
     const desiredModel = resolveModel(model);
 
@@ -125,7 +125,7 @@ function createClaudeCodeRuntimeAdapter(config) {
     });
     const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
     console.log(
-      `[claudecode-runtime] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"} mcp_config=${projectSettings.configPath} server=${projectSettings.serverName}`
+      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"}`
     );
     const client = new ClaudeCodeProcessClient({
       command: config.claudeCommand || "claude",
@@ -177,7 +177,7 @@ function createClaudeCodeRuntimeAdapter(config) {
     return { entry: newEntry, modelKey };
   }
 
-  async function attachClientToThread(workspaceRoot, threadId = "", model = "", { allowSpawn = true } = {}) {
+  async function attachClientToThread(workspaceRoot, threadId = "", model = "", { allowSpawn = true, reason = "user_message" } = {}) {
     const normalizedWorkspaceRoot = typeof workspaceRoot === "string" ? workspaceRoot.trim() : "";
     const normalizedThreadId = normalizeThreadId(threadId);
     const modelKey = toModelKey(model);
@@ -207,11 +207,11 @@ function createClaudeCodeRuntimeAdapter(config) {
       await closeWorkspaceClient(normalizedWorkspaceRoot, modelKey);
     }
 
-    let { entry: currentEntry, modelKey: mk } = await ensureClient(normalizedWorkspaceRoot, model);
+    let { entry: currentEntry, modelKey: mk } = await ensureClient(normalizedWorkspaceRoot, model, reason);
     if (!currentEntry.client.alive || (normalizedThreadId && !clientMatchesThread(currentEntry.client, normalizedThreadId))) {
       if (currentEntry.client.alive && normalizedThreadId && !clientMatchesThread(currentEntry.client, normalizedThreadId)) {
         await closeWorkspaceClient(normalizedWorkspaceRoot, modelKey);
-        const result = await ensureClient(normalizedWorkspaceRoot, model);
+        const result = await ensureClient(normalizedWorkspaceRoot, model, reason);
         currentEntry = result.entry;
         mk = result.modelKey;
       }
@@ -296,6 +296,19 @@ function createClaudeCodeRuntimeAdapter(config) {
       }
       sessionsByWorkspace.clear();
       await ipcServer.close();
+    },
+    cleanupDeadEntries() {
+      for (const [workspaceRoot, perModel] of sessionsByWorkspace.entries()) {
+        for (const [modelKey, entry] of perModel.entries()) {
+          if (!entry.client?.alive) {
+            console.log(`[claudecode-runtime] cleaning up dead entry workspace=${workspaceRoot} model=${modelKey}`);
+            perModel.delete(modelKey);
+          }
+        }
+        if (perModel.size === 0) {
+          sessionsByWorkspace.delete(workspaceRoot);
+        }
+      }
     },
     async startFreshThreadDraft({ workspaceRoot }) {
       await closeWorkspaceClient(workspaceRoot);
@@ -385,6 +398,7 @@ function createClaudeCodeRuntimeAdapter(config) {
       const desiredModel = resolveModel(model);
       const runtimeId = modelRuntimeId(modelKey);
       const allowSpawn = provider !== "system";
+      const reason = provider === "system" ? "system_message" : "user_message";
 
       if (!allowSpawn) {
         const perModel = sessionsByWorkspace.get(workspaceRoot);
@@ -409,13 +423,13 @@ function createClaudeCodeRuntimeAdapter(config) {
       let openingTurn = !threadId;
       let attached;
       try {
-        attached = await attachClientToThread(workspaceRoot, threadId, desiredModel, { allowSpawn });
+        attached = await attachClientToThread(workspaceRoot, threadId, desiredModel, { allowSpawn, reason });
       } catch (error) {
         if (!threadId) throw error;
         sessionStore.clearThreadIdForWorkspace(bindingKey, workspaceRoot, runtimeId);
         threadId = "";
         openingTurn = true;
-        attached = await attachClientToThread(workspaceRoot, "", desiredModel, { allowSpawn });
+        attached = await attachClientToThread(workspaceRoot, "", desiredModel, { allowSpawn, reason });
       }
 
       if (!attached) {
@@ -435,9 +449,10 @@ function createClaudeCodeRuntimeAdapter(config) {
       );
       const sessionReplaced =
         outboundThreadId && actualSessionId && actualSessionId !== outboundThreadId;
-      if (sessionReplaced && !openingTurn) {
-        console.error(
-          `[claudecode-runtime] session replaced at send time. old=${outboundThreadId} new=${actualSessionId}`
+      if (sessionReplaced) {
+        const resumeStatus = openingTurn ? "new_session" : "session_replaced";
+        console.log(
+          `[session-change] workspace=${workspaceRoot} model=${desiredModel} oldSession=${outboundThreadId} newSession=${actualSessionId} resume=${!openingTurn} reason=${resumeStatus}`
         );
       }
       const returnedThreadId = actualSessionId || outboundThreadId;

@@ -165,6 +165,7 @@ class CyberbossApp {
     const runtimeState = await this.runtimeAdapter.initialize();
     const knownContextTokens = Object.keys(this.channelAdapter.getKnownContextTokens()).length;
     const syncBuffer = this.channelAdapter.loadSyncBuffer();
+    this.runtimeAdapter.cleanupDeadEntries?.();
     await this.restoreBoundThreadSubscriptions();
 
     console.log("[cyberboss] bootstrap ok");
@@ -499,16 +500,33 @@ class CyberbossApp {
     const threadId = this.getActiveThreadId(bindingKey, workspaceRoot);
     const threadState = threadId ? this.threadStateStore.getThreadState(threadId) : null;
     if (threadState?.status === "running") {
-      const THREAD_RUNNING_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — auto-reset stuck thread state
+      const THREAD_RUNNING_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — kill stuck Claude via cancelTurn
       const updatedAt = threadState.updatedAt ? new Date(threadState.updatedAt).getTime() : 0;
       if (Date.now() - updatedAt > THREAD_RUNNING_TIMEOUT_MS) {
-        console.warn(`[turn-dispatch] auto-resetting stuck thread state threadId=${threadState.threadId} age=${Math.round((Date.now() - updatedAt) / 1000)}s`);
-        this.threadStateStore.resetThreadState(threadId);
-        return false;
+        console.warn(`[turn-dispatch] stuck thread detected threadId=${threadState.threadId} age=${Math.round((Date.now() - updatedAt) / 1000)}s`);
+        if (!this._abandoningThreads) this._abandoningThreads = new Set();
+        if (!this._abandoningThreads.has(threadId)) {
+          this._abandoningThreads.add(threadId);
+          this.abandonStuckTurn(threadId, workspaceRoot, bindingKey).finally(() => {
+            this._abandoningThreads.delete(threadId);
+          }).catch((err) => {
+            console.error(`[turn-dispatch] abandonStuckTurn failed threadId=${threadId} ${err?.message || err}`);
+          });
+        }
+        return true;
       }
       return true;
     }
     return hasRpcId(threadState?.pendingApproval?.requestId);
+  }
+
+  async abandonStuckTurn(threadId, workspaceRoot, bindingKey) {
+    console.warn(`[turn-dispatch] abandoning stuck turn threadId=${threadId} workspace=${workspaceRoot}`);
+    await this.runtimeAdapter.cancelTurn({ threadId, workspaceRoot });
+    await sleep(500);
+    this.turnGateStore.releaseThread(threadId);
+    this.threadStateStore.resetThreadState(threadId);
+    console.warn(`[turn-dispatch] stuck turn abandoned threadId=${threadId}`);
   }
 
   async dispatchPreparedTurn({ bindingKey, workspaceRoot, prepared }) {
