@@ -27,8 +27,7 @@ $crashWindow = 300  # 5 minutes
 $maxDelay = 60
 $restartHistory = @()
 
-$cloudflaredExe = Join-Path (Split-Path $PSScriptRoot -Parent) "bin\cloudflared.exe"
-$cloudflaredConfig = "$env:USERPROFILE\.cloudflared\config.yml"
+# cloudflared is now managed by Windows Service — not by this guardian
 
 # Check if port 9726 is already listening
 function Test-CyberbossAlive {
@@ -40,60 +39,19 @@ function Test-CyberbossAlive {
     return $alive
 }
 
-# Check if cloudflared tunnel is running
-function Test-CloudflaredAlive {
-    try {
-        $procs = Get-Process cloudflared -ErrorAction SilentlyContinue
-        return ($procs -and $procs.Count -gt 0)
-    } catch {
-        return $false
-    }
-}
-
-# Start cloudflared tunnel
-function Start-CloudflaredTunnel {
-    if (-not (Test-Path $cloudflaredExe)) {
-        Write-Host "[guardian] cloudflared.exe not found at $cloudflaredExe"
-        return $false
-    }
-    if (-not (Test-Path $cloudflaredConfig)) {
-        Write-Host "[guardian] cloudflared config not found at $cloudflaredConfig"
-        return $false
-    }
-    Write-Host "[guardian] Starting cloudflared tunnel..."
-    Start-Process -FilePath $cloudflaredExe -ArgumentList "tunnel", "--config", $cloudflaredConfig, "run" -NoNewWindow
-    return $true
-}
-
 while ($true) {
-    # Ensure cloudflared is running (independent of cyberboss)
-    if (-not (Test-CloudflaredAlive)) {
-        Write-Host "[guardian] cloudflared tunnel not running. Starting..."
-        Start-CloudflaredTunnel | Out-Null
-    }
-
     # If cyberboss is already alive (e.g. from previous run), just watch it
     if (Test-CyberbossAlive) {
         Write-Host "[guardian] cyberboss is already running on port 9726. Watching..."
         $zombieCheckTicks = 0
-        $cloudflaredCheckTicks = 0
         while (Test-CyberbossAlive) {
             Start-Sleep -Seconds 10
             $zombieCheckTicks++
-            $cloudflaredCheckTicks++
             # Run zombie cleanup every 10 minutes (60 ticks × 10s)
             if ($zombieCheckTicks -ge 60) {
                 $zombieCheckTicks = 0
                 if (Test-Path $killZombiesScript) {
                     & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
-                }
-            }
-            # Check cloudflared every 3 ticks (30s)
-            if ($cloudflaredCheckTicks -ge 3) {
-                $cloudflaredCheckTicks = 0
-                if (-not (Test-CloudflaredAlive)) {
-                    Write-Host "[guardian] cloudflared tunnel is down. Restarting..."
-                    Start-CloudflaredTunnel | Out-Null
                 }
             }
         }
@@ -128,12 +86,6 @@ while ($true) {
         $delay = 15
     } else {
         $delay = 5
-    }
-
-    # Ensure cloudflared is still running before starting cyberboss
-    if (-not (Test-CloudflaredAlive)) {
-        Write-Host "[guardian] cloudflared tunnel not running. Starting..."
-        Start-CloudflaredTunnel | Out-Null
     }
 
     Write-Host "[guardian] Starting cyberboss... (restart #$restartCount, recent crashes=$($restartHistory.Count))"
