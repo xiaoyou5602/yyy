@@ -243,14 +243,14 @@ function createDirectChannelAdapter(config) {
       }
     },
 
-    async sendTyping({ userId, status = 1, contextToken = "" }) {
+    async sendTyping({ userId, status = 1, contextToken = "", model = "" }) {
       if (!wsServer) {
         return;
       }
-      wsServer.broadcast({ type: "typing", status });
+      wsServer.broadcast({ type: "typing", status, model: String(model || "").trim() });
     },
 
-    async sendApproval({ userId, approval }) {
+    async sendApproval({ userId, approval, model = "" }) {
       if (!wsServer) return;
       wsServer.broadcast({
         type: "approval",
@@ -259,15 +259,16 @@ function createDirectChannelAdapter(config) {
         command: approval.command || "",
         commandTokens: approval.commandTokens || [],
         kind: approval.kind || "",
+        model: String(model || "").trim(),
       });
     },
 
-    async sendFile({ userId, filePath: file, contextToken = "" }) {
+    async sendFile({ userId, filePath: file, contextToken = "", model = "" }) {
       if (!wsServer) {
         return;
       }
       const fileName = path.basename(file);
-      wsServer.broadcast({ type: "file", filePath: file, fileName });
+      wsServer.broadcast({ type: "file", filePath: file, fileName, model: String(model || "").trim() });
     },
 
     async sendSticker({ stickerId, desc = "" }) {

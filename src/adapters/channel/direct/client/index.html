@@ -661,6 +661,7 @@ function getStorageKey() {
 }
 function msgMatchesModel(msg) {
   const msgModel = String(msg.model || "").trim();
+  if (!msgModel) return true; // no model = broadcast to all, backward compatible
   const curModel = (settings.model || "").trim();
   return msgModel === curModel;
 }

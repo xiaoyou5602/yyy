@@ -3,6 +3,32 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-16 · turn 调度死锁修复 + cloudflared 隧道抢修
+
+### abandonStuckTurn：修复"端口老不回消息"
+
+- **问题**：toge 反馈"端口老不回我"。排查发现 Claude 卡在长思考时 thread state 永久保持 `running`，`isTurnDispatchBlocked` 的三个锁（`turnBoundaryScopeKeys` + `turnGate` + `threadState`）全部卡死，后续消息排队等锁，克不再回复。
+- **方案**：`abandonStuckTurn` 异步 fire-and-forget——超时后强杀卡住的 Claude 进程（`cancelTurn`），等 500ms cooldown，释放 `turnGate`，重置 `threadState`。用 `_abandoningThreads` Set 防重复触发。
+- **额外收益**：加结构化日志——spawn reason（`user_message`/`system_message`）、session change（`new_session`/`session_replaced`）、cleanupDeadEntries 清理死 session。排查一刀切。
+
+### ws-server broadcast 健壮性
+
+- `broadcast` 循环加 try/catch：half-dead 连接 send 抛异常时 `terminate()` 并 continue，不中断其他客户端的广播。
+- connect/disconnect 计数日志：`[ws-server] client connected count=N` / `client closed count=N`，配合已有 `broadcast clients=X sent=Y`，下次不回消息一眼定责。
+
+### model 参数补全
+
+- `sendTyping`、`sendApproval`、`sendFile` 补上 `model` 参数（之前只在 `sendText` 和 `sendSticker` 有），确保多模型并存时前端能按 model 过滤。
+- `msgMatchesModel` 加向后兼容：消息无 model 字段时显示给所有模型。
+
+### cloudflared 隧道抢修（error 1033）
+
+- **触发**：计划给 config.yml 加 `originRequest.tcpKeepAlive: 15s` → 重启服务 → 隧道崩，APP 显示 1033。
+- **过程**：回滚配置 → 服务卡 STOP_PENDING → 强杀进程 → 服务重新拉起来但读不到配置（LocalSystem 的 `%USERPROFILE%` 不是 youzi 目录）→ 手动跑 `--config` 参数验证能连 → 删掉 Windows Service → 改为后台进程 + 启动文件夹 bat。
+- **根因**：Windows Service 以 `LocalSystem` 身份运行，读不到 `C:\Users\youzi\.cloudflared\config.yml`。旧版 cloudflared 安装时可能侥幸对上了，今天重启后暴露。
+- **最终方案**：`scripts/start-cloudflared.bat` + 启动文件夹快捷方式，重启自动拉起。`originRequest` 段不加，调通是第一优先级。
+- **教训**：cloudflared Windows Service 在非英语 Windows + 用户级配置路径下不可靠，后台进程更稳。改 config 前先验证手动跑能通。
+
 ## 2026-06-16 · 贴纸系统接入 APP/Web 前端
 
 - **背景**：贴纸系统从微信端带来，之前只能在微信发。toge 想在 APP 端也能收发贴纸。当前 `cyberboss_sticker_send` MCP 工具发的是 `{ type: "file" }`，前端渲染成 `[文件] xxx.gif` 而非 GIF 图，也没有贴纸选择面板。
