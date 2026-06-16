@@ -3,45 +3,51 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
-## 2026-06-16 · 自启动修复 —— .bat → .vbs + .lnk
+## 2026-06-16 · 自启动修复 + cloudflared Windows Service 化
 
 - **背景**：toge 重启电脑后，cloudflared 隧道和 cyberboss 都没自动启动。排查发现启动文件夹的两个 `.bat` 脚本（`cyberboss-start.bat`、`cloudflared-tunnel.bat`）虽然存在，但重启后没有执行——端口 9726 未监听，cloudflared 进程不存在。
 - **为什么 .bat 没跑**：Windows 启动文件夹对 `.bat` 文件的处理不稳定，可能在 PATH 完全加载前就尝试执行，也可能被安全策略拦截。同文件夹的 `.lnk` 快捷方式（Clash Verge）一直正常工作，说明 `.lnk` 比 `.bat` 更可靠。
 - **为什么不能关机后继续运行**：这是物理限制——Windows 关机时会终止所有进程然后断电，本地服务没法在电脑关机后存活。要 24 小时不掉线只能把服务部署到云服务器。
 
-### 方案：.vbs 启动器 + .lnk 快捷方式
+### 第一轮：.vbs 启动器 + .lnk 快捷方式
 
-启动文件夹只留一个 `Cyberboss.lnk` → `wscript.exe //B startup-launcher.vbs` → VBS 脚本按顺序启动：kill-zombies → cloudflared → guardian（guardian 自己会管理 cloudflared 和 cyberboss 的监控和重启）。
+启动文件夹只留一个 `Cyberboss.lnk` → `wscript.exe //B startup-launcher.vbs` → VBS 脚本按顺序启动：kill-zombies → cloudflared → guardian。
 
-**启动链**：
+### 第二轮：注册 cloudflared 为 Windows Service
+
+上线后隧道又断了一次——因为 guardian 没在跑，cloudflared 断了没人管。G 老师指出核心问题：**cloudflared 是基础设施（infra），和 Cyberboss 不在一个生命周期**。Cyberboss 重启、挂掉，都不该影响隧道。
+
+**方案**：`cloudflared service install` 注册为 Windows 系统服务，SCM 自动守护。
+
+**恢复策略**：`sc failure Cloudflared reset=0 actions=restart/5000/restart/5000/restart/5000` — 任何失败 → 5 秒后自动重启，无限次。
+
+**最终架构**：
 ```
-Windows 登录
-  → Startup\Cyberboss.lnk
-    → wscript.exe //B startup-launcher.vbs
-      1. kill-zombies.ps1（同步等待）
-      2. cloudflared tunnel（后台启动）
-      3. start-guardian.ps1（后台，监控 9726 + cloudflared）
+Windows Service: Cloudflared  ← SCM 守护，独立生命周期
+Guardian: Cyberboss 9726      ← 只监控端口，不再管 cloudflared
 ```
 
 ### 尝试过但失败的方向
 
-- **任务计划程序（schtasks）**：`schtasks /create /sc onlogon` → "拒绝访问"，当前账户无权限创建计划任务，需要管理员。不折腾。
+- **任务计划程序（schtasks）**：`schtasks /create /sc onlogon` → "拒绝访问"，当前账户无权限
+- **cloudflared service install（非提权）**：Access denied，必须走 UAC 提权
 
 ### 改动
 
 | 文件 | 改动 |
 |------|------|
-| `scripts/startup-launcher.vbs` | **新建**：VBS 启动脚本，按顺序启动 zombie-killer → cloudflared → guardian |
+| `scripts/startup-launcher.vbs` | **新建** → 后来精简：去掉 cloudflared 启动（Service 自己会起），只留 kill-zombies + guardian |
 | `Startup\Cyberboss.lnk` | **新建**：指向 `wscript.exe` 的快捷方式，替换旧的 .bat 文件 |
 | `Startup\cyberboss-start.bat` | **删除**：不可靠的 bat 启动脚本 |
-| `Startup\cloudflared-tunnel.bat` | **删除**：guardian 已管理 cloudflared，不需要单独启动 |
+| `Startup\cloudflared-tunnel.bat` | **删除**：不再需要，Service 管理 |
+| `scripts/start-guardian.ps1` | 去掉全部 cloudflared 管理代码（`$cloudflaredExe`/`$cloudflaredConfig` 变量、`Test-CloudflaredAlive`/`Start-CloudflaredTunnel` 函数、3 处检查点） |
+| Windows Service | `cloudflared service install` 注册为 `Cloudflared` 服务，启动类型 Automatic，恢复 3 次 × 5s |
 
 ### 设计决策
 
-- **不用计划任务**：需要管理员权限，不适合日常使用
-- **不用 .bat**：启动文件夹对 .lnk 支持更好
-- **VBS 不用 node**：VBS 是 Windows 原生脚本引擎，不依赖 PATH，比 node 脚本更适合登录时执行
-- **cloudflared 双保险**：VBS 先启动 cloudflared，guardian 接手后每 30s 检查一次，双重保障
+- **cloudflared 从 guardian 剥离**：基础设施不该跟应用进程共享生命周期。Cyberboss 重启多少次隧道都不受影响
+- **System Service 而非 Startup**：cloudflared 作为 Windows Service，开机即启动（在登录前），不依赖用户登录
+- **Guardian 职责收缩**：从"guard cloudflared + cyberboss"变为"guard cyberboss only"，更简单、更不容易出 bug
 
 ---
 
