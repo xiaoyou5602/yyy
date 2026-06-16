@@ -50,9 +50,14 @@ function createClaudeCodeRuntimeAdapter(config) {
     };
   }
 
-  function findActiveEntry(workspaceRoot) {
+  function findActiveEntry(workspaceRoot, modelKey = "") {
     const perModel = sessionsByWorkspace.get(workspaceRoot);
     if (!perModel) return null;
+    if (modelKey) {
+      const entry = perModel.get(modelKey);
+      if (entry?.alive && entry.client?.alive) return entry;
+      return null;
+    }
     for (const entry of perModel.values()) {
       if (entry.alive && entry.client?.alive) return entry;
     }
@@ -86,15 +91,34 @@ function createClaudeCodeRuntimeAdapter(config) {
 
   ipcServer.on("clientMessage", (msg) => {
     if (msg?.type === "sendUserMessage" && msg?.workspaceRoot) {
-      const entry = findActiveEntry(msg.workspaceRoot);
-      if (entry?.alive && entry.client?.alive) {
-        entry.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
+      const modelKey = String(msg.modelKey || "").trim();
+      if (modelKey) {
+        const entry = findActiveEntry(msg.workspaceRoot, modelKey);
+        if (entry?.alive && entry.client?.alive) {
+          entry.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
+        }
+      } else {
+        const perModel = sessionsByWorkspace.get(msg.workspaceRoot);
+        if (perModel) {
+          for (const [mk, e] of perModel.entries()) {
+            if (e.alive && e.client?.alive) {
+              e.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
+            }
+          }
+        }
       }
     }
     if (msg?.type === "respondApproval" && msg?.workspaceRoot) {
-      const entry = findActiveEntry(msg.workspaceRoot);
+      const modelKey = String(msg.modelKey || "").trim();
+      if (!modelKey) {
+        console.error("[ipc-server] respondApproval rejected: missing modelKey workspace=" + msg.workspaceRoot);
+        return;
+      }
+      const entry = findActiveEntry(msg.workspaceRoot, modelKey);
       if (entry?.alive && entry.client?.alive) {
         entry.client.sendResponse(msg.requestId, { decision: msg.decision }).catch(() => {});
+      } else {
+        console.error("[ipc-server] respondApproval: no active entry for workspace=" + msg.workspaceRoot + " model=" + modelKey);
       }
     }
   });
@@ -319,28 +343,11 @@ function createClaudeCodeRuntimeAdapter(config) {
       const workspaceRoot = typeof pending === "object" ? pending.workspaceRoot : pending;
       const modelKey = typeof pending === "object" ? pending.modelKey : "";
 
-      let entry = null;
-      if (workspaceRoot && modelKey) {
-        entry = sessionsByWorkspace.get(workspaceRoot)?.get(modelKey) || null;
-      }
-      if (!entry && workspaceRoot) {
-        const perModel = sessionsByWorkspace.get(workspaceRoot);
-        if (perModel) {
-          for (const e of perModel.values()) {
-            if (e.alive && e.client?.alive) { entry = e; break; }
-          }
-        }
-      }
-      if (!entry) {
-        for (const perModel of sessionsByWorkspace.values()) {
-          for (const e of perModel.values()) {
-            if (e.alive && e.client?.alive) { entry = e; break; }
-          }
-          if (entry) break;
-        }
-      }
+      const entry = workspaceRoot && modelKey
+        ? sessionsByWorkspace.get(workspaceRoot)?.get(modelKey) || null
+        : null;
       if (!entry?.alive || !entry.client?.alive) {
-        throw new Error("no active claudecode session to respond to approval");
+        throw new Error(`no active claudecode session for workspace=${workspaceRoot} model=${modelKey}`);
       }
       const responsePayload = result && typeof result === "object" ? result : { decision };
       await entry.client.sendResponse(requestId, responsePayload);

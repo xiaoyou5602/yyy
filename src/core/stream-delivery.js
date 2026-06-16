@@ -382,6 +382,7 @@ class StreamDelivery {
       userId: state.replyTarget.userId,
       text: prependDeferredPrefix ? buildEffectiveReplyText(state.deferredReplyPrefix, baseText) : baseText,
       contextToken: state.replyTarget.contextToken,
+      model: resolveModelForThread(this.sessionStore, state.threadId),
     };
     if (prependDeferredPrefix) {
       payload.preserveBlock = true;
@@ -395,6 +396,7 @@ class StreamDelivery {
       userId: initialTarget.userId,
       text,
       contextToken: initialTarget.contextToken,
+      model: resolveModelForThread(this.sessionStore, state.threadId),
     };
     await this.sendTextWithRetry(state, payload, { kind: "system_reply" });
   }
@@ -960,6 +962,18 @@ function normalizeNumericErrorCode(value) {
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function resolveModelForThread(sessionStore, threadId) {
+  if (!sessionStore || !threadId) return "";
+  try {
+    const linked = sessionStore.findBindingForThreadId(threadId);
+    if (!linked?.bindingKey || !linked?.workspaceRoot) return "";
+    const params = sessionStore.getRuntimeParamsForWorkspace(linked.bindingKey, linked.workspaceRoot);
+    return (params?.model || "").trim();
+  } catch {
+    return "";
+  }
 }
 
 module.exports = { StreamDelivery };

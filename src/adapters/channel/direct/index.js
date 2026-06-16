@@ -23,7 +23,6 @@ function createDirectChannelAdapter(config) {
   let minChunk = DEFAULT_MIN_CHUNK;
   const messageQueue = [];
   let pendingResolve = null;
-  let lastModelUsed = "";
   let account = {
     accountId: "direct",
     baseUrl: `http://${host}:${port}`,
@@ -69,7 +68,6 @@ function createDirectChannelAdapter(config) {
     const label = msg.text || (savedImages.length ? "[图片]" : "") || (savedFiles.length ? "[文件]" : "");
     if (label) {
       const m = String(msg.model || "").trim();
-      if (m) lastModelUsed = m;
       messageStore.save({
         channel: "direct",
         from: "you",
@@ -79,7 +77,7 @@ function createDirectChannelAdapter(config) {
           contentType: img.contentType,
           sourceFileName: img.sourceFileName,
         })) : undefined,
-        model: lastModelUsed,
+        model: m,
       });
     }
     if (pendingResolve) {
@@ -217,7 +215,7 @@ function createDirectChannelAdapter(config) {
 	      };
 	    },
 
-	    async sendText({ userId, text, preserveBlock = false, contextToken = "" }) {
+	    async sendText({ userId, text, preserveBlock = false, contextToken = "", model = "" }) {
       if (!wsServer) {
         return;
       }
@@ -225,19 +223,20 @@ function createDirectChannelAdapter(config) {
       if (!content.trim()) {
         return;
       }
-      messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: lastModelUsed });
+      const m = String(model || "").trim();
+      messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m });
       const normalized = trimOuterBlankLines(normalizeLineEndings(content));
       if (preserveBlock) {
-        wsServer.broadcast({ type: "text", text: normalized, done: true });
+        wsServer.broadcast({ type: "text", text: normalized, done: true, model: m });
         return;
       }
       const chunks = chunkReplyTextForWeixin(normalized, minChunk);
       if (!chunks.length) {
-        wsServer.broadcast({ type: "text", text: "Completed.", done: true });
+        wsServer.broadcast({ type: "text", text: "Completed.", done: true, model: m });
         return;
       }
       for (let i = 0; i < chunks.length; i++) {
-        wsServer.broadcast({ type: "text", text: chunks[i], chunkIndex: i, done: i === chunks.length - 1 });
+        wsServer.broadcast({ type: "text", text: chunks[i], chunkIndex: i, done: i === chunks.length - 1, model: m });
         if (i < chunks.length - 1) {
           await sleep(CHUNK_INTERVAL_MS);
         }
