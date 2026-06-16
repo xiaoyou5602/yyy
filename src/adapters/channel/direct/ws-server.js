@@ -10,6 +10,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
   let server = null;
   const clients = new Set();
   let lastKeMessage = { time: "", text: "" };
+  const pendingApprovals = new Map(); // requestId → { requestId, reason, command, kind, model, createdAt }
   const clientDir = path.dirname(htmlPath);
   const worldbookDir = path.join(stateDir, "worldbook");
 
@@ -484,6 +485,42 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: pending-approvals ──
+    if (urlPath === "/api/pending-approvals" && req.method === "GET") {
+      try {
+        const now = Date.now();
+        const approvals = [];
+        for (const [id, a] of pendingApprovals) {
+          if (now - a.createdAt > 600000) { pendingApprovals.delete(id); continue; }
+          approvals.push(a);
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ approvals }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // ── API: approval-response POST (fallback for when WS is down) ──
+    if (urlPath === "/api/approval-response" && req.method === "POST") {
+      let body = "";
+      req.on("data", chunk => { body += chunk; });
+      req.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.requestId) pendingApprovals.delete(String(parsed.requestId));
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (err) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // ── Static pages ──
     if (req.url === "/" || req.url === "/index.html") {
       try {
@@ -570,6 +607,14 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
     }
   }, 30_000);
 
+  // Clean up stale pending approvals (older than 10 minutes)
+  setInterval(() => {
+    const cutoff = Date.now() - 600000;
+    for (const [id, a] of pendingApprovals) {
+      if (a.createdAt < cutoff) pendingApprovals.delete(id);
+    }
+  }, 300_000);
+
   wss.on("connection", (ws) => {
     ws.isAlive = true;
     clients.add(ws);
@@ -587,6 +632,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
           return;
         }
         if (parsed.type === "approval_response") {
+          if (parsed.requestId) pendingApprovals.delete(String(parsed.requestId));
           onMessage({
             text: "/" + String(parsed.decision || "no").trim(),
             messageId: parsed.requestId || `approval-${Date.now()}`,
@@ -647,6 +693,16 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       if (payload && payload.type === "text") {
         lastKeMessage = { time: new Date().toISOString(), text: String(payload.text || "").slice(0, 200) };
         console.log("[ws-server] lastKeMessage updated:", lastKeMessage.time, lastKeMessage.text.slice(0, 40));
+      }
+      if (payload && payload.type === "approval" && payload.requestId) {
+        pendingApprovals.set(payload.requestId, {
+          requestId: payload.requestId,
+          reason: payload.reason || "",
+          command: payload.command || "",
+          kind: payload.kind || "",
+          model: payload.model || "",
+          createdAt: Date.now(),
+        });
       }
       console.log("[ws-server] broadcast type=" + (payload?.type || "?") + " textLen=" + (payload?.text?.length || 0));
       const data = JSON.stringify(payload);

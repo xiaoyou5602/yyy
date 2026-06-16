@@ -880,6 +880,7 @@ function sidebarNavigate(target) {
 const BM_KEY = "withtoge_bookmarks";
 let selecting = false;
 let selectedMsgs = new Set();
+const shownApprovalIds = new Set();
 
 function loadBookmarks() {
   // 1. Try server first
@@ -1021,6 +1022,7 @@ function showConfirmDialog(msg, confirmText, cancelText, onConfirm) {
 
 // Approval dialog
 function showApprovalDialog(approval) {
+  if (approval.requestId) shownApprovalIds.add(approval.requestId);
   const overlay = document.createElement("div");
   overlay.className = "approval-overlay";
 
@@ -1043,6 +1045,8 @@ function showApprovalDialog(approval) {
   function respond(decision) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "approval_response", requestId: approval.requestId, decision }));
+    } else {
+      fetch("/api/approval-response", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: approval.requestId || "", decision: decision }) }).catch(function() {});
     }
     overlay.remove();
   }
@@ -1053,6 +1057,19 @@ function showApprovalDialog(approval) {
   if (alwaysBtn) alwaysBtn.addEventListener("click", function() { respond("always"); });
   overlay.querySelector(".approval-no").addEventListener("click", function() { respond("no"); });
   document.body.appendChild(overlay);
+}
+
+async function fetchPendingApprovals() {
+  try {
+    const res = await fetch("/api/pending-approvals");
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const a of (data.approvals || [])) {
+      if (!shownApprovalIds.has(a.requestId) && msgMatchesModel(a)) {
+        showApprovalDialog(a);
+      }
+    }
+  } catch {}
 }
 
 // 双击进入/退出多选（手机和电脑都用双击）
@@ -1512,6 +1529,7 @@ function online(v) {
     statusDot.className = "on"; statusText.textContent = "在线"; sendBtn.disabled = false;
     applyModelTheme(settings.model || "");
     inputEl.focus();
+    fetchPendingApprovals();
   } else {
     statusDot.className = ""; statusText.textContent = "离线"; sendBtn.disabled = true;
   }
@@ -1843,6 +1861,7 @@ function scheduleReconnect() {
 }
 
 setInterval(() => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type:"ping" })); }, 30_000);
+setInterval(fetchPendingApprovals, 10_000);
 connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
