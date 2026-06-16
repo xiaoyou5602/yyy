@@ -401,7 +401,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
           res.end("Sticker not found");
           return;
         }
-        res.writeHead(200, { "Content-Type": "image/gif", "Cache-Control": "public, max-age=86400" });
+        res.writeHead(200, { "Content-Type": "image/gif", "Cache-Control": "no-cache" });
         res.end(fs.readFileSync(gifPath));
       } catch {
         res.writeHead(404);
@@ -615,8 +615,13 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       let sent = 0;
       for (const client of snapshot) {
         if (client.readyState === 1) {
-          client.send(data);
-          sent += 1;
+          try {
+            client.send(data);
+            sent += 1;
+          } catch {
+            client.terminate();
+            clients.delete(client);
+          }
         }
       }
       console.log(`[ws-server] broadcast type=${payload?.type || "unknown"} clients=${snapshot.length} sent=${sent}`);
@@ -1183,22 +1188,38 @@ function extractBoundary(contentType) {
 }
 
 function parseMultipart(buf, boundary) {
+  // Binary-safe multipart parser using Buffer.indexOf
   const b = Buffer.from(`--${boundary}`);
-  const end = Buffer.from(`--${boundary}--`);
-  const parts = buf.toString("binary").split(b.toString("binary")).slice(1, -1);
-  for (const part of parts) {
-    const headerEnd = part.indexOf("\r\n\r\n");
-    if (headerEnd < 0) continue;
-    const headers = part.slice(0, headerEnd);
-    const body = part.slice(headerEnd + 4, part.endsWith("\r\n") ? part.length - 2 : part.length);
-    const nameMatch = headers.match(/name="([^"]+)"/);
-    const filenameMatch = headers.match(/filename="([^"]+)"/);
-    const name = nameMatch ? nameMatch[1] : "";
-    if (name === "file" && filenameMatch) {
-      const fileName = filenameMatch[1];
-      const data = Buffer.from(body, "binary");
-      return { file: { fileName, data } };
-    }
+  const bEnd = Buffer.from(`--${boundary}--`);
+  const bCrlfCrlf = Buffer.from("\r\n\r\n");
+  const bCrlf = Buffer.from("\r\n");
+
+  let pos = buf.indexOf(b);
+  if (pos < 0) return {};
+  pos += b.length;
+
+  const endIdx = buf.indexOf(bEnd, pos);
+  if (endIdx < 0) return {};
+
+  // Skip leading \r\n after boundary
+  if (buf[pos] === 13 && buf[pos + 1] === 10) pos += 2;
+
+  const part = buf.slice(pos, endIdx);
+  // Trim trailing \r\n before end boundary
+  const partEnd = part.length >= 2 && part[part.length - 2] === 13 && part[part.length - 1] === 10
+    ? part.length - 2 : part.length;
+
+  const headerEnd = part.indexOf(bCrlfCrlf, 0);
+  if (headerEnd < 0) return {};
+
+  const headers = part.slice(0, headerEnd).toString("utf8");
+  const body = part.slice(headerEnd + 4, partEnd);
+
+  const nameMatch = headers.match(/name="([^"]+)"/);
+  const filenameMatch = headers.match(/filename="([^"]+)"/);
+  const name = nameMatch ? nameMatch[1] : "";
+  if (name === "file" && filenameMatch) {
+    return { file: { fileName: filenameMatch[1], data: body } };
   }
   return {};
 }
