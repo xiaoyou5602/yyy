@@ -163,6 +163,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | 僵尸进程自动清理       | kill-zombies.ps1 已重写，待 Codex 审核后测试    |
 | cloudflared 隧道自启动 | ✅ 已完成 — 启动文件夹 cloudflared-tunnel.bat + cyberboss-start.bat |
 | 前端组件化             | 记忆/涂鸦/桌宠组件化                            |
+| 隧道大数据响应断开 | WebSearch 多轮结果堆积，响应体过大时 cloudflared 隧道断开，手机端超时后不自动重连。可能与"消息气泡不能拆分""通知延迟"同根 |
 
 ### 克的行为优化
 
