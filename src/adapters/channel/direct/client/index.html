@@ -882,10 +882,22 @@ let selecting = false;
 let selectedMsgs = new Set();
 
 function loadBookmarks() {
-  try { return JSON.parse(localStorage.getItem(BM_KEY) || "[]"); } catch { return []; }
+  // 1. Try server first
+  return fetch("/api/bookmarks").then(function(res) {
+    if (res.ok) return res.json().then(function(data) {
+      if (data.bookmarks && data.bookmarks.length) return data.bookmarks;
+      throw new Error("empty");
+    });
+    throw new Error("not ok");
+  }).catch(function() {
+    // 2. Fallback localStorage
+    try { return JSON.parse(localStorage.getItem(BM_KEY) || "[]"); } catch { return []; }
+  });
 }
 function saveBookmarks(bm) {
   try { localStorage.setItem(BM_KEY, JSON.stringify(bm)); } catch {}
+  // Dual-write to server (fire-and-forget)
+  fetch("/api/bookmarks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookmarks: bm }) }).catch(function() {});
 }
 
 function enterSelectMode(firstMsgId) {
@@ -945,26 +957,26 @@ function updateSelectionUI() {
 
 function bookmarkSelected() {
   if (selectedMsgs.size === 0) return;
-  const bm = loadBookmarks();
-  const entries = [];
-  document.querySelectorAll(".msg.selected").forEach(el => {
-    const id = el.getAttribute("data-msg-id");
-    const from = el.classList.contains("you") ? "you" : "ke";
-    const bubble = el.querySelector(".msg-bubble");
-    const text = bubble ? bubble.textContent.replace(/\d{1,2}:\d{2}$/, "").trim() : (el.textContent.replace(/\d{1,2}:\d{2}$/, "").trim());
-    const timeEl = el.querySelector(".time");
-    const time = timeEl ? timeEl.textContent : "";
-    entries.push({ id, from, text, time });
+  loadBookmarks().then(function(bm) {
+    const entries = [];
+    document.querySelectorAll(".msg.selected").forEach(el => {
+      const id = el.getAttribute("data-msg-id");
+      const from = el.classList.contains("you") ? "you" : "ke";
+      const bubble = el.querySelector(".msg-bubble");
+      const text = bubble ? bubble.textContent.replace(/\d{1,2}:\d{2}$/, "").trim() : (el.textContent.replace(/\d{1,2}:\d{2}$/, "").trim());
+      const timeEl = el.querySelector(".time");
+      const time = timeEl ? timeEl.textContent : "";
+      entries.push({ id, from, text, time });
+    });
+    bm.push({
+      id: `bm-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      messages: entries
+    });
+    saveBookmarks(bm);
+    exitSelectMode();
+    showToast("已收藏 " + entries.length + " 条");
   });
-  bm.push({
-    id: `bm-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    messages: entries
-  });
-  saveBookmarks(bm);
-  exitSelectMode();
-  // Brief toast
-  showToast("已收藏 " + entries.length + " 条");
 }
 
 function deleteSelected() {
@@ -1079,36 +1091,38 @@ function showToast(text) {
 
 // Bookmarks page
 function renderBookmarksList() {
-  const bm = loadBookmarks();
-  const body = document.getElementById("bookmarks-body");
-  if (!bm.length) {
-    body.innerHTML = '<div class="empty-state">还没有收藏过对话</div>';
-    return;
-  }
-  let html = "";
-  bm.slice().reverse().forEach((b, idx) => {
-    const preview = b.messages.slice(0, 3).map(m => `<span class="bm-msg-preview ${m.from}">${esc(m.from === "you" ? "你" : "克")}: ${esc(m.text.slice(0, 50))}${m.text.length > 50 ? "..." : ""}</span>`).join("");
-    const msgCount = b.messages.length;
-    const date = new Date(b.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    html += `<div class="bookmark-item" data-bm-id="${b.id}" onclick="openBookmarkLetter('${b.id}')">
-      <div class="bm-item-header">
-        <span class="bm-item-date">${date}</span>
-        <span class="bm-item-count">${msgCount} 条</span>
-      </div>
-      <div class="bm-item-preview">${preview}</div>
-    </div>`;
+  loadBookmarks().then(function(bm) {
+    const body = document.getElementById("bookmarks-body");
+    if (!bm.length) {
+      body.innerHTML = '<div class="empty-state">还没有收藏过对话</div>';
+      return;
+    }
+    let html = "";
+    bm.slice().reverse().forEach((b, idx) => {
+      const preview = b.messages.slice(0, 3).map(m => `<span class="bm-msg-preview ${m.from}">${esc(m.from === "you" ? "你" : "克")}: ${esc(m.text.slice(0, 50))}${m.text.length > 50 ? "..." : ""}</span>`).join("");
+      const msgCount = b.messages.length;
+      const date = new Date(b.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      html += `<div class="bookmark-item" data-bm-id="${b.id}" onclick="openBookmarkLetter('${b.id}')">
+        <div class="bm-item-header">
+          <span class="bm-item-date">${date}</span>
+          <span class="bm-item-count">${msgCount} 条</span>
+        </div>
+        <div class="bm-item-preview">${preview}</div>
+      </div>`;
+    });
+    body.innerHTML = html;
   });
-  body.innerHTML = html;
 }
 
 let currentBookmarkId = null;
 
 function openBookmarkLetter(bmId) {
-  const bm = loadBookmarks().find(b => b.id === bmId);
-  if (!bm) return;
-  currentBookmarkId = bmId;
-  const dateStr = new Date(bm.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  const dateFull = "收藏于 " + dateStr;
+  loadBookmarks().then(function(bm) {
+    const found = bm.find(b => b.id === bmId);
+    if (!found) return;
+    currentBookmarkId = bmId;
+    const dateStr = new Date(found.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const dateFull = "收藏于 " + dateStr;
 
   // Fill date elements
   const df = document.getElementById("letter-date-from");
@@ -1119,7 +1133,7 @@ function openBookmarkLetter(bmId) {
   // Render messages
   const body = document.getElementById("letter-body");
   let html = "";
-  bm.messages.forEach((m) => {
+  found.messages.forEach((m) => {
     const role = m.from === "you" ? "you" : "ke";
     html += `<div class="letter-msg ${role}">
       <div class="letter-msg-label">${m.from === "you" ? "✧ 你" : "✧ 克"}</div>
@@ -1135,6 +1149,7 @@ function openBookmarkLetter(bmId) {
   modal.style.opacity = "0";
   modal.style.transition = "opacity 0.3s";
   requestAnimationFrame(() => { modal.style.opacity = "1"; });
+  });
 }
 
 function closeLetter() {
@@ -1379,6 +1394,27 @@ async function initHistory() {
       } catch {}
     }
     localStorage.setItem("cyberboss-chat-migrated", "1");
+  }
+
+  // One-time: push local bookmarks to server
+  if (!localStorage.getItem("bm-server-v1")) {
+    try {
+      const localBm = JSON.parse(localStorage.getItem(BM_KEY) || "[]");
+      if (localBm.length) {
+        fetch("/api/bookmarks").then(function(res) {
+          if (!res.ok) return;
+          res.json().then(function(data) {
+            const server = (data.bookmarks || []);
+            const serverIds = new Set(server.map(function(b) { return b.id; }));
+            const merged = server.concat(localBm.filter(function(b) { return !serverIds.has(b.id); }));
+            if (merged.length > server.length) {
+              fetch("/api/bookmarks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookmarks: merged }) });
+            }
+          });
+        }).catch(function() {});
+      }
+    } catch {}
+    localStorage.setItem("bm-server-v1", "1");
   }
 
   // Merge: server messages take priority, dedup by id/timestamp

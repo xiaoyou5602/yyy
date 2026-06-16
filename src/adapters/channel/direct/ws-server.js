@@ -445,6 +445,45 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: bookmarks ──
+    if (urlPath === "/api/bookmarks" && req.method === "GET") {
+      try {
+        const bookmarks = readBookmarks(stateDir);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ bookmarks }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+    if (urlPath === "/api/bookmarks" && req.method === "POST") {
+      try {
+        let body = "";
+        req.on("data", chunk => { body += chunk; });
+        req.on("end", () => {
+          try {
+            const parsed = JSON.parse(body);
+            if (!Array.isArray(parsed.bookmarks)) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: "bookmarks array required" }));
+              return;
+            }
+            writeBookmarks(stateDir, parsed.bookmarks);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: true, count: parsed.bookmarks.length }));
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: e.message }));
+          }
+        });
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── Static pages ──
     if (req.url === "/" || req.url === "/index.html") {
       try {
@@ -1289,6 +1328,18 @@ function readStickerTags(stateDir) {
     const raw = JSON.parse(fs.readFileSync(tagsFile, "utf8"));
     return Array.isArray(raw) ? raw : [];
   } catch { return []; }
+}
+
+function readBookmarks(stateDir) {
+  const fp = path.join(stateDir, "bookmarks.json");
+  if (!fs.existsSync(fp)) return [];
+  try { return JSON.parse(fs.readFileSync(fp, "utf8")); } catch { return []; }
+}
+
+function writeBookmarks(stateDir, bookmarks) {
+  const fp = path.join(stateDir, "bookmarks.json");
+  if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(fp, JSON.stringify(bookmarks, null, 2), "utf8");
 }
 
 module.exports = { createDirectWebSocketServer };
