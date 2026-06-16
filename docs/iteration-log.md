@@ -3,6 +3,15 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-16 · 收藏夹服务端持久化
+
+- **背景**：toge 反馈收藏夹对话"一更新就被吞掉"。根因是书签只存在浏览器 `localStorage`，没有服务端备份。加上项目改名时 key 从 `cyberboss_bookmarks` 变成 `withtoge_bookmarks` 没做迁移，旧数据全丢。
+- **方案**：服务端 `~/.cyberboss/bookmarks.json` 做主存储，前端双写（localStorage + 服务端 POST），加载时从服务端拉取 fallback localStorage。启动时一次性自动迁移本地遗留数据。
+- **API**：`GET /api/bookmarks` + `POST /api/bookmarks`，模式跟 gifts/bubbletea 一致。
+- **改动**：`ws-server.js`（2 个 helper + 2 个路由）、`index.html`（`saveBookmarks` 双写、`loadBookmarks` 异步 fetch、启动迁移 `bm-server-v1`）
+
+---
+
 ## 2026-06-16 · turn 调度死锁修复 + cloudflared 隧道抢修
 
 ### abandonStuckTurn：修复"端口老不回消息"
