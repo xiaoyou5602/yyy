@@ -95,6 +95,7 @@ class CyberbossApp {
     this.timelineScreenshotQueue = new TimelineScreenshotQueueStore({ filePath: config.timelineScreenshotQueueFile });
     this.reminderQueue = new ReminderQueueStore({ filePath: config.reminderQueueFile });
     this.turnGateStore = new TurnGateStore();
+    this._turnWatchdogs = new Map(); // threadId → setTimeout, proactive stuck-turn recovery
     this.pendingInboundByScope = new Map();
     this.pendingImageInboundByScope = new Map();
     this.turnBoundaryScopeKeys = new Set();
@@ -521,6 +522,8 @@ class CyberbossApp {
   }
 
   async abandonStuckTurn(threadId, workspaceRoot, bindingKey) {
+    const wd = this._turnWatchdogs.get(threadId);
+    if (wd) { clearTimeout(wd); this._turnWatchdogs.delete(threadId); }
     console.warn(`[turn-dispatch] abandoning stuck turn threadId=${threadId} workspace=${workspaceRoot}`);
     await this.runtimeAdapter.cancelTurn({ threadId, workspaceRoot });
     await sleep(500);
@@ -573,6 +576,18 @@ class CyberbossApp {
         model: contextModel,
       });
       this.turnGateStore.attachThread(pendingScopeKey, turn.threadId);
+      // Proactive watchdog: if turn doesn't complete within 4 min, abandon it
+      const watchdogMs = 4 * 60 * 1000;
+      const watchdog = setTimeout(() => {
+        this._turnWatchdogs.delete(turn.threadId);
+        const state = this.threadStateStore.getThreadState(turn.threadId);
+        if (state?.status === "running") {
+          console.warn(`[turn-watchdog] turn timed out threadId=${turn.threadId}`);
+          this.abandonStuckTurn(turn.threadId, workspaceRoot, bindingKey).catch(() => {});
+        }
+      }, watchdogMs);
+      watchdog.unref();
+      this._turnWatchdogs.set(turn.threadId, watchdog);
       const replyTarget = {
         userId: prepared.senderId,
         contextToken: prepared.contextToken,
@@ -1661,6 +1676,9 @@ class CyberbossApp {
       }
       try {
         this.turnGateStore.releaseThread(event.payload.threadId);
+        // Clear turn watchdog on normal completion
+        const wd2 = this._turnWatchdogs.get(event.payload.threadId);
+        if (wd2) { clearTimeout(wd2); this._turnWatchdogs.delete(event.payload.threadId); }
         if (event.type === "runtime.turn.failed") {
           await this.sendFailureToThread(
             event.payload.threadId,
