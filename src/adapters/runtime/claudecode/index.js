@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { ClaudeCodeProcessClient } = require("./process-client");
@@ -93,6 +94,17 @@ function createClaudeCodeRuntimeAdapter(config) {
     // },
   };
 
+  function ensureModelHome(stateDir, homeKey) {
+    const homeDir = path.join(stateDir, "claude-homes", homeKey);
+    const claudeDir = path.join(homeDir, ".claude");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, "settings.json");
+    if (!fs.existsSync(settingsPath)) {
+      fs.writeFileSync(settingsPath, "{}\n", "utf8");
+    }
+    return homeDir;
+  }
+
   function resolveModelEnv(model) {
     const route = MODEL_ROUTES[normalizeText(model)];
     if (!route) {
@@ -108,6 +120,9 @@ function createClaudeCodeRuntimeAdapter(config) {
     env.ANTHROPIC_DEFAULT_HAIKU_MODEL = route.apiModelName || route.modelName;
     env.ANTHROPIC_SMALL_FAST_MODEL = route.apiModelName || route.modelName;
     env.CYBERBOSS_SYSTEM_MODEL = route.modelName;
+    const modelHome = ensureModelHome(config.stateDir, normalizeText(model));
+    env.USERPROFILE = modelHome;
+    env.HOME = modelHome;
     return { env, modelName: route.modelName };
   }
 
