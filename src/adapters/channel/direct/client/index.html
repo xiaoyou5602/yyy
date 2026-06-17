@@ -670,6 +670,19 @@ function getStorageKeyForModel(model) {
   const m = (model || "").trim();
   return m ? `withtoge-chat-history-${m}` : STORAGE_KEY;
 }
+function saveMessageToModelStorage(msg) {
+  if (!msg || !msg.model) return;
+  const mKey = getStorageKeyForModel(msg.model);
+  const entry = { from: "ke", text: msg.text || "", time: msg.time || now(), model: msg.model };
+  if (msg.globalId) entry.globalId = msg.globalId;
+  if (msg.filePath) { entry.text = "[文件] " + (msg.fileName || msg.filePath); entry.filePath = msg.filePath; }
+  if (msg.type === "error") entry.text = "[错误] " + (msg.text || "");
+  try {
+    let msgs = JSON.parse(localStorage.getItem(mKey) || "[]");
+    msgs.push(entry);
+    localStorage.setItem(mKey, JSON.stringify(msgs.slice(-500)));
+  } catch {}
+}
 const SETTINGS_KEY = "withtoge-chat-settings";
 
 const chatPage = document.getElementById("chat-page");
@@ -1398,17 +1411,45 @@ async function initHistory() {
     localStorage.setItem("cyberboss-chat-v2", "1");
   }
 
+  // Load from ALL per-model localStorage keys, merge and sort by globalId
   let localMsgs = [];
-  try { localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]"); } catch { localMsgs = []; }
+  const localModelKeys = [];
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith("withtoge-chat-history-")) {
+      localModelKeys.push(key);
+    }
+  }
+  if (!localModelKeys.includes(STORAGE_KEY)) {
+    localModelKeys.push(STORAGE_KEY);
+  }
+  const _seen = new Set();
+  for (const key of localModelKeys) {
+    try {
+      const msgs = JSON.parse(localStorage.getItem(key) || "[]");
+      for (const m of msgs) {
+        const dedupKey = m.globalId || (m.time || "") + (m.text || "").slice(0, 40);
+        if (_seen.has(dedupKey)) continue;
+        _seen.add(dedupKey);
+        localMsgs.push(m);
+      }
+    } catch {}
+  }
+  localMsgs.sort((a, b) => {
+    if (a.globalId && b.globalId) return a.globalId.localeCompare(b.globalId);
+    if (a.globalId) return 1;
+    if (b.globalId) return -1;
+    return (a.time || "").localeCompare(b.time || "");
+  });
+  try { localStorage.setItem(getStorageKey(), JSON.stringify(localMsgs.slice(-500))); } catch {}
   // One-time migration from old date-based keys
   if (!localStorage.getItem("cyberboss-chat-migrated")) {
     for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const oldKey = `cyberboss-chat-${d.toISOString().slice(0, 10)}`;
+      const oldKey = "cyberboss-chat-" + d.toISOString().slice(0, 10);
       try {
         const old = JSON.parse(localStorage.getItem(oldKey) || "[]");
-        if (old.length) { localMsgs = [...old, ...localMsgs]; localStorage.removeItem(oldKey); }
+        if (old.length) { localMsgs = old.concat(localMsgs); localStorage.removeItem(oldKey); }
       } catch {}
     }
     localStorage.setItem("cyberboss-chat-migrated", "1");
@@ -1435,16 +1476,21 @@ async function initHistory() {
     localStorage.setItem("bm-server-v1", "1");
   }
 
-  // Merge: server messages take priority, dedup by id/timestamp
+  // Merge: server messages take priority, dedup by globalId or timestamp+text
   const seen = new Set();
   const merged = [];
   for (const m of [...serverMsgs, ...localMsgs]) {
-    const key = m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
+    const key = m.globalId || m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
     if (seen.has(key)) continue;
     seen.add(key);
     merged.push(m);
   }
-  merged.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+  merged.sort((a, b) => {
+    if (a.globalId && b.globalId) return a.globalId.localeCompare(b.globalId);
+    if (a.globalId) return 1;
+    if (b.globalId) return -1;
+    return (a.timestamp || "").localeCompare(b.timestamp || "");
+  });
   history = merged;
   for (const m of history) renderMsg(m, false);
   scrollBottom();
@@ -1796,18 +1842,8 @@ function connect() {
       const msg = JSON.parse(ev.data);
       switch (msg.type) {
       case "text":
-        if (!msgMatchesModel(msg)) {
-          // Save to the correct model's localStorage but don't render
-          if (msg.done) {
-            const mKey = getStorageKeyForModel(msg.model || "");
-            try {
-              let msgs = JSON.parse(localStorage.getItem(mKey) || "[]");
-              msgs.push({ from:"ke", text:msg.text, time: msg.time || now(), model: msg.model || "" });
-              localStorage.setItem(mKey, JSON.stringify(msgs.slice(-500)));
-            } catch {}
-          }
-          break;
-        }
+        if (msg.done) saveMessageToModelStorage(msg);
+        if (!msgMatchesModel(msg)) break;
         if (msg.done) {
           hideTyping();
           if (streamingMsgEl) {
@@ -1840,10 +1876,14 @@ function connect() {
         if (msgMatchesModel(msg)) msg.status === 1 ? showTyping() : hideTyping();
         break;
       case "file":
+        saveMessageToModelStorage(msg);
         if (msgMatchesModel(msg)) { renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); }
         break;
       case "sticker": renderStickerMsg(msg); break;
-      case "error": renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() }); break;
+      case "error":
+        saveMessageToModelStorage(msg);
+        renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() });
+        break;
       case "approval":
         if (msgMatchesModel(msg)) showApprovalDialog(msg);
         break;

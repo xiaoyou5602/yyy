@@ -15,6 +15,7 @@ function createClaudeCodeRuntimeAdapter(config) {
   const pendingApprovals = new Map();
   const configuredModel = normalizeText(config.claudeModel);
   let globalListener = null;
+  let nextClientId = 0;
 
   const MODEL_KEY_TO_NAME = {
     ds: "",
@@ -40,8 +41,10 @@ function createClaudeCodeRuntimeAdapter(config) {
   }
 
   function makeSessionEntry(client) {
+    const clientId = String(++nextClientId);
     return {
       client,
+      clientId,
       threadId: "",
       sessionId: "",
       createdAt: Date.now(),
@@ -102,34 +105,45 @@ function createClaudeCodeRuntimeAdapter(config) {
   ipcServer.on("clientMessage", (msg) => {
     if (msg?.type === "sendUserMessage" && msg?.workspaceRoot) {
       const modelKey = String(msg.modelKey || "").trim();
-      if (modelKey) {
-        const entry = findActiveEntry(msg.workspaceRoot, modelKey);
-        if (entry?.alive && entry.client?.alive) {
-          entry.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
-        }
-      } else {
-        const perModel = sessionsByWorkspace.get(msg.workspaceRoot);
-        if (perModel) {
-          for (const [mk, e] of perModel.entries()) {
-            if (e.alive && e.client?.alive) {
-              e.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
-            }
-          }
-        }
-      }
-    }
-    if (msg?.type === "respondApproval" && msg?.workspaceRoot) {
-      const modelKey = String(msg.modelKey || "").trim();
       if (!modelKey) {
-        console.error("[ipc-server] respondApproval rejected: missing modelKey workspace=" + msg.workspaceRoot);
+        console.error("[ipc-server] sendUserMessage rejected: missing modelKey workspace=" + msg.workspaceRoot);
         return;
       }
       const entry = findActiveEntry(msg.workspaceRoot, modelKey);
       if (entry?.alive && entry.client?.alive) {
-        entry.client.sendResponse(msg.requestId, { decision: msg.decision }).catch(() => {});
-      } else {
-        console.error("[ipc-server] respondApproval: no active entry for workspace=" + msg.workspaceRoot + " model=" + modelKey);
+        entry.client.sendUserMessage({ text: msg.text || "" }).catch(() => {});
       }
+    }
+    if (msg?.type === "respondApproval" && msg?.workspaceRoot) {
+      const modelKey = String(msg.modelKey || "").trim();
+      const requestId = String(msg.requestId || "").trim();
+      if (!modelKey || !requestId) {
+        console.error("[ipc-server] respondApproval rejected: missing modelKey or requestId workspace=" + msg.workspaceRoot);
+        if (globalListener) {
+          globalListener({ type: "runtime.approval.error", payload: { workspaceRoot: msg.workspaceRoot, error: "missing modelKey or requestId" } });
+        }
+        return;
+      }
+      const pending = pendingApprovals.get(requestId);
+      if (!pending || pending.modelKey !== modelKey || pending.workspaceRoot !== msg.workspaceRoot) {
+        console.error("[ipc-server] respondApproval rejected: no matching pending approval requestId=" + requestId + " model=" + modelKey);
+        if (globalListener) {
+          globalListener({ type: "runtime.approval.error", payload: { workspaceRoot: msg.workspaceRoot, modelKey, error: "no matching pending approval" } });
+        }
+        pendingApprovals.delete(requestId);
+        return;
+      }
+      const entry = findActiveEntry(msg.workspaceRoot, modelKey);
+      if (!entry?.alive || !entry.client?.alive || entry.clientId !== pending.clientId) {
+        console.error("[ipc-server] respondApproval rejected: client mismatch requestId=" + requestId + " model=" + modelKey);
+        if (globalListener) {
+          globalListener({ type: "runtime.approval.error", payload: { workspaceRoot: msg.workspaceRoot, modelKey, error: "model process restarted, this approval is stale" } });
+        }
+        pendingApprovals.delete(requestId);
+        return;
+      }
+      entry.client.sendResponse(requestId, { decision: msg.decision }).catch(() => {});
+      pendingApprovals.delete(requestId);
     }
   });
 
@@ -197,7 +211,7 @@ function createClaudeCodeRuntimeAdapter(config) {
           const firstKey = pendingApprovals.keys().next().value;
           pendingApprovals.delete(firstKey);
         }
-        pendingApprovals.set(mapped.payload.requestId, { workspaceRoot, modelKey });
+        pendingApprovals.set(mapped.payload.requestId, { workspaceRoot, modelKey, clientId: newEntry.clientId });
       }
       if (mapped?.type === "runtime.turn.failed") {
         newEntry.alive = false;
@@ -350,14 +364,18 @@ function createClaudeCodeRuntimeAdapter(config) {
     },
     async respondApproval({ requestId, decision, result = null }) {
       const pending = pendingApprovals.get(requestId);
-      const workspaceRoot = typeof pending === "object" ? pending.workspaceRoot : pending;
-      const modelKey = typeof pending === "object" ? pending.modelKey : "";
+      if (!pending || typeof pending !== "object") {
+        throw new Error(`no pending approval for requestId=${requestId}`);
+      }
+      const workspaceRoot = pending.workspaceRoot;
+      const modelKey = pending.modelKey;
 
       const entry = workspaceRoot && modelKey
         ? sessionsByWorkspace.get(workspaceRoot)?.get(modelKey) || null
         : null;
-      if (!entry?.alive || !entry.client?.alive) {
-        throw new Error(`no active claudecode session for workspace=${workspaceRoot} model=${modelKey}`);
+      if (!entry?.alive || !entry.client?.alive || entry.clientId !== pending.clientId) {
+        pendingApprovals.delete(requestId);
+        throw new Error(`approval session expired for workspace=${workspaceRoot} model=${modelKey}`);
       }
       const responsePayload = result && typeof result === "object" ? result : { decision };
       await entry.client.sendResponse(requestId, responsePayload);

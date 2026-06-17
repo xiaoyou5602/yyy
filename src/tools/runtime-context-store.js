@@ -68,6 +68,7 @@ class RuntimeContextStore {
       const compositeKey = normalizedWorkspaceRoot + "::" + normalizedModel;
       const exact = this.state.contextsByWorkspaceRoot?.[compositeKey];
       if (exact) return exact;
+      return null;
     }
 
     const entries = Object.values(this.state.contextsByWorkspaceRoot || {})

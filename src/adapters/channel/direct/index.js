@@ -29,6 +29,7 @@ function createDirectChannelAdapter(config) {
     token: "",
   };
   let wsServer = null;
+  let globalMsgSeq = 0;
   const messageStore = createMessageStore(stateDir);
 
   function enqueueMessage(msg) {
@@ -299,6 +300,13 @@ function createDirectChannelAdapter(config) {
         memoryDir: config.memoryDir,
         stateDir: config.stateDir,
       });
+      const _broadcast = wsServer.broadcast.bind(wsServer);
+      wsServer.broadcast = (msg) => {
+        if (msg && msg.model) {
+          msg.globalId = Date.now() + ":" + (++globalMsgSeq);
+        }
+        _broadcast(msg);
+      };
       await wsServer.start();
       console.log(`[direct] Chat available at http://${host}:${port}`);
       return wsServer;
