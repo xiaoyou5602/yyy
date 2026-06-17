@@ -1893,7 +1893,7 @@ function loadCachedThinking() {
     if (!raw) return;
     const items = JSON.parse(raw);
     if (!Array.isArray(items)) return;
-    const container = document.getElementById("chat-messages");
+    const container = messagesEl;
     if (!container) return;
     container.querySelectorAll(".thinking-block").forEach(el => el.remove());
     items.forEach(item => renderThinkingBlock(item, container));
@@ -1926,7 +1926,7 @@ function renderThinkingBlock(item, container) {
 }
 
 function updateThinkingLabel(turnId, elapsed, phase) {
-  var container = document.getElementById("chat-messages");
+  var container = messagesEl;
   if (!container) return;
   var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (!block) return;
@@ -1937,7 +1937,7 @@ function updateThinkingLabel(turnId, elapsed, phase) {
 }
 
 function appendThinkingBlock(msg) {
-  var container = document.getElementById("chat-messages");
+  var container = messagesEl;
   if (!container) return;
 
   var turnId = msg.turnId || msg.sessionId || "unknown";
@@ -1971,7 +1971,7 @@ function handleToolEvent(msg) {
   var turnId = msg.turnId || msg.sessionId || "unknown";
   thinkingStore.setPhase(turnId, "tooling");
 
-  var container = document.getElementById("chat-messages");
+  var container = messagesEl;
   if (!container) return;
   var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (block) {
@@ -1984,7 +1984,7 @@ function handleToolEvent(msg) {
 function finalizeThinking(turnId) {
   if (!turnId) return;
   thinkingStore.finalize(turnId);
-  var container = document.getElementById("chat-messages");
+  var container = messagesEl;
   if (!container) return;
   var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (!block) return;
@@ -2093,7 +2093,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=25").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=26").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
