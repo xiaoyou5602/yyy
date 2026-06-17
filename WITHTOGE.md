@@ -162,6 +162,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | 闹钟接入聊天流程       | parser 和 APK 已就绪，需接到 Claude Code 对话里 |
 | 僵尸进程自动清理       | kill-zombies.ps1 已重写，待 Codex 审核后测试    |
 | cloudflared 隧道自启动 | ✅ 已完成 — 启动文件夹 cloudflared-tunnel.bat + cyberboss-start.bat |
+| 废弃微信 MCP 工具下线 | tool-mcp-server 仍暴露 `cyberboss_channel_send_file` 等已废弃的微信通道工具，IDE 端会话会误调。从 MCP server 移除这些工具或标记 deprecated 返回明确错误 |
 | 前端组件化             | 记忆/涂鸦/桌宠组件化                            |
 | 隧道大数据响应断开 | WebSearch 多轮结果堆积，响应体过大时 cloudflared 隧道断开，手机端超时后不自动重连。可能与"消息气泡不能拆分""通知延迟"同根 |
 

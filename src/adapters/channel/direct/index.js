@@ -30,6 +30,10 @@ function createDirectChannelAdapter(config) {
   };
   let wsServer = null;
   let globalMsgSeq = 0;
+  const GLOBAL_EPOCH = Date.now();
+  function nextGlobalId() {
+    return String(GLOBAL_EPOCH) + ":" + String(++globalMsgSeq).padStart(9, "0");
+  }
   const messageStore = createMessageStore(stateDir);
 
   function enqueueMessage(msg) {
@@ -67,6 +71,8 @@ function createDirectChannelAdapter(config) {
     }
 
     const label = msg.text || (savedImages.length ? "[图片]" : "") || (savedFiles.length ? "[文件]" : "");
+    // Assign globalId once before save — same object used for broadcast later
+    msg.globalId = msg.globalId || nextGlobalId();
     if (label) {
       const m = String(msg.model || "").trim();
       messageStore.save({
@@ -79,6 +85,7 @@ function createDirectChannelAdapter(config) {
           sourceFileName: img.sourceFileName,
         })) : undefined,
         model: m,
+        globalId: msg.globalId,
       });
     }
     if (pendingResolve) {
@@ -225,19 +232,20 @@ function createDirectChannelAdapter(config) {
         return;
       }
       const m = String(model || "").trim();
-      messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m });
+      const gid = nextGlobalId();
+      messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m, globalId: gid });
       const normalized = trimOuterBlankLines(normalizeLineEndings(content));
       if (preserveBlock) {
-        wsServer.broadcast({ type: "text", text: normalized, done: true, model: m });
+        wsServer.broadcast({ type: "text", text: normalized, done: true, model: m, globalId: gid });
         return;
       }
       const chunks = chunkReplyTextForWeixin(normalized, minChunk);
       if (!chunks.length) {
-        wsServer.broadcast({ type: "text", text: "Completed.", done: true, model: m });
+        wsServer.broadcast({ type: "text", text: "Completed.", done: true, model: m, globalId: gid });
         return;
       }
       for (let i = 0; i < chunks.length; i++) {
-        wsServer.broadcast({ type: "text", text: chunks[i], chunkIndex: i, done: i === chunks.length - 1, model: m });
+        wsServer.broadcast({ type: "text", text: chunks[i], chunkIndex: i, done: i === chunks.length - 1, model: m, globalId: i === chunks.length - 1 ? gid : undefined });
         if (i < chunks.length - 1) {
           await sleep(CHUNK_INTERVAL_MS);
         }
@@ -322,9 +330,7 @@ function createDirectChannelAdapter(config) {
       });
       const _broadcast = wsServer.broadcast.bind(wsServer);
       wsServer.broadcast = (msg) => {
-        if (msg && msg.model) {
-          msg.globalId = Date.now() + ":" + (++globalMsgSeq);
-        }
+        if (msg && !msg.globalId) msg.globalId = nextGlobalId();
         _broadcast(msg);
       };
       await wsServer.start();

@@ -1004,17 +1004,21 @@ function resolveModelForThread(sessionStore, threadId) {
   if (!sessionStore || !threadId) return null;
   try {
     const linked = sessionStore.findBindingForThreadId(threadId);
-    if (!linked?.bindingKey || !linked?.workspaceRoot) return null;
-    const params = sessionStore.getRuntimeParamsForWorkspace(linked.bindingKey, linked.workspaceRoot);
-    const model = (params?.model || "").trim();
-    if (model) return model;
-    // Runtime params might be under a different binding (e.g. direct vs wechat)
-    // Search all bindings for the same workspaceRoot
-    for (const binding of sessionStore.listBindings()) {
-      if (binding.bindingKey === linked.bindingKey) continue;
-      const alt = sessionStore.getRuntimeParamsForWorkspace(binding.bindingKey, linked.workspaceRoot);
-      const altModel = (alt?.model || "").trim();
-      if (altModel) return altModel;
+    if (!linked) return null;
+
+    const PREFIX = "claudecode:";
+    // 主路径：model 编码在 thread 的 runtime key 后缀里（与回复真实归属强绑定）
+    if (linked.runtimeKey && linked.runtimeKey.startsWith(PREFIX)) {
+      const model = linked.runtimeKey.slice(PREFIX.length).trim();
+      if (model) return model;
+    }
+
+    // 兼容：旧的单模型线程存在裸 "claudecode" 下，无后缀。
+    // 只读"同一个 binding"的 params，绝不跨 binding 猜（跨 binding 是串台源）。
+    if (linked.bindingKey && linked.workspaceRoot) {
+      const params = sessionStore.getRuntimeParamsForWorkspace(linked.bindingKey, linked.workspaceRoot);
+      const model = (params?.model || "").trim();
+      if (model) return model;
     }
     return null;
   } catch {

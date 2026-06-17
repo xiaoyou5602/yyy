@@ -1411,36 +1411,11 @@ async function initHistory() {
     localStorage.setItem("cyberboss-chat-v2", "1");
   }
 
-  // Load from ALL per-model localStorage keys, merge and sort by globalId
+  // Only load current model's localStorage (not cross-model)
   let localMsgs = [];
-  const localModelKeys = [];
-  for (const key of Object.keys(localStorage)) {
-    if (key.startsWith("withtoge-chat-history-")) {
-      localModelKeys.push(key);
-    }
-  }
-  if (!localModelKeys.includes(STORAGE_KEY)) {
-    localModelKeys.push(STORAGE_KEY);
-  }
-  const _seen = new Set();
-  for (const key of localModelKeys) {
-    try {
-      const msgs = JSON.parse(localStorage.getItem(key) || "[]");
-      for (const m of msgs) {
-        const dedupKey = m.globalId || (m.time || "") + (m.text || "").slice(0, 40);
-        if (_seen.has(dedupKey)) continue;
-        _seen.add(dedupKey);
-        localMsgs.push(m);
-      }
-    } catch {}
-  }
-  localMsgs.sort((a, b) => {
-    if (a.globalId && b.globalId) return a.globalId.localeCompare(b.globalId);
-    if (a.globalId) return 1;
-    if (b.globalId) return -1;
-    return (a.time || "").localeCompare(b.time || "");
-  });
-  try { localStorage.setItem(getStorageKey(), JSON.stringify(localMsgs.slice(-500))); } catch {}
+  try {
+    localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
+  } catch { localMsgs = []; }
   // One-time migration from old date-based keys
   if (!localStorage.getItem("cyberboss-chat-migrated")) {
     for (let i = 0; i < 7; i++) {
@@ -1485,13 +1460,9 @@ async function initHistory() {
     seen.add(key);
     merged.push(m);
   }
-  merged.sort((a, b) => {
-    if (a.globalId && b.globalId) return a.globalId.localeCompare(b.globalId);
-    if (a.globalId) return 1;
-    if (b.globalId) return -1;
-    return (a.timestamp || "").localeCompare(b.timestamp || "");
-  });
-  history = merged;
+  merged.sort(cmpMsg);
+  const cur = (settings.model || "").trim();
+  history = merged.filter(m => !m.model || m.model === cur);
   for (const m of history) renderMsg(m, false);
   scrollBottom();
   loadCachedThinking();
@@ -1569,6 +1540,12 @@ function renderImageTags(images, from) {
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML.replace(/\n/g, "<br>"); }
 function escAttr(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
+function cmpMsg(a, b) {
+  if (a.globalId && b.globalId) {
+    return a.globalId < b.globalId ? -1 : a.globalId > b.globalId ? 1 : 0;
+  }
+  return (a.timestamp || a.time || "").localeCompare(b.timestamp || b.time || "");
+}
 function scrollBottom() { requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }); }
 
 /* ── status ── */
@@ -2079,10 +2056,14 @@ function connect() {
         saveMessageToModelStorage(msg);
         if (msgMatchesModel(msg)) { renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); }
         break;
-      case "sticker": renderStickerMsg(msg); break;
+      case "sticker":
+        if (!msg.model || msgMatchesModel(msg)) renderStickerMsg(msg);
+        break;
       case "error":
         saveMessageToModelStorage(msg);
-        renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() });
+        if (!msg.model || msgMatchesModel(msg)) {
+          renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() });
+        }
         break;
       case "approval":
         if (msgMatchesModel(msg)) showApprovalDialog(msg);

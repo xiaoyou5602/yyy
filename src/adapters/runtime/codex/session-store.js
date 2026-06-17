@@ -249,6 +249,7 @@ class SessionStore {
             return {
               bindingKey,
               workspaceRoot: normalizeValue(workspaceRoot),
+              runtimeKey: rtKey,
             };
           }
         }
