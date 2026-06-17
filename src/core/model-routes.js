@@ -1,6 +1,9 @@
 // 模型配置表：加新模型 = 加一行
 // type: "cli" = Claude CLI（改代码/agent），"api" = 直调 API（纯聊天/写日记）
 
+// 确保 .env 已加载（本模块可能在 main() 的 loadEnv() 之前被 require）
+try { require("dotenv").config({ path: require("path").join(__dirname, "..", "..", ".env") }); } catch {}
+
 const MODELS = {
   ds: {
     type: "cli",
