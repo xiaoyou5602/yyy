@@ -205,7 +205,7 @@ function createClaudeCodeRuntimeAdapter(config) {
     });
     const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
     console.log(
-      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"}`
+      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"} api_model=${clientEnv.ANTHROPIC_DEFAULT_OPUS_MODEL || "(unset)"} home=${clientEnv.USERPROFILE || "(unset)"}`
     );
     const client = new ClaudeCodeProcessClient({
       command: config.claudeCommand || "claude",
@@ -466,6 +466,9 @@ function createClaudeCodeRuntimeAdapter(config) {
       const runtimeId = modelRuntimeId(modelKey);
       const allowSpawn = provider !== "system";
       const reason = provider === "system" ? "system_message" : "user_message";
+      console.log(
+        `[sendTurn] provider=${provider} frontend_model="${model}" resolved="${desiredModel}" modelKey=${modelKey} allowSpawn=${allowSpawn}`
+      );
 
       if (!allowSpawn) {
         const perModel = sessionsByWorkspace.get(workspaceRoot);
