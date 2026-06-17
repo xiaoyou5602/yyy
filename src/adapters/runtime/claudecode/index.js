@@ -18,7 +18,7 @@ function createClaudeCodeRuntimeAdapter(config) {
   let nextClientId = 0;
 
   const MODEL_KEY_TO_NAME = {
-    ds: "",
+    ds: "deepseek-v4-pro",
     opus: "claude-opus-4-6",
     haiku: "claude-haiku-4-5",
   };
@@ -75,14 +75,29 @@ function createClaudeCodeRuntimeAdapter(config) {
       modelName: "claude-opus-4-6",
       apiModelName: "[A-按量]claude-opus-4-6",
     },
+
+    // DeepSeek 显式路由（不再依赖 settings.json 静默兜底）
+    "deepseek-v4-pro": {
+      baseUrl: process.env.CYBERBOSS_DEEPSEEK_ENDPOINT || "https://api.deepseek.com/anthropic",
+      apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
+      modelName: "deepseek-v4-pro",
+      apiModelName: "deepseek-v4-pro",
+    },
+
+    // Haiku 待定（后端未确认前禁止启用；route 缺失时会 fail-closed）
+    // "claude-haiku-4-5": {
+    //   baseUrl: process.env.CYBERBOSS_HAIKU_ENDPOINT || "",
+    //   apiKey: process.env.CYBERBOSS_HAIKU_KEY || "",
+    //   modelName: "claude-haiku-4-5",
+    //   apiModelName: "claude-haiku-4-5",
+    // },
   };
 
   function resolveModelEnv(model) {
     const route = MODEL_ROUTES[normalizeText(model)];
     if (!route) {
-      const env = filterClaudeCodeEnv(process.env);
-      env.CYBERBOSS_SYSTEM_MODEL = model;
-      return { env, modelName: model };
+      // 不再静默 spawn 一个继承 settings.json(=DeepSeek) 的子进程
+      throw new Error(`[resolveModelEnv] 未登记的模型: ${model}，拒绝启动以防静默错路由`);
     }
     const env = { ...filterClaudeCodeEnv(process.env) };
     env.ANTHROPIC_BASE_URL = route.baseUrl;
