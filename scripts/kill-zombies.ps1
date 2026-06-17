@@ -24,8 +24,22 @@ foreach ($p in $allNode) {
     }
 }
 
+# Helper: trace process ancestry up to N levels, check if any ancestor is protected
+function IsChildOfProtected($pid, $protectedPids, $maxDepth = 8) {
+    $current = $pid
+    for ($i = 0; $i -lt $maxDepth; $i++) {
+        if ($protectedPids.ContainsKey($current)) { return $true }
+        try {
+            $current = (Get-CimInstance Win32_Process -Filter "ProcessId = $current").ParentProcessId
+        } catch { return $false }
+        if ($current -eq 0) { return $false }
+    }
+    return $false
+}
+
 # 2. Kill ALL known zombie patterns (no age limit — MCP servers spawn fast)
 $killed = 0
+$allProtected = $keepPids.Clone()
 
 foreach ($p in $allNode) {
     if ($keepPids.ContainsKey($p.Id)) { continue }
@@ -34,30 +48,21 @@ foreach ($p in $allNode) {
         $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)").CommandLine
     } catch { $cmd = "" }
 
-    # Claude Code MCP servers spawned via npx — always zombies if we didn't keep them above
-    $isClaudeZombie = ($cmd -match "_npx[/\\]" -and ($cmd -match "mcp-datetime|mcpbrowser")) -or
-                      ($cmd -match "npx-cli\.js.*\b(mcp-datetime|mcpbrowser|mcp-)") -or
-                      ($cmd -match "\bnpx\b.*\b(mcp-datetime|mcpbrowser|mcp-)\b")
+    # MCP servers from _npx cache — zombies if not traceable to a protected process
+    $isNpxMcp = ($cmd -match "_npx[/\\]" -and ($cmd -match "mcp-datetime|mcpbrowser")) -or
+                ($cmd -match "npx-cli\.js.*\b(mcp-datetime|mcpbrowser|mcp-)") -or
+                ($cmd -match "\bnpx\b.*\b(mcp-datetime|mcpbrowser|mcp-)\b")
 
-    # Cyberboss's own MCP servers — only kill if orphaned (parent is not the main service)
+    # Cyberboss's own MCP servers — zombies if not traceable to a protected process
     $isCyberbossMcp = ($cmd -match "tool-mcp-server") -or
                       ($cmd -match "native-devtools-mcp") -or
                       ($cmd -match "gtd-tasks.*todo-mcp-server")
 
     $shouldKill = $false
 
-    if ($isClaudeZombie) {
-        $shouldKill = $true
-    } elseif ($isCyberbossMcp -and $cyberbossPid -gt 0) {
-        # Only kill if orphaned: check if parent is the main cyberboss process
-        try {
-            $parentPid = (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)").ParentProcessId
-            if ($parentPid -ne $cyberbossPid) {
-                $shouldKill = $true
-            }
-            # else: parent is main service → keep it
-        } catch {
-            $shouldKill = $true  # can't check parent, assume orphaned zombie
+    if ($isNpxMcp -or $isCyberbossMcp) {
+        if (-not (IsChildOfProtected $p.Id $keepPids)) {
+            $shouldKill = $true
         }
     }
 
