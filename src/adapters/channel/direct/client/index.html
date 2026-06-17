@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=25">
+<link rel="stylesheet" href="/css/main.css?v=26">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -1494,6 +1494,7 @@ async function initHistory() {
   history = merged;
   for (const m of history) renderMsg(m, false);
   scrollBottom();
+  loadCachedThinking();
   // Don't persist server-fetched messages to model-specific key
 }
 
@@ -1832,6 +1833,204 @@ function renderStickerMsg(msg) {
 
 if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
 
+/* ── Thinking 显示 ── */
+const THINKING_CACHE_KEY = "ke-thinking-cache-v1";
+const THINKING_MAX = 300;
+
+const thinkingStore = {
+  turns: {},
+
+  get(turnId) {
+    if (!this.turns[turnId]) {
+      this.turns[turnId] = {
+        phase: "thinking",
+        text: "",
+        model: "",
+        startTime: Date.now(),
+        tickInterval: null,
+        flushTimer: null,
+      };
+    }
+    return this.turns[turnId];
+  },
+
+  setPhase(turnId, phase) {
+    this.get(turnId).phase = phase;
+  },
+
+  appendText(turnId, text) {
+    const t = this.get(turnId);
+    if (t.text === text) return false;
+    t.text = text;
+    return true;
+  },
+
+  startTick(turnId) {
+    const t = this.get(turnId);
+    if (t.tickInterval) return;
+    t.tickInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+      updateThinkingLabel(turnId, elapsed, t.phase);
+    }, 1000);
+  },
+
+  scheduleFlush(turnId) {
+    const t = this.get(turnId);
+    if (t.flushTimer) clearTimeout(t.flushTimer);
+    t.flushTimer = setTimeout(() => flushOneTurn(turnId), 500);
+  },
+
+  cleanup(turnId) {
+    const t = this.turns[turnId];
+    if (!t) return;
+    if (t.tickInterval) { clearInterval(t.tickInterval); t.tickInterval = null; }
+    if (t.flushTimer) { clearTimeout(t.flushTimer); t.flushTimer = null; }
+  },
+
+  finalize(turnId) {
+    const t = this.turns[turnId];
+    if (!t) return;
+    this.cleanup(turnId);
+    t.phase = "final";
+    flushOneTurn(turnId);
+  },
+};
+
+function flushOneTurn(turnId) {
+  const t = thinkingStore.turns[turnId];
+  if (!t || !t.text) return;
+  try {
+    const raw = localStorage.getItem(THINKING_CACHE_KEY);
+    const items = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(items)) return;
+    const idx = items.findIndex(x => x.turnId === turnId);
+    const entry = { turnId, text: t.text, model: t.model, time: Date.now(), phase: t.phase };
+    if (idx >= 0) items[idx] = entry; else items.push(entry);
+    while (items.length > THINKING_MAX) items.shift();
+    localStorage.setItem(THINKING_CACHE_KEY, JSON.stringify(items));
+  } catch (e) { /* ignore */ }
+}
+
+function loadCachedThinking() {
+  try {
+    const raw = localStorage.getItem(THINKING_CACHE_KEY);
+    if (!raw) return;
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) return;
+    const container = document.getElementById("chat-messages");
+    if (!container) return;
+    container.querySelectorAll(".thinking-block").forEach(el => el.remove());
+    items.forEach(item => renderThinkingBlock(item, container));
+  } catch (e) { /* ignore */ }
+}
+
+function renderThinkingBlock(item, container) {
+  var block = document.createElement("div");
+  block.className = "thinking-block";
+  block.dataset.turnId = item.turnId;
+  if (item.phase === "tooling") block.classList.add("thinking-tool-active");
+
+  var header = document.createElement("div");
+  header.className = "thinking-header";
+  var labelText = item.phase === "tooling" ? "正在调用工具..." : (item.phase === "final" ? "已思考完毕" : "思考中...");
+  header.innerHTML = '<span class="thinking-arrow">▼</span><span class="thinking-label">' + labelText + '</span>';
+
+  var body = document.createElement("div");
+  body.className = "thinking-body";
+  body.textContent = item.text || "";
+
+  header.addEventListener("click", function() {
+    var collapsed = body.classList.toggle("thinking-collapsed");
+    header.querySelector(".thinking-arrow").textContent = collapsed ? "▶" : "▼";
+  });
+
+  block.appendChild(header);
+  block.appendChild(body);
+  container.appendChild(block);
+}
+
+function updateThinkingLabel(turnId, elapsed, phase) {
+  var container = document.getElementById("chat-messages");
+  if (!container) return;
+  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (!block) return;
+  var label = block.querySelector(".thinking-label");
+  if (!label) return;
+  if (phase === "tooling") label.textContent = "正在调用工具...";
+  else label.textContent = "思考中 (" + elapsed + "秒)...";
+}
+
+function appendThinkingBlock(msg) {
+  var container = document.getElementById("chat-messages");
+  if (!container) return;
+
+  var turnId = msg.turnId || msg.sessionId || "unknown";
+  var store = thinkingStore.get(turnId);
+  store.model = msg.model || "";
+
+  if (!thinkingStore.appendText(turnId, msg.text || "")) return;
+
+  var existingBlock = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (!existingBlock) {
+    thinkingStore.startTick(turnId);
+    renderThinkingBlock({
+      turnId: turnId,
+      text: store.text,
+      model: store.model,
+      phase: store.phase,
+      time: store.startTime,
+    }, container);
+  } else {
+    var body = existingBlock.querySelector(".thinking-body");
+    if (body) body.textContent = store.text;
+    if (store.phase === "tooling") existingBlock.classList.add("thinking-tool-active");
+    else existingBlock.classList.remove("thinking-tool-active");
+  }
+
+  scrollBottom();
+  thinkingStore.scheduleFlush(turnId);
+}
+
+function handleToolEvent(msg) {
+  var turnId = msg.turnId || msg.sessionId || "unknown";
+  thinkingStore.setPhase(turnId, "tooling");
+
+  var container = document.getElementById("chat-messages");
+  if (!container) return;
+  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (block) {
+    block.classList.add("thinking-tool-active");
+    var label = block.querySelector(".thinking-label");
+    if (label) label.textContent = "正在调用工具...";
+  }
+}
+
+function finalizeThinking(turnId) {
+  if (!turnId) return;
+  thinkingStore.finalize(turnId);
+  var container = document.getElementById("chat-messages");
+  if (!container) return;
+  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (!block) return;
+  var label = block.querySelector(".thinking-label");
+  if (label) {
+    var store = thinkingStore.turns[turnId];
+    var elapsed = store ? Math.floor((Date.now() - store.startTime) / 1000) : 0;
+    label.textContent = "已思考 " + Math.max(0, elapsed) + " 秒";
+  }
+}
+
+function cleanupTurn(turnId) {
+  if (!turnId) return;
+  thinkingStore.cleanup(turnId);
+}
+
+function cleanupAllThinking() {
+  Object.keys(thinkingStore.turns).forEach(function(turnId) {
+    thinkingStore.cleanup(turnId);
+  });
+}
+
 /* ── WebSocket ── */
 function connect() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -1846,6 +2045,7 @@ function connect() {
         if (!msgMatchesModel(msg)) break;
         if (msg.done) {
           hideTyping();
+          finalizeThinking(msg.turnId || "");
           if (streamingMsgEl) {
             streamingText += msg.text;
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
@@ -1887,11 +2087,17 @@ function connect() {
       case "approval":
         if (msgMatchesModel(msg)) showApprovalDialog(msg);
         break;
+      case "thinking":
+        appendThinkingBlock(msg);
+        break;
+      case "tool_event":
+        handleToolEvent(msg);
+        break;
       case "pong": break;
     }
     } catch {}
   };
-  ws.onclose = () => { online(false); scheduleReconnect(); };
+  ws.onclose = () => { online(false); cleanupAllThinking(); scheduleReconnect(); };
   ws.onerror = () => { ws.close(); };
 }
 
@@ -1907,7 +2113,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=24").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=25").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);

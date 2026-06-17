@@ -71,6 +71,24 @@ function mapClaudeCodeMessageToRuntimeEvent(message, raw) {
       };
     case "session.id":
       return null;
+    case "thinking":
+      return {
+        type: "runtime.thought",
+        payload: {
+          threadId: message.sessionId,
+          turnId: message.turnId,
+          text: message.text,
+        },
+      };
+    case "tool.use":
+      return {
+        type: "runtime.tool.started",
+        payload: {
+          threadId: message.sessionId,
+          turnId: message.turnId,
+          toolName: message.toolName || "",
+        },
+      };
     default:
       return null;
   }

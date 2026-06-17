@@ -146,6 +146,32 @@ class StreamDelivery {
       case "runtime.turn.failed":
         this.disposeRunState(buildRunKey(threadId, turnId));
         return;
+      case "runtime.thought": {
+        const state = this.ensureRunState(threadId, turnId);
+        this.attachReplyTarget(state);
+        if (state.target && typeof this.channelAdapter.sendThinking === "function") {
+          await this.channelAdapter.sendThinking({
+            userId: state.target.userId,
+            text: event.payload.text,
+            turnId: turnId || "",
+            model: state.target.model || "",
+          });
+        }
+        return;
+      }
+      case "runtime.tool.started": {
+        const state = this.ensureRunState(threadId, turnId);
+        this.attachReplyTarget(state);
+        if (state.target && typeof this.channelAdapter.sendToolEvent === "function") {
+          await this.channelAdapter.sendToolEvent({
+            userId: state.target.userId,
+            turnId: turnId || "",
+            toolName: event.payload.toolName || "",
+            model: state.target.model || "",
+          });
+        }
+        return;
+      }
       default:
         return;
     }

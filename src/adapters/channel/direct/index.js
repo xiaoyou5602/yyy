@@ -264,6 +264,26 @@ function createDirectChannelAdapter(config) {
       });
     },
 
+    async sendThinking({ userId, text, turnId = "", model = "" }) {
+      if (!wsServer) return;
+      wsServer.broadcast({
+        type: "thinking",
+        text,
+        turnId: turnId || "",
+        model: String(model || "").trim(),
+      });
+    },
+
+    async sendToolEvent({ userId, turnId = "", toolName = "", model = "" }) {
+      if (!wsServer) return;
+      wsServer.broadcast({
+        type: "tool_event",
+        turnId: turnId || "",
+        toolName,
+        model: String(model || "").trim(),
+      });
+    },
+
     async sendFile({ userId, filePath: file, contextToken = "", model = "" }) {
       if (!wsServer) {
         return;
