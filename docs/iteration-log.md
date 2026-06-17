@@ -3,6 +3,19 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-17~18 · 多模型混合架构重建
+
+- **背景**：cyberboss 需要同时跑 DS（DeepSeek）+ Opus（55api）两个模型。originally 两个都走 Claude CLI 子进程，但 Opus 不管怎么配——env vars、HOME 隔离、`--settings`、`--bare`、跳过 cmd.exe——Claude CLI 都把 POST 发到 DeepSeek 而不是 55api。
+- **诊断（十轮）**：Claude Code v2.x + Clawd on Desk（CCSwitch）环境下，CCSwitch 写了 `~/.claude/settings.json` 的 `env` 段（DeepSeek key/endpoint），且 CC 热加载单实例。TUN 模式（`198.18.0.x`）把子进程的 localhost 流量也吞了。所有外部注入手段均被绕过。netstat 最终证实 Claude CLI 完全没碰我们的端点。
+- **决策**：DS 保留 Claude CLI（复用 CCSwitch 全局配置，方向一致），Opus / 未来其他模型走直调 API。共用 cyberboss 前端隔离、日记/记忆。
+- **架构**：
+  - `src/core/model-routes.js` — 模型配置表，加模型 = 加一行（type: cli/api）
+  - `src/core/direct-api-client.js` — SSE 流式直调客户端（缓冲解析、绕过系统代理）
+  - `src/core/app.js` — `isApiModel()` 分支到 `_dispatchApiTurn()`，复用 channelAdapter
+  - claudecode runtime 清理：移除 HOME 隔离/`--bare`/`--settings`/反代集成，保留 Clawd 标记剥离 + 代理变量剥离 + `NO_PROXY`
+- **结果**：Opus 直调 API 首次消息即通。55api 请求可追踪。
+- **遗留**：`Completed.` 重复（dispatchApiTurn 的 onDone 和 stream-delivery 都触发了）；多轮上下文待从 session store 补齐。
+
 ## 2026-06-16 · 收藏夹服务端持久化
 
 - **背景**：toge 反馈收藏夹对话"一更新就被吞掉"。根因是书签只存在浏览器 `localStorage`，没有服务端备份。加上项目改名时 key 从 `cyberboss_bookmarks` 变成 `withtoge_bookmarks` 没做迁移，旧数据全丢。
