@@ -70,6 +70,7 @@ function createClaudeCodeRuntimeAdapter(config) {
       baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
       apiKey: process.env.CYBERBOSS_55API_KEY || "",
       modelName: "claude-opus-4-6",
+      apiModelName: "[A-按量]claude-opus-4-6",
     },
   };
 
@@ -78,8 +79,9 @@ function createClaudeCodeRuntimeAdapter(config) {
     if (!route) return { env: filterClaudeCodeEnv(process.env), modelName: model };
     const env = { ...filterClaudeCodeEnv(process.env) };
     env.ANTHROPIC_BASE_URL = route.baseUrl;
-    env.ANTHROPIC_MODEL = route.modelName;
+    env.ANTHROPIC_MODEL = route.apiModelName || route.modelName;
     if (route.apiKey) env.ANTHROPIC_AUTH_TOKEN = route.apiKey;
+    env.ANTHROPIC_DEFAULT_OPUS_MODEL = route.apiModelName || route.modelName;
     return { env, modelName: route.modelName };
   }
 
