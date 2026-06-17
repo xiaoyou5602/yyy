@@ -117,7 +117,7 @@ function createClaudeCodeRuntimeAdapter(config) {
         `[claudecode-runtime] created per-model settings for ${homeKey}: base_url=${route.baseUrl} api_model=${apiModel}`
       );
     }
-    return homeDir;
+    return { homeDir, settingsPath };
   }
 
   function resolveModelEnv(model) {
@@ -137,10 +137,10 @@ function createClaudeCodeRuntimeAdapter(config) {
     env.ANTHROPIC_DEFAULT_HAIKU_MODEL = route.apiModelName || route.modelName;
     env.ANTHROPIC_SMALL_FAST_MODEL = route.apiModelName || route.modelName;
     env.CYBERBOSS_SYSTEM_MODEL = route.modelName;
-    const modelHome = ensureModelHome(config.stateDir, normalizeText(model), route);
+    const { homeDir: modelHome, settingsPath: modelSettingsPath } = ensureModelHome(config.stateDir, normalizeText(model), route);
     env.USERPROFILE = modelHome;
     env.HOME = modelHome;
-    return { env, modelName: route.modelName };
+    return { env, modelName: route.modelName, settingsPath: modelSettingsPath };
   }
 
   const ipcSocketPath = path.join(
@@ -218,9 +218,9 @@ function createClaudeCodeRuntimeAdapter(config) {
       workspaceRoot,
       cyberbossHome: process.env.CYBERBOSS_HOME || path.resolve(__dirname, "..", "..", "..", ".."),
     });
-    const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
+    const { env: clientEnv, modelName: resolvedModel, settingsPath: modelSettingsPath } = resolveModelEnv(desiredModel);
     console.log(
-      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"} api_model=${clientEnv.ANTHROPIC_DEFAULT_OPUS_MODEL || "(unset)"} home=${clientEnv.USERPROFILE || "(unset)"}`
+      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"} api_model=${clientEnv.ANTHROPIC_DEFAULT_OPUS_MODEL || "(unset)"} home=${clientEnv.USERPROFILE || "(unset)"} settings=${modelSettingsPath || "(unset)"}`
     );
     const client = new ClaudeCodeProcessClient({
       command: config.claudeCommand || "claude",
@@ -233,6 +233,7 @@ function createClaudeCodeRuntimeAdapter(config) {
       mcpConfigPaths: [projectSettings.configPath],
       ipcServer,
       workspaceRoot,
+      settingsPath: modelSettingsPath,
     });
     const newEntry = makeSessionEntry(client);
 

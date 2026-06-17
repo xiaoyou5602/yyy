@@ -4,7 +4,7 @@ const path = require("path");
 const { spawn } = require("child_process");
 
 class ClaudeCodeProcessClient {
-  constructor({ command = "claude", cwd, env, model = "", permissionMode = "default", disableVerbose = false, extraArgs = [], mcpConfigPaths = [], ipcServer = null, workspaceRoot = "" }) {
+  constructor({ command = "claude", cwd, env, model = "", permissionMode = "default", disableVerbose = false, extraArgs = [], mcpConfigPaths = [], ipcServer = null, workspaceRoot = "", settingsPath = "" }) {
     this.command = command;
     this.cwd = cwd;
     this.env = env;
@@ -15,6 +15,7 @@ class ClaudeCodeProcessClient {
     this.mcpConfigPaths = mcpConfigPaths;
     this.ipcServer = ipcServer;
     this.workspaceRoot = workspaceRoot;
+    this.settingsPath = settingsPath;
     this.child = null;
     this.stdin = null;
     this.stdoutBuffer = "";
@@ -67,6 +68,7 @@ class ClaudeCodeProcessClient {
       extraArgs: this.extraArgs,
       mcpConfigPaths: this.mcpConfigPaths,
       resumeSessionId,
+      settingsPath: this.settingsPath,
     });
     const mcpLabel = this.mcpConfigPaths.length
       ? this.mcpConfigPaths.join(",")
@@ -444,7 +446,7 @@ class ClaudeCodeProcessClient {
   }
 }
 
-function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfigPaths, resumeSessionId }) {
+function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfigPaths, resumeSessionId, settingsPath }) {
   const args = [
     "--output-format", "stream-json",
     "--input-format", "stream-json",
@@ -458,6 +460,9 @@ function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfig
   }
   if (resumeSessionId && isValidSessionId(resumeSessionId)) {
     args.push("--resume", resumeSessionId);
+  }
+  if (settingsPath) {
+    args.push("--settings", settingsPath);
   }
   if (model) {
     args.push("--model", model);
