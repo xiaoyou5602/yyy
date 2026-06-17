@@ -81,6 +81,24 @@ class ClaudeCodeProcessClient {
       shell: true,
       windowsHide: true,
     });
+    // DEBUG: dump env vars to file for verification
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const debugEnv = {
+        ANTHROPIC_BASE_URL: this.env.ANTHROPIC_BASE_URL,
+        ANTHROPIC_MODEL: this.env.ANTHROPIC_MODEL,
+        ANTHROPIC_AUTH_TOKEN: this.env.ANTHROPIC_AUTH_TOKEN ? "(set)" : "(empty)",
+        ANTHROPIC_DEFAULT_OPUS_MODEL: this.env.ANTHROPIC_DEFAULT_OPUS_MODEL,
+        USERPROFILE: this.env.USERPROFILE,
+        HOME: this.env.HOME,
+        spawnCmd: this.command,
+        spawnArgs: args,
+      };
+      fs.writeFileSync(path.join(this.env.USERPROFILE || process.env.USERPROFILE || ".", "spawn-debug.json"), JSON.stringify(debugEnv, null, 2) + "\n");
+    } catch (e) {
+      console.error("[claudecode-runtime] debug env dump failed:", e.message);
+    }
     this.child = child;
     this.stdin = child.stdin;
     this._alive = true;

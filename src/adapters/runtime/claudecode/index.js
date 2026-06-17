@@ -94,13 +94,28 @@ function createClaudeCodeRuntimeAdapter(config) {
     // },
   };
 
-  function ensureModelHome(stateDir, homeKey) {
+  function ensureModelHome(stateDir, homeKey, route) {
     const homeDir = path.join(stateDir, "claude-homes", homeKey);
     const claudeDir = path.join(homeDir, ".claude");
     fs.mkdirSync(claudeDir, { recursive: true });
     const settingsPath = path.join(claudeDir, "settings.json");
     if (!fs.existsSync(settingsPath)) {
-      fs.writeFileSync(settingsPath, "{}\n", "utf8");
+      const apiModel = route.apiModelName || route.modelName;
+      const perModelSettings = {
+        env: {
+          ANTHROPIC_BASE_URL: route.baseUrl,
+          ANTHROPIC_AUTH_TOKEN: route.apiKey || "",
+          ANTHROPIC_MODEL: route.modelName,
+          ANTHROPIC_DEFAULT_OPUS_MODEL: apiModel,
+          ANTHROPIC_DEFAULT_SONNET_MODEL: apiModel,
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: apiModel,
+          ANTHROPIC_SMALL_FAST_MODEL: apiModel,
+        },
+      };
+      fs.writeFileSync(settingsPath, JSON.stringify(perModelSettings, null, 2) + "\n", "utf8");
+      console.log(
+        `[claudecode-runtime] created per-model settings for ${homeKey}: base_url=${route.baseUrl} api_model=${apiModel}`
+      );
     }
     return homeDir;
   }
@@ -122,7 +137,7 @@ function createClaudeCodeRuntimeAdapter(config) {
     env.ANTHROPIC_DEFAULT_HAIKU_MODEL = route.apiModelName || route.modelName;
     env.ANTHROPIC_SMALL_FAST_MODEL = route.apiModelName || route.modelName;
     env.CYBERBOSS_SYSTEM_MODEL = route.modelName;
-    const modelHome = ensureModelHome(config.stateDir, normalizeText(model));
+    const modelHome = ensureModelHome(config.stateDir, normalizeText(model), route);
     env.USERPROFILE = modelHome;
     env.HOME = modelHome;
     return { env, modelName: route.modelName };
