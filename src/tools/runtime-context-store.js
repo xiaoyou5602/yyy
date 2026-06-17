@@ -40,6 +40,8 @@ class RuntimeContextStore {
     if (!normalizedWorkspaceRoot) {
       return null;
     }
+    const normalizedModel = normalizeText(model);
+    const compositeKey = normalizedWorkspaceRoot + "::" + normalizedModel;
     const next = {
       workspaceRoot: normalizedWorkspaceRoot,
       runtimeId: normalizeText(runtimeId),
@@ -47,32 +49,37 @@ class RuntimeContextStore {
       bindingKey: normalizeText(bindingKey),
       accountId: normalizeText(accountId),
       senderId: normalizeText(senderId),
-      model: normalizeText(model),
+      model: normalizedModel,
       updatedAt: new Date().toISOString(),
     };
     this.state.contextsByWorkspaceRoot = {
       ...(this.state.contextsByWorkspaceRoot || {}),
-      [normalizedWorkspaceRoot]: next,
+      [compositeKey]: next,
     };
     this.save();
     return next;
   }
 
-  resolveActiveContext({ workspaceRoot = "", runtimeId = "" } = {}) {
+  resolveActiveContext({ workspaceRoot = "", runtimeId = "", model = "" } = {}) {
     const normalizedWorkspaceRoot = normalizeText(workspaceRoot);
-    if (normalizedWorkspaceRoot) {
-      const exact = this.state.contextsByWorkspaceRoot?.[normalizedWorkspaceRoot];
-      if (exact) {
-        return exact;
-      }
+    const normalizedModel = normalizeText(model);
+
+    if (normalizedWorkspaceRoot && normalizedModel) {
+      const compositeKey = normalizedWorkspaceRoot + "::" + normalizedModel;
+      const exact = this.state.contextsByWorkspaceRoot?.[compositeKey];
+      if (exact) return exact;
     }
 
     const entries = Object.values(this.state.contextsByWorkspaceRoot || {})
       .filter((entry) => entry && typeof entry === "object");
     const normalizedRuntimeId = normalizeText(runtimeId);
-    const scoped = normalizedRuntimeId
-      ? entries.filter((entry) => normalizeText(entry.runtimeId) === normalizedRuntimeId)
+    let scoped = normalizedWorkspaceRoot
+      ? entries.filter((entry) => normalizeText(entry.workspaceRoot) === normalizedWorkspaceRoot)
       : entries;
+    if (normalizedRuntimeId) {
+      const byRuntime = scoped.filter((entry) => normalizeText(entry.runtimeId) === normalizedRuntimeId);
+      if (byRuntime.length) scoped = byRuntime;
+    }
     const sorted = scoped.sort((left, right) => {
       const leftMs = Date.parse(left.updatedAt || "") || 0;
       const rightMs = Date.parse(right.updatedAt || "") || 0;

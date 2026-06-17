@@ -378,11 +378,16 @@ class StreamDelivery {
       return;
     }
 
+    const model = resolveModelForThread(this.sessionStore, state.threadId);
+    if (!model) {
+      console.error(`[stream-delivery] reply dropped: cannot resolve model for thread=${state.threadId}`);
+      return;
+    }
     const payload = {
       userId: state.replyTarget.userId,
       text: prependDeferredPrefix ? buildEffectiveReplyText(state.deferredReplyPrefix, baseText) : baseText,
       contextToken: state.replyTarget.contextToken,
-      model: resolveModelForThread(this.sessionStore, state.threadId),
+      model,
     };
     if (prependDeferredPrefix) {
       payload.preserveBlock = true;
@@ -392,11 +397,16 @@ class StreamDelivery {
 
   async sendSystemReply(state, text) {
     const initialTarget = state.replyTarget;
+    const model = resolveModelForThread(this.sessionStore, state.threadId);
+    if (!model) {
+      console.error(`[stream-delivery] system reply dropped: cannot resolve model for thread=${state.threadId}`);
+      return;
+    }
     const payload = {
       userId: initialTarget.userId,
       text,
       contextToken: initialTarget.contextToken,
-      model: resolveModelForThread(this.sessionStore, state.threadId),
+      model,
     };
     await this.sendTextWithRetry(state, payload, { kind: "system_reply" });
   }
@@ -965,14 +975,15 @@ function normalizeNumericErrorCode(value) {
 }
 
 function resolveModelForThread(sessionStore, threadId) {
-  if (!sessionStore || !threadId) return "";
+  if (!sessionStore || !threadId) return null;
   try {
     const linked = sessionStore.findBindingForThreadId(threadId);
-    if (!linked?.bindingKey || !linked?.workspaceRoot) return "";
+    if (!linked?.bindingKey || !linked?.workspaceRoot) return null;
     const params = sessionStore.getRuntimeParamsForWorkspace(linked.bindingKey, linked.workspaceRoot);
-    return (params?.model || "").trim();
+    const model = (params?.model || "").trim();
+    return model || null;
   } catch {
-    return "";
+    return null;
   }
 }
 

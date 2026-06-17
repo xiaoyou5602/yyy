@@ -97,6 +97,7 @@ function runToolMcpServer({ toolHost, runtimeId = "", workspaceRoot = "" }) {
         const result = await toolHost.invokeTool(toolName, args, {
           runtimeId,
           workspaceRoot,
+          model: process.env.CYBERBOSS_SYSTEM_MODEL || "",
         });
         writeRpcResponse(id, {
           content: [

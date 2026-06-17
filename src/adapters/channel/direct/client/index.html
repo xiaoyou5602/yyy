@@ -661,8 +661,9 @@ function getStorageKey() {
 }
 function msgMatchesModel(msg) {
   const msgModel = String(msg.model || "").trim();
-  if (!msgModel) return true; // no model = broadcast to all, backward compatible
+  if (!msgModel) return false; // fail-closed: unknown model = don't render
   const curModel = (settings.model || "").trim();
+  if (!curModel) return false;
   return msgModel === curModel;
 }
 function getStorageKeyForModel(model) {

@@ -54,6 +54,7 @@ class ProjectToolHost {
     const active = this.runtimeContextStore.resolveActiveContext({
       workspaceRoot: explicitWorkspaceRoot,
       runtimeId: explicitRuntimeId,
+      model: explicitModel,
     }) || {};
     const resolvedWorkspaceRoot = explicitWorkspaceRoot || normalizeText(active.workspaceRoot);
     const storedThreadId = normalizeText(active.threadId);

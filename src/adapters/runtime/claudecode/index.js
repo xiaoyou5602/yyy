@@ -76,12 +76,20 @@ function createClaudeCodeRuntimeAdapter(config) {
 
   function resolveModelEnv(model) {
     const route = MODEL_ROUTES[normalizeText(model)];
-    if (!route) return { env: filterClaudeCodeEnv(process.env), modelName: model };
+    if (!route) {
+      const env = filterClaudeCodeEnv(process.env);
+      env.CYBERBOSS_SYSTEM_MODEL = model;
+      return { env, modelName: model };
+    }
     const env = { ...filterClaudeCodeEnv(process.env) };
     env.ANTHROPIC_BASE_URL = route.baseUrl;
     env.ANTHROPIC_MODEL = route.apiModelName || route.modelName;
     if (route.apiKey) env.ANTHROPIC_AUTH_TOKEN = route.apiKey;
     env.ANTHROPIC_DEFAULT_OPUS_MODEL = route.apiModelName || route.modelName;
+    env.ANTHROPIC_DEFAULT_SONNET_MODEL = route.apiModelName || route.modelName;
+    env.ANTHROPIC_DEFAULT_HAIKU_MODEL = route.apiModelName || route.modelName;
+    env.ANTHROPIC_SMALL_FAST_MODEL = route.apiModelName || route.modelName;
+    env.CYBERBOSS_SYSTEM_MODEL = route.modelName;
     return { env, modelName: route.modelName };
   }
 
@@ -540,6 +548,7 @@ function filterClaudeCodeEnv(env) {
     "ANTHROPIC_DEFAULT_HAIKU_MODEL",
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_SMALL_FAST_MODEL",
+    "CYBERBOSS_SYSTEM_MODEL",
   ]);
   const out = {};
   for (const [key, value] of Object.entries(env)) {
