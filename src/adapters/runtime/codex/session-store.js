@@ -236,12 +236,21 @@ class SessionStore {
     }
     const normalizedRuntimeId = normalizeValue(runtimeId);
     for (const [bindingKey, binding] of Object.entries(this.state.bindings || {})) {
-      for (const [workspaceRoot, candidateThreadId] of Object.entries(getThreadMapForRuntime(binding, normalizedRuntimeId))) {
-        if (normalizeValue(candidateThreadId) === normalizedThreadId) {
-          return {
-            bindingKey,
-            workspaceRoot: normalizeValue(workspaceRoot),
-          };
+      const runtimeMap = getThreadRuntimeMap(binding);
+      // Search the specific runtime first, then fall back to all runtimes
+      const runtimeKeys = normalizedRuntimeId
+        ? [normalizedRuntimeId, ...Object.keys(runtimeMap).filter(k => k !== normalizedRuntimeId)]
+        : Object.keys(runtimeMap);
+      for (const rtKey of runtimeKeys) {
+        const scoped = runtimeMap[rtKey];
+        if (!scoped || typeof scoped !== "object") continue;
+        for (const [workspaceRoot, candidateThreadId] of Object.entries(scoped)) {
+          if (normalizeValue(candidateThreadId) === normalizedThreadId) {
+            return {
+              bindingKey,
+              workspaceRoot: normalizeValue(workspaceRoot),
+            };
+          }
         }
       }
     }
