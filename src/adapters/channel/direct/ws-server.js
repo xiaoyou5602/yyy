@@ -102,6 +102,25 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: models（前端动态加载模型列表）──
+    if (urlPath === "/api/models" && req.method === "GET") {
+      try {
+        const { MODELS } = require("../../../core/model-routes");
+        const list = Object.entries(MODELS).map(([key, cfg]) => ({
+          key,
+          type: cfg.type,
+          displayName: cfg.displayName,
+          modelName: cfg.modelName,
+        }));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(list));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── API: gifts ──
     if (urlPath === "/api/gifts" && req.method === "GET") {
       try {

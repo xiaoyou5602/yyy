@@ -40,28 +40,8 @@
     </div>
 
     <!-- Model switcher -->
-    <div class="sidebar-models">
-      <div class="sidebar-model-card active" data-model="" onclick="selectSidebarModel(this)" style="--color: #FF6B00">
-        <div class="sidebar-model-icon"><span>◎</span></div>
-        <div class="sidebar-model-info">
-          <div class="sidebar-model-name">DeepSeek</div>
-          <div class="sidebar-model-tag">端口接入</div>
-        </div>
-      </div>
-      <div class="sidebar-model-card" data-model="claude-opus-4-6" onclick="selectSidebarModel(this)" style="--color: #69D15A">
-        <div class="sidebar-model-icon"><span>◎</span></div>
-        <div class="sidebar-model-info">
-          <div class="sidebar-model-name">Opus 4.6</div>
-          <div class="sidebar-model-tag">55api</div>
-        </div>
-      </div>
-      <div class="sidebar-model-card" data-model="claude-haiku-4-5" onclick="selectSidebarModel(this)" style="--color: #FF6B9D">
-        <div class="sidebar-model-icon"><span>♢</span></div>
-        <div class="sidebar-model-info">
-          <div class="sidebar-model-name">Haiku 4.5</div>
-          <div class="sidebar-model-tag">轻量</div>
-        </div>
-      </div>
+    <div class="sidebar-models" id="sidebar-models">
+      <!-- 动态从 /api/models 加载 -->
     </div>
 
     <!-- Function menu -->
@@ -339,8 +319,7 @@
     <div class="setting-row">
       <label>AI 模型</label>
       <select id="setting-model">
-        <option value="deepseek-v4-pro">DeepSeek V4 Pro（默认）</option>
-        <option value="claude-opus-4-6">Claude Opus 4.6（55api）</option>
+        <!-- 动态从 /api/models 加载 -->
       </select>
       <div class="setting-hint">切换克背后的大模型，下次对话生效</div>
     </div>
@@ -803,7 +782,8 @@ function applySettings(s) {
   }
   applyModelTheme(s.model || "");
 }
-settings = loadSettings(); applySettings(settings);
+settings = loadSettings();
+loadModels().then(() => applySettings(settings));
 
 /* ── Sidebar ── */
 function toggleSidebar() {
@@ -866,18 +846,65 @@ function switchModelHistory() {
   for (const m of localMsgs) renderMsg(m, false);
   scrollBottom();
 }
+const MODEL_META = {}; // { modelName: { key, type, displayName } } 从 API 加载
+
+const MODEL_COLORS = {
+  ds: "#FF6B00", opus: "#69D15A", haiku: "#FF6B9D",
+};
+
+async function loadModels() {
+  try {
+    const res = await fetch("/api/models");
+    if (!res.ok) return;
+    const list = await res.json();
+    // 更新元数据表
+    for (const m of list) MODEL_META[m.modelName] = m;
+    window._modelList = list;
+
+    // 构建侧边栏
+    const sidebar = document.getElementById("sidebar-models");
+    if (sidebar) {
+      sidebar.innerHTML = list.map(m => {
+        const color = MODEL_COLORS[m.key] || "#888";
+        const activeClass = (settings.model || list[0].modelName) === m.modelName ? " active" : "";
+        return `<div class="sidebar-model-card${activeClass}" data-model="${m.modelName}" onclick="selectSidebarModel(this)" style="--color:${color}">
+          <div class="sidebar-model-icon"><span>◎</span></div>
+          <div class="sidebar-model-info">
+            <div class="sidebar-model-name">${m.displayName}</div>
+            <div class="sidebar-model-tag">${m.type === "cli" ? "改代码" : "聊天"}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // 构建设置页下拉
+    const sel = document.getElementById("setting-model");
+    if (sel) {
+      sel.innerHTML = list.map(m =>
+        `<option value="${m.modelName}">${m.displayName}</option>`
+      ).join("");
+      // 恢复当前选中值
+      if (settings.model) sel.value = settings.model;
+    }
+
+    // 确保默认值（首次加载）
+    if (!settings.model && list.length) {
+      settings.model = list[0].modelName;
+      saveSettings(settings);
+    }
+  } catch {}
+}
+
 function applyModelTheme(model) {
   const root = document.documentElement;
   root.classList.remove("model-deepseek", "model-opus", "model-haiku");
-  if (!model) {
-    root.classList.add("model-deepseek");
-  } else if (model === "claude-opus-4-6") {
-    root.classList.add("model-opus");
-  } else if (model === "claude-haiku-4-5") {
-    root.classList.add("model-haiku");
-  }
-  // Update header status label
-  const label = !model ? "DeepSeek" : (model === "claude-opus-4-6" ? "Opus 4.6" : "Haiku 4.5");
+  const meta = MODEL_META[model];
+  const key = meta?.key || "ds";
+  if (key === "opus") root.classList.add("model-opus");
+  else if (key === "haiku") root.classList.add("model-haiku");
+  else root.classList.add("model-deepseek");
+  // 更新状态标签
+  const label = meta?.displayName || model || "DeepSeek";
   if (statusText.textContent.startsWith("在线")) {
     statusText.textContent = `在线 · ${label}`;
   }
