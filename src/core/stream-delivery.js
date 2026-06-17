@@ -975,24 +975,23 @@ function normalizeNumericErrorCode(value) {
 }
 
 function resolveModelForThread(sessionStore, threadId) {
-  if (!sessionStore || !threadId) {
-    console.error("[resolveModelForThread] missing sessionStore or threadId", { hasStore: !!sessionStore, threadId });
-    return null;
-  }
+  if (!sessionStore || !threadId) return null;
   try {
     const linked = sessionStore.findBindingForThreadId(threadId);
-    console.error("[resolveModelForThread] findBindingForThreadId result", { threadId, linked: JSON.stringify(linked) });
-    if (!linked?.bindingKey || !linked?.workspaceRoot) {
-      console.error("[resolveModelForThread] no bindingKey or workspaceRoot");
-      return null;
-    }
+    if (!linked?.bindingKey || !linked?.workspaceRoot) return null;
     const params = sessionStore.getRuntimeParamsForWorkspace(linked.bindingKey, linked.workspaceRoot);
-    console.error("[resolveModelForThread] runtime params", { bindingKey: linked.bindingKey, workspaceRoot: linked.workspaceRoot, params: JSON.stringify(params) });
     const model = (params?.model || "").trim();
-    console.error("[resolveModelForThread] resolved model", { model, isNull: !model });
-    return model || null;
-  } catch (err) {
-    console.error("[resolveModelForThread] exception", err.message);
+    if (model) return model;
+    // Runtime params might be under a different binding (e.g. direct vs wechat)
+    // Search all bindings for the same workspaceRoot
+    for (const binding of sessionStore.listBindings()) {
+      if (binding.bindingKey === linked.bindingKey) continue;
+      const alt = sessionStore.getRuntimeParamsForWorkspace(binding.bindingKey, linked.workspaceRoot);
+      const altModel = (alt?.model || "").trim();
+      if (altModel) return altModel;
+    }
+    return null;
+  } catch {
     return null;
   }
 }
