@@ -99,24 +99,20 @@ function createClaudeCodeRuntimeAdapter(config) {
     const claudeDir = path.join(homeDir, ".claude");
     fs.mkdirSync(claudeDir, { recursive: true });
     const settingsPath = path.join(claudeDir, "settings.json");
-    if (!fs.existsSync(settingsPath)) {
-      const apiModel = route.apiModelName || route.modelName;
-      const perModelSettings = {
-        env: {
-          ANTHROPIC_BASE_URL: route.baseUrl,
-          ANTHROPIC_AUTH_TOKEN: route.apiKey || "",
-          ANTHROPIC_MODEL: route.modelName,
-          ANTHROPIC_DEFAULT_OPUS_MODEL: apiModel,
-          ANTHROPIC_DEFAULT_SONNET_MODEL: apiModel,
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: apiModel,
-          ANTHROPIC_SMALL_FAST_MODEL: apiModel,
-        },
-      };
-      fs.writeFileSync(settingsPath, JSON.stringify(perModelSettings, null, 2) + "\n", "utf8");
-      console.log(
-        `[claudecode-runtime] created per-model settings for ${homeKey}: base_url=${route.baseUrl} api_model=${apiModel}`
-      );
-    }
+    // 每次都重新写入，确保与当前 route 一致（env var 可能已变化）
+    const apiModel = route.apiModelName || route.modelName;
+    const perModelSettings = {
+      env: {
+        ANTHROPIC_BASE_URL: route.baseUrl,
+        ANTHROPIC_AUTH_TOKEN: route.apiKey || "",
+        ANTHROPIC_MODEL: route.modelName,
+        ANTHROPIC_DEFAULT_OPUS_MODEL: apiModel,
+        ANTHROPIC_DEFAULT_SONNET_MODEL: apiModel,
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: apiModel,
+        ANTHROPIC_SMALL_FAST_MODEL: apiModel,
+      },
+    };
+    fs.writeFileSync(settingsPath, JSON.stringify(perModelSettings, null, 2) + "\n", "utf8");
     return { homeDir, settingsPath };
   }
 
