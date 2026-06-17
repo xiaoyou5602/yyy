@@ -68,53 +68,15 @@ function createClaudeCodeRuntimeAdapter(config) {
     return null;
   }
 
-  // Model → API routing table
+  // CLI 路由表（仅 DS — Opus/Haiku 走直调 API，不经过这里）
   const MODEL_ROUTES = {
-    "claude-opus-4-6": {
-      baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
-      apiKey: process.env.CYBERBOSS_55API_KEY || "",
-      modelName: "claude-opus-4-6",
-      apiModelName: "[A-按量]claude-opus-4-6",
-    },
-
-    // DeepSeek 显式路由（不再依赖 settings.json 静默兜底）
     "deepseek-v4-pro": {
       baseUrl: process.env.CYBERBOSS_DEEPSEEK_ENDPOINT || "https://api.deepseek.com/anthropic",
       apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
       modelName: "deepseek-v4-pro",
       apiModelName: "deepseek-v4-pro",
     },
-
-    // Haiku 待定（后端未确认前禁止启用；route 缺失时会 fail-closed）
-    // "claude-haiku-4-5": {
-    //   baseUrl: process.env.CYBERBOSS_HAIKU_ENDPOINT || "",
-    //   apiKey: process.env.CYBERBOSS_HAIKU_KEY || "",
-    //   modelName: "claude-haiku-4-5",
-    //   apiModelName: "claude-haiku-4-5",
-    // },
   };
-
-  function ensureModelHome(stateDir, homeKey, route) {
-    const homeDir = path.join(stateDir, "claude-homes", homeKey);
-    const claudeDir = path.join(homeDir, ".claude");
-    fs.mkdirSync(claudeDir, { recursive: true });
-    const settingsPath = path.join(claudeDir, "settings.json");
-    // 每次都重新写入，确保与当前 route 一致（env var 可能已变化）
-    const apiModel = route.apiModelName || route.modelName;
-    const perModelSettings = {
-      env: {
-        ANTHROPIC_BASE_URL: route.baseUrl,
-        ANTHROPIC_AUTH_TOKEN: route.apiKey || "",
-        ANTHROPIC_MODEL: route.modelName,
-        ANTHROPIC_DEFAULT_OPUS_MODEL: apiModel,
-        ANTHROPIC_DEFAULT_SONNET_MODEL: apiModel,
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: apiModel,
-        ANTHROPIC_SMALL_FAST_MODEL: apiModel,
-      },
-    };
-    fs.writeFileSync(settingsPath, JSON.stringify(perModelSettings, null, 2) + "\n", "utf8");
-    return { homeDir, settingsPath };
-  }
 
   function resolveModelEnv(model) {
     const route = MODEL_ROUTES[normalizeText(model)];
@@ -136,10 +98,10 @@ function createClaudeCodeRuntimeAdapter(config) {
     env.ANTHROPIC_DEFAULT_HAIKU_MODEL = route.apiModelName || route.modelName;
     env.ANTHROPIC_SMALL_FAST_MODEL = route.apiModelName || route.modelName;
     env.CYBERBOSS_SYSTEM_MODEL = route.modelName;
-    const { homeDir: modelHome, settingsPath: modelSettingsPath } = ensureModelHome(config.stateDir, normalizeText(model), route);
-    env.USERPROFILE = modelHome;
-    env.HOME = modelHome;
-    return { env, modelName: route.modelName, settingsPath: modelSettingsPath };
+    // DS 复用 CCSwitch 全局配置（DeepSeek），不做 HOME 隔离
+    env.NO_PROXY = "127.0.0.1,localhost";
+    env.no_proxy = "127.0.0.1,localhost";
+    return { env, modelName: route.modelName };
   }
 
   const ipcSocketPath = path.join(
@@ -217,9 +179,9 @@ function createClaudeCodeRuntimeAdapter(config) {
       workspaceRoot,
       cyberbossHome: process.env.CYBERBOSS_HOME || path.resolve(__dirname, "..", "..", "..", ".."),
     });
-    const { env: clientEnv, modelName: resolvedModel, settingsPath: modelSettingsPath } = resolveModelEnv(desiredModel);
+    const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
     console.log(
-      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"} api_model=${clientEnv.ANTHROPIC_DEFAULT_OPUS_MODEL || "(unset)"} home=${clientEnv.USERPROFILE || "(unset)"} settings=${modelSettingsPath || "(unset)"}`
+      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"}`
     );
     const client = new ClaudeCodeProcessClient({
       command: config.claudeCommand || "claude",
@@ -232,7 +194,6 @@ function createClaudeCodeRuntimeAdapter(config) {
       mcpConfigPaths: [projectSettings.configPath],
       ipcServer,
       workspaceRoot,
-      settingsPath: modelSettingsPath,
     });
     const newEntry = makeSessionEntry(client);
 
@@ -617,6 +578,21 @@ function filterClaudeCodeEnv(env) {
     "ANTHROPIC_DEFAULT_SONNET_MODEL",
     "ANTHROPIC_SMALL_FAST_MODEL",
     "CYBERBOSS_SYSTEM_MODEL",
+    // 剥离 Clawd on Desk 标记，防止子进程被 CCSwitch 劫持
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_AGENT_SDK_VERSION",
+    "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+    "CLAUDE_CODE_ENABLE_TASKS",
+    "CLAUDE_EFFORT",
+    "CLAUDE_CODE_GIT_BASH_PATH",
+    "CLAUDE_VISION_API_KEY",
+    "CLAUDE_VISION_BASE_URL",
+    // 剥离所有代理变量，防止 POST 被劫持
+    "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
+    "ALL_PROXY", "all_proxy", "NO_PROXY", "no_proxy",
+    "npm_config_proxy", "npm_config_https_proxy",
   ]);
   const out = {};
   for (const [key, value] of Object.entries(env)) {

@@ -7,6 +7,8 @@ const { ReminderQueueStore } = require("./reminder-queue-store");
 const { MemoryService } = require("../services/memory-service");
 const { runConsolidationScheduler } = require("../memory/consolidation-scheduler");
 const { resolveModelKey, getModelMemoryDir, modelToDisplayName, ALL_MODEL_KEYS } = require("./config");
+const { isApiModel, getModelConfig } = require("./model-routes");
+const { sendApiTurn } = require("./direct-api-client");
 const DEFAULT_MIN_CHUNK_CHARS = 20;
 const MAX_MIN_CHUNK_CHARS = 3800;
 const { persistIncomingWeixinAttachments } = require("../adapters/channel/weixin/media-receive");
@@ -545,6 +547,16 @@ class CyberbossApp {
       const contextModel = (prepared.provider === "system" && typeof prepared.model === "string")
         ? prepared.model
         : sessionModel;
+
+      // 分支路由：type="api" 直调 API，type="cli" 走 Claude CLI
+      const modelKey = resolveModelKey(sessionModel);
+      if (isApiModel(modelKey)) {
+        return await this._dispatchApiTurn({
+          bindingKey, workspaceRoot, prepared, pendingScopeKey,
+          modelKey, sessionModel, contextModel,
+        });
+      }
+
       const runtimeTurn = await this.buildRuntimeTurn({ prepared, model: sessionModel });
       const sendTurn = typeof this.runtimeAdapter.sendTurn === "function"
         ? this.runtimeAdapter.sendTurn.bind(this.runtimeAdapter)
@@ -611,6 +623,98 @@ class CyberbossApp {
         userId: prepared.senderId,
         text: `❌ Request failed\n${messageText}`,
         contextToken: prepared.contextToken,
+      }).catch(() => {});
+      return false;
+    }
+  }
+
+  async _dispatchApiTurn({ bindingKey, workspaceRoot, prepared, pendingScopeKey, modelKey, sessionModel, contextModel }) {
+    const cfg = getModelConfig(modelKey);
+    if (!cfg) {
+      this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
+      await this.channelAdapter.sendText({
+        userId: prepared.senderId,
+        text: `❌ 未找到模型配置: ${modelKey}`,
+        contextToken: prepared.contextToken,
+        model: sessionModel,
+      }).catch(() => {});
+      return false;
+    }
+
+    const memoryContext = await this.getMemoryServiceForModel(sessionModel).injectMemoryContext({
+      text: prepared.text || prepared.originalText || "",
+    });
+    const worldbookContext = this.projectServices.worldbook.buildPromptSection(sessionModel);
+    const channelContext = loadChannelInstructions(this.config, prepared?.provider);
+
+    const systemParts = [worldbookContext, channelContext, memoryContext].filter(Boolean);
+    const systemPrompt = systemParts.join("\n") + "\n现在时间：" + new Date().toISOString().slice(0, 16).replace("T", " ");
+
+    console.log(`[api-turn] model=${modelKey} base_url=${cfg.baseUrl} api_model=${cfg.apiModel}`);
+
+    let fullText = "";
+    let fullThinking = "";
+
+    const replyTarget = {
+      userId: prepared.senderId,
+      contextToken: prepared.contextToken,
+      model: sessionModel,
+    };
+
+    try {
+      await sendApiTurn({
+        modelConfig: cfg,
+        text: prepared.text || prepared.originalText || "",
+        system: systemPrompt,
+        messages: [], // TODO: 后续从 session store 取多轮历史
+        onThinking: (chunk) => {
+          fullThinking += chunk;
+          this.channelAdapter.sendThinking({
+            userId: prepared.senderId,
+            text: chunk,
+            model: sessionModel,
+          }).catch(() => {});
+        },
+        onText: (chunk) => {
+          fullText += chunk;
+          this.channelAdapter.sendText({
+            userId: prepared.senderId,
+            text: chunk,
+            contextToken: prepared.contextToken,
+            model: sessionModel,
+            preserveBlock: true,
+          }).catch(() => {});
+        },
+        onDone: () => {
+          this.channelAdapter.sendText({
+            userId: prepared.senderId,
+            text: "Completed.",
+            contextToken: prepared.contextToken,
+            model: sessionModel,
+          }).catch(() => {});
+          this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
+        },
+        onError: async (err) => {
+          console.error(`[api-turn] error model=${modelKey}: ${err.message}`);
+          this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
+          await this.channelAdapter.sendText({
+            userId: prepared.senderId,
+            text: `❌ API 请求失败\n${err.message}`,
+            contextToken: prepared.contextToken,
+            model: sessionModel,
+          }).catch(() => {});
+        },
+      });
+
+      return true;
+    } catch (error) {
+      this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
+      const messageText = error instanceof Error ? error.message : String(error || "unknown error");
+      await this.channelAdapter.sendText({
+        userId: prepared.senderId,
+        text: `❌ Request failed\n${messageText}`,
+        contextToken: prepared.contextToken,
+        model: sessionModel,
       }).catch(() => {});
       return false;
     }

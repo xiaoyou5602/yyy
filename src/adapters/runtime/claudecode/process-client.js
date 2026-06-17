@@ -4,7 +4,7 @@ const path = require("path");
 const { spawn } = require("child_process");
 
 class ClaudeCodeProcessClient {
-  constructor({ command = "claude", cwd, env, model = "", permissionMode = "default", disableVerbose = false, extraArgs = [], mcpConfigPaths = [], ipcServer = null, workspaceRoot = "", settingsPath = "" }) {
+  constructor({ command = "claude", cwd, env, model = "", permissionMode = "default", disableVerbose = false, extraArgs = [], mcpConfigPaths = [], ipcServer = null, workspaceRoot = "" }) {
     this.command = command;
     this.cwd = cwd;
     this.env = env;
@@ -15,7 +15,6 @@ class ClaudeCodeProcessClient {
     this.mcpConfigPaths = mcpConfigPaths;
     this.ipcServer = ipcServer;
     this.workspaceRoot = workspaceRoot;
-    this.settingsPath = settingsPath;
     this.child = null;
     this.stdin = null;
     this.stdoutBuffer = "";
@@ -68,7 +67,6 @@ class ClaudeCodeProcessClient {
       extraArgs: this.extraArgs,
       mcpConfigPaths: this.mcpConfigPaths,
       resumeSessionId,
-      settingsPath: this.settingsPath,
     });
     const mcpLabel = this.mcpConfigPaths.length
       ? this.mcpConfigPaths.join(",")
@@ -76,36 +74,13 @@ class ClaudeCodeProcessClient {
     console.log(
       `[claudecode-runtime] launching command=${this.command} cwd=${this.cwd} mcp_config=${mcpLabel}`
     );
-    // 直接 spawn claude.exe，跳过 cmd.exe 避免环境变量被修改
-    const exePath = path.join(path.dirname(this.command), "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe");
-    const useExe = fs.existsSync(exePath);
-    const spawnCmd = useExe ? exePath : this.command;
-    if (useExe) console.log(`[claudecode-runtime] using direct exe: ${exePath}`);
-    const child = spawn(spawnCmd, args, {
+    const child = spawn(this.command, args, {
       cwd: this.cwd,
       env: this.env,
       stdio: ["pipe", "pipe", "pipe"],
-      shell: false,
+      shell: true,
       windowsHide: true,
     });
-    // DEBUG: dump env vars to file for verification
-    try {
-      const fs = require("fs");
-      const path = require("path");
-      const debugEnv = {
-        ANTHROPIC_BASE_URL: this.env.ANTHROPIC_BASE_URL,
-        ANTHROPIC_MODEL: this.env.ANTHROPIC_MODEL,
-        ANTHROPIC_AUTH_TOKEN: this.env.ANTHROPIC_AUTH_TOKEN ? "(set)" : "(empty)",
-        ANTHROPIC_DEFAULT_OPUS_MODEL: this.env.ANTHROPIC_DEFAULT_OPUS_MODEL,
-        USERPROFILE: this.env.USERPROFILE,
-        HOME: this.env.HOME,
-        spawnCmd: this.command,
-        spawnArgs: args,
-      };
-      fs.writeFileSync(path.join(this.env.USERPROFILE || process.env.USERPROFILE || ".", "spawn-debug.json"), JSON.stringify(debugEnv, null, 2) + "\n");
-    } catch (e) {
-      console.error("[claudecode-runtime] debug env dump failed:", e.message);
-    }
     this.child = child;
     this.stdin = child.stdin;
     this._alive = true;
@@ -451,9 +426,8 @@ class ClaudeCodeProcessClient {
   }
 }
 
-function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfigPaths, resumeSessionId, settingsPath }) {
+function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfigPaths, resumeSessionId }) {
   const args = [
-    "--bare",
     "--output-format", "stream-json",
     "--input-format", "stream-json",
     "--permission-prompt-tool", "stdio",
@@ -466,9 +440,6 @@ function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfig
   }
   if (resumeSessionId && isValidSessionId(resumeSessionId)) {
     args.push("--resume", resumeSessionId);
-  }
-  if (settingsPath) {
-    args.push("--settings", settingsPath);
   }
   if (model) {
     args.push("--model", model);
