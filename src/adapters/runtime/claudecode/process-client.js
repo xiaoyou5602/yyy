@@ -448,6 +448,7 @@ class ClaudeCodeProcessClient {
 
 function buildArgs({ model, permissionMode, disableVerbose, extraArgs, mcpConfigPaths, resumeSessionId, settingsPath }) {
   const args = [
+    "--bare",
     "--output-format", "stream-json",
     "--input-format", "stream-json",
     "--permission-prompt-tool", "stdio",

@@ -130,7 +130,10 @@ function createClaudeCodeRuntimeAdapter(config) {
     env.ANTHROPIC_BASE_URL = route.baseUrl;
     // ANTHROPIC_MODEL 是 settings 名，给 --model flag 提供后备；不可填成 API 专有模型 ID
     env.ANTHROPIC_MODEL = route.modelName;
-    if (route.apiKey) env.ANTHROPIC_AUTH_TOKEN = route.apiKey;
+    if (route.apiKey) {
+      env.ANTHROPIC_AUTH_TOKEN = route.apiKey;
+      env.ANTHROPIC_API_KEY = route.apiKey;   // --bare 模式用 x-api-key 头
+    }
     // 下面几个是 API 请求里真正发的 model id，用 API 专有名
     env.ANTHROPIC_DEFAULT_OPUS_MODEL = route.apiModelName || route.modelName;
     env.ANTHROPIC_DEFAULT_SONNET_MODEL = route.apiModelName || route.modelName;
