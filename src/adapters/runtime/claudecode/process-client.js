@@ -76,11 +76,16 @@ class ClaudeCodeProcessClient {
     console.log(
       `[claudecode-runtime] launching command=${this.command} cwd=${this.cwd} mcp_config=${mcpLabel}`
     );
-    const child = spawn(this.command, args, {
+    // 直接 spawn claude.exe，跳过 cmd.exe 避免环境变量被修改
+    const exePath = path.join(path.dirname(this.command), "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe");
+    const useExe = fs.existsSync(exePath);
+    const spawnCmd = useExe ? exePath : this.command;
+    if (useExe) console.log(`[claudecode-runtime] using direct exe: ${exePath}`);
+    const child = spawn(spawnCmd, args, {
       cwd: this.cwd,
       env: this.env,
       stdio: ["pipe", "pipe", "pipe"],
-      shell: true,
+      shell: false,
       windowsHide: true,
     });
     // DEBUG: dump env vars to file for verification
