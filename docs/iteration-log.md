@@ -15,6 +15,9 @@
   - claudecode runtime 清理：移除 HOME 隔离/`--bare`/`--settings`/反代集成，保留 Clawd 标记剥离 + 代理变量剥离 + `NO_PROXY`
 - **结果**：Opus 直调 API 首次消息即通。55api 请求可追踪。
 - **遗留**：`Completed.` 重复（dispatchApiTurn 的 onDone 和 stream-delivery 都触发了）；多轮上下文待从 session store 补齐。
+- **后续**：前端模型列表改为动态加载（`/api/models` + `loadModels()`），以后加模型只在 `model-routes.js` 加一行，侧边栏 + 设置页自动出现。
+
+---
 
 ## 2026-06-16 · 收藏夹服务端持久化
 
