@@ -213,6 +213,14 @@ function getModelWorldbookFile(stateDir, model) {
   return path.join(stateDir, "worldbook", `${resolveModelKey(model)}.json`);
 }
 
+function keyToModel(key) {
+  const v = typeof key === "string" ? key.trim() : "";
+  if (v === "ds") return "deepseek-v4-pro";
+  if (v === "opus") return "claude-opus-4-6";
+  if (v === "haiku") return "claude-haiku-4-5";
+  return v;
+}
+
 const ALL_MODEL_KEYS = ["ds", "opus", "haiku"];
 
-module.exports = { readConfig, modelToKey, modelToDisplayName, resolveModelKey, getModelMemoryDir, getModelSessionsFile, getModelWorldbookDir, getModelWorldbookFile, ALL_MODEL_KEYS };
+module.exports = { readConfig, modelToKey, modelToDisplayName, resolveModelKey, keyToModel, getModelMemoryDir, getModelSessionsFile, getModelWorldbookDir, getModelWorldbookFile, ALL_MODEL_KEYS };

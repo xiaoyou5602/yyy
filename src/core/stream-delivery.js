@@ -1,4 +1,5 @@
 const { sanitizeProtocolLeakText } = require("../adapters/runtime/codex/protocol-leak-monitor");
+const { keyToModel } = require("./config");
 
 const CURRENT_REPLY_HEADER = "===== 本轮模型回复 =====";
 
@@ -1009,8 +1010,8 @@ function resolveModelForThread(sessionStore, threadId) {
     const PREFIX = "claudecode:";
     // 主路径：model 编码在 thread 的 runtime key 后缀里（与回复真实归属强绑定）
     if (linked.runtimeKey && linked.runtimeKey.startsWith(PREFIX)) {
-      const model = linked.runtimeKey.slice(PREFIX.length).trim();
-      if (model) return model;
+      const shortModel = linked.runtimeKey.slice(PREFIX.length).trim();
+      if (shortModel) return keyToModel(shortModel);
     }
 
     // 兼容：旧的单模型线程存在裸 "claudecode" 下，无后缀。
