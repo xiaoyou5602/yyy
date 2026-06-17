@@ -1786,13 +1786,13 @@ class CyberbossApp {
       `[cyberboss] approval prompt sending binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""}`
     );
 
-    // Direct 通道走 WebSocket 弹窗，手机 / 电脑都能收到
+    // Direct 通道：弹窗 + 文本消息双发（手机可能收不到弹窗，但文本消息会进历史）
     if (target.provider === "direct" && typeof this.channelAdapter.sendApproval === "function") {
       await this.channelAdapter.sendApproval({ userId: target.userId, approval });
       console.log(
         `[cyberboss] approval prompt delivered via dialog binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""}`
       );
-      return;
+      // 继续往下走，也发一条文本消息（像 WeChat 时代一样）
     }
 
     await this.channelAdapter.sendTyping({
