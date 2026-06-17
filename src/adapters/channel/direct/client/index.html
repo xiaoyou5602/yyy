@@ -2007,6 +2007,23 @@ function cleanupAllThinking() {
   });
 }
 
+function finalizeAllThinking() {
+  var container = messagesEl;
+  Object.keys(thinkingStore.turns).forEach(function(turnId) {
+    var t = thinkingStore.turns[turnId];
+    if (!t || t.phase === "final") return;
+    thinkingStore.finalize(turnId);
+    if (!container) return;
+    var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
+    if (!block) return;
+    var label = block.querySelector(".thinking-label");
+    if (label) {
+      var elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+      label.textContent = "已思考 " + Math.max(0, elapsed) + " 秒";
+    }
+  });
+}
+
 /* ── WebSocket ── */
 function connect() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -2021,7 +2038,7 @@ function connect() {
         if (!msgMatchesModel(msg)) break;
         if (msg.done) {
           hideTyping();
-          finalizeThinking(msg.turnId || "");
+          finalizeAllThinking();
           if (streamingMsgEl) {
             streamingText += msg.text;
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
@@ -2093,7 +2110,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=26").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=27").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
