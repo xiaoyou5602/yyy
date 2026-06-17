@@ -150,12 +150,13 @@ class StreamDelivery {
       case "runtime.thought": {
         const state = this.ensureRunState(threadId, turnId);
         this.attachReplyTarget(state);
-        if (state.target && typeof this.channelAdapter.sendThinking === "function") {
+        // thinking 是广播事件不需要 userId 绑定，target 可能尚未就绪
+        if (typeof this.channelAdapter.sendThinking === "function") {
           await this.channelAdapter.sendThinking({
-            userId: state.target.userId,
+            userId: state.target?.userId || "",
             text: event.payload.text,
             turnId: turnId || "",
-            model: state.target.model || "",
+            model: state.target?.model || "",
           });
         }
         return;
