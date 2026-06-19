@@ -2054,6 +2054,34 @@ function updateInlineThinkingLabel(turnId, labelText) {
   }
 }
 
+function createThinkingPlaceholder(turnId) {
+  var div = document.createElement("div");
+  div.className = "msg ke";
+  var msgId = "msg-" + Date.now() + "-" + (_msgIdx++) + "-" + Math.random().toString(36).slice(2,6);
+  div.setAttribute("data-msg-id", msgId);
+
+  var inline = buildInlineThinking(turnId);
+  div.innerHTML = '<div class="msg-inner"><div class="avatar-sm"><img src="/icon.png" alt="克"></div></div>';
+  var inner = div.querySelector(".msg-inner");
+  if (inner && inline) inner.appendChild(inline);
+
+  messagesEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function ensureBubbleInStreaming(msgText) {
+  if (!streamingMsgEl) return false;
+  if (streamingMsgEl.querySelector(".msg-bubble")) return true; // 已有
+  var inner = streamingMsgEl.querySelector(".msg-inner");
+  if (!inner) return false;
+  var bubble = document.createElement("div");
+  bubble.className = "msg-bubble";
+  bubble.innerHTML = esc(msgText) + '<div class="time">' + now() + '</div>';
+  inner.appendChild(bubble);
+  return true;
+}
+
 function updateThinkingForStreaming(msg) {
   var turnId = msg.turnId || msg.sessionId || "unknown";
   var store = thinkingStore.get(turnId);
@@ -2061,20 +2089,21 @@ function updateThinkingForStreaming(msg) {
 
   if (!thinkingStore.appendText(turnId, msg.text || "")) return;
 
-  // 检查是否已有关联的 streaming 消息
   if (streamingMsgEl) {
     var inline = streamingMsgEl.querySelector(".thinking-inline");
     if (!inline) {
       attachThinkingToMessage(streamingMsgEl, turnId);
-      thinkingStore.startTick(turnId);
     } else {
-      // 更新正文
       var body = inline.querySelector(".thinking-inline-body");
       if (body) body.textContent = store.text;
-      // 更新 tool 状态
       if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
       else inline.classList.remove("thinking-tool-active");
     }
+  } else {
+    // thinking 先于 text 到达 → 先显示头像 + 思考图标
+    hideTyping();
+    streamingMsgEl = createThinkingPlaceholder(turnId);
+    thinkingStore.startTick(turnId);
   }
 
   thinkingStore.scheduleFlush(turnId);
@@ -2126,6 +2155,7 @@ function connect() {
           finalizeAllThinking();
           if (streamingMsgEl) {
             streamingText += msg.text;
+            ensureBubbleInStreaming(streamingText);
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
             if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
             history.push({ from:"ke", text:streamingText, time: now() });
@@ -2145,6 +2175,7 @@ function connect() {
             attachThinkingToMessage(streamingMsgEl, msg.turnId || "");
           } else {
             streamingText += msg.text;
+            ensureBubbleInStreaming(streamingText);
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
             if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
           }
@@ -2196,7 +2227,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=32").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=33").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
