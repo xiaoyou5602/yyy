@@ -654,6 +654,19 @@ class CyberbossApp {
 
     let fullText = "";
     let fullThinking = "";
+    let textBuffer = "";
+
+    const flushBuffer = () => {
+      if (!textBuffer) return;
+      const chunk = textBuffer;
+      textBuffer = "";
+      this.channelAdapter.sendText({
+        userId: prepared.senderId,
+        text: chunk,
+        contextToken: prepared.contextToken,
+        model: sessionModel,
+      }).catch(() => {});
+    };
 
     const replyTarget = {
       userId: prepared.senderId,
@@ -677,21 +690,14 @@ class CyberbossApp {
         },
         onText: (chunk) => {
           fullText += chunk;
-          this.channelAdapter.sendText({
-            userId: prepared.senderId,
-            text: chunk,
-            contextToken: prepared.contextToken,
-            model: sessionModel,
-            preserveBlock: true,
-          }).catch(() => {});
+          textBuffer += chunk;
+          // 遇到句号、换行、问号、感叹号，或累积超过 80 字时发送
+          if (/[。\n？！!?.]/.test(chunk) || textBuffer.length > 80) {
+            flushBuffer();
+          }
         },
         onDone: () => {
-          this.channelAdapter.sendText({
-            userId: prepared.senderId,
-            text: "Completed.",
-            contextToken: prepared.contextToken,
-            model: sessionModel,
-          }).catch(() => {});
+          flushBuffer(); // 发送剩余缓冲
           this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
         },
         onError: async (err) => {

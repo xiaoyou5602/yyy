@@ -120,6 +120,15 @@ async function main() {
   loadEnv();
   ensureRuntimeEnv();
   installRuntimeErrorHooks();
+  // 自动启动 Cloudflare Tunnel（固定域名 克.withtoge.us）
+  try {
+    const { spawn } = require("child_process");
+    const cfBin = require("path").join(__dirname, "..", "bin", "cloudflared.exe");
+    const cfLog = require("fs").openSync(require("path").join(require("os").homedir(), ".cyberboss", "tunnel.log"), "a");
+    const cf = spawn(cfBin, ["tunnel", "run"], { stdio: ["ignore", cfLog, cfLog], detached: true });
+    cf.unref();
+    console.log("[cyberboss] tunnel starting (pid=" + cf.pid + ")");
+  } catch (e) { console.log("[cyberboss] tunnel launch failed:", e.message); }
   const argv = process.argv.slice(2);
   const config = readConfig();
   ensureBootstrapFiles(config);
