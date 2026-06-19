@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=27">
+<link rel="stylesheet" href="/css/main.css?v=28">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -1850,7 +1850,7 @@ function renderStickerMsg(msg) {
 if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
 
 /* ── Thinking 显示 ── */
-const THINKING_CACHE_KEY = "ke-thinking-cache-v1";
+const THINKING_CACHE_KEY = "ke-thinking-cache-v2";
 const THINKING_MAX = 300;
 
 const thinkingStore = {
@@ -1870,9 +1870,7 @@ const thinkingStore = {
     return this.turns[turnId];
   },
 
-  setPhase(turnId, phase) {
-    this.get(turnId).phase = phase;
-  },
+  setPhase(turnId, phase) { this.get(turnId).phase = phase; },
 
   appendText(turnId, text) {
     const t = this.get(turnId);
@@ -1884,16 +1882,16 @@ const thinkingStore = {
   startTick(turnId) {
     const t = this.get(turnId);
     if (t.tickInterval) return;
-    t.tickInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - t.startTime) / 1000);
-      updateThinkingLabel(turnId, elapsed, t.phase);
+    t.tickInterval = setInterval(function() {
+      var elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+      updateInlineThinkingLabel(turnId, t.phase === "tooling" ? "正在调用工具..." : "思考中 (" + elapsed + "秒)...");
     }, 1000);
   },
 
   scheduleFlush(turnId) {
     const t = this.get(turnId);
     if (t.flushTimer) clearTimeout(t.flushTimer);
-    t.flushTimer = setTimeout(() => flushOneTurn(turnId), 500);
+    t.flushTimer = setTimeout(function() { flushOneTurn(turnId); }, 500);
   },
 
   cleanup(turnId) {
@@ -1913,14 +1911,14 @@ const thinkingStore = {
 };
 
 function flushOneTurn(turnId) {
-  const t = thinkingStore.turns[turnId];
+  var t = thinkingStore.turns[turnId];
   if (!t || !t.text) return;
   try {
-    const raw = localStorage.getItem(THINKING_CACHE_KEY);
-    const items = raw ? JSON.parse(raw) : [];
+    var raw = localStorage.getItem(THINKING_CACHE_KEY);
+    var items = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(items)) return;
-    const idx = items.findIndex(x => x.turnId === turnId);
-    const entry = { turnId, text: t.text, model: t.model, time: Date.now(), phase: t.phase };
+    var idx = items.findIndex(function(x) { return x.turnId === turnId; });
+    var entry = { turnId: turnId, text: t.text, model: t.model, time: Date.now(), phase: t.phase };
     if (idx >= 0) items[idx] = entry; else items.push(entry);
     while (items.length > THINKING_MAX) items.shift();
     localStorage.setItem(THINKING_CACHE_KEY, JSON.stringify(items));
@@ -1928,82 +1926,136 @@ function flushOneTurn(turnId) {
 }
 
 function loadCachedThinking() {
+  // 页面加载后，将缓存的 thinking 附加到已有的 .msg.ke 消息上
   try {
-    const raw = localStorage.getItem(THINKING_CACHE_KEY);
+    var raw = localStorage.getItem(THINKING_CACHE_KEY);
     if (!raw) return;
-    const items = JSON.parse(raw);
-    if (!Array.isArray(items)) return;
-    const container = messagesEl;
-    if (!container) return;
-    container.querySelectorAll(".thinking-block").forEach(el => el.remove());
-    items.forEach(item => renderThinkingBlock(item, container));
+    var items = JSON.parse(raw);
+    if (!Array.isArray(items) || !items.length || !messagesEl) return;
+    messagesEl.querySelectorAll(".thinking-inline").forEach(function(el) { el.remove(); });
+    items.forEach(function(item) {
+      if (item.phase !== "final") return; // 只恢复已完成的 thinking
+      thinkingStore.turns[item.turnId] = {
+        phase: "final",
+        text: item.text,
+        model: item.model,
+        startTime: item.time,
+        tickInterval: null,
+        flushTimer: null,
+      };
+    });
+    // 尝试附加到已有消息（按时间匹配：thinking time 在消息 time 附近）
+    tryReattachThinking();
   } catch (e) { /* ignore */ }
 }
 
-function renderThinkingBlock(item, container) {
-  var block = document.createElement("div");
-  block.className = "thinking-block";
-  block.dataset.turnId = item.turnId;
-  if (item.phase === "tooling") block.classList.add("thinking-tool-active");
+function tryReattachThinking() {
+  if (!messagesEl) return;
+  var keMsgs = messagesEl.querySelectorAll(".msg.ke");
+  keMsgs.forEach(function(msgEl) {
+    // 为每个尚无 thinking 的 ke 消息尝试匹配
+    if (msgEl.querySelector(".thinking-inline")) return;
+    // 遍历 store 中未附加的 thinking，匹配最近的一条
+    var bestTurnId = null;
+    Object.keys(thinkingStore.turns).forEach(function(turnId) {
+      if (bestTurnId) return;
+      var t = thinkingStore.turns[turnId];
+      if (!t || t.phase !== "final") return;
+      // 检查这条 thinking 是否还未被附加到任何消息
+      var alreadyAttached = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+      if (!alreadyAttached) bestTurnId = turnId;
+    });
+    if (bestTurnId) attachThinkingToMessage(msgEl, bestTurnId);
+  });
+}
+
+function buildInlineThinking(turnId) {
+  var store = thinkingStore.turns[turnId];
+  if (!store || !store.text) return null;
+
+  var inline = document.createElement("div");
+  inline.className = "thinking-inline";
+  inline.dataset.turnId = turnId;
+  if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
 
   var header = document.createElement("div");
-  header.className = "thinking-header";
-  var labelText = item.phase === "tooling" ? "正在调用工具..." : (item.phase === "final" ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-arrow">▼</span><span class="thinking-label">' + labelText + '</span>';
+  header.className = "thinking-inline-header";
+  var labelText = store.phase === "tooling" ? "正在调用工具..." : (store.phase === "final" ? "已思考完毕" : "思考中...");
+  header.innerHTML = '<span class="thinking-inline-arrow">▶</span> ' + labelText;
 
   var body = document.createElement("div");
-  body.className = "thinking-body";
-  body.textContent = item.text || "";
+  body.className = "thinking-inline-body thinking-collapsed";
+  body.textContent = store.text;
 
   header.addEventListener("click", function() {
     var collapsed = body.classList.toggle("thinking-collapsed");
-    header.querySelector(".thinking-arrow").textContent = collapsed ? "▶" : "▼";
+    header.querySelector(".thinking-inline-arrow").textContent = collapsed ? "▶" : "▼";
   });
 
-  block.appendChild(header);
-  block.appendChild(body);
-  container.appendChild(block);
+  inline.appendChild(header);
+  inline.appendChild(body);
+  return inline;
 }
 
-function updateThinkingLabel(turnId, elapsed, phase) {
-  var container = messagesEl;
-  if (!container) return;
-  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
-  if (!block) return;
-  var label = block.querySelector(".thinking-label");
-  if (!label) return;
-  if (phase === "tooling") label.textContent = "正在调用工具...";
-  else label.textContent = "思考中 (" + elapsed + "秒)...";
+function attachThinkingToMessage(msgEl, turnId) {
+  if (!msgEl || !turnId) return;
+  var existing = msgEl.querySelector(".thinking-inline");
+  if (existing) return; // 已有 thinking，不重复附加
+
+  var inline = buildInlineThinking(turnId);
+  if (!inline) return;
+
+  // 插入到 msg-inner 内、msg-bubble 之前
+  var inner = msgEl.querySelector(".msg-inner");
+  var bubble = msgEl.querySelector(".msg-bubble");
+  if (inner && bubble) {
+    inner.insertBefore(inline, bubble);
+  }
 }
 
-function appendThinkingBlock(msg) {
-  var container = messagesEl;
-  if (!container) return;
+function updateInlineThinkingLabel(turnId, labelText) {
+  if (!messagesEl) return;
+  var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (!inline) return;
+  var header = inline.querySelector(".thinking-inline-header");
+  if (!header) return;
+  // 保留箭头，更新文本
+  var arrow = header.querySelector(".thinking-inline-arrow");
+  var arrowChar = arrow ? arrow.textContent : "▶";
+  header.innerHTML = '<span class="thinking-inline-arrow">' + arrowChar + '</span> ' + labelText;
+  // 重新绑定点击事件
+  var body = inline.querySelector(".thinking-inline-body");
+  if (body) {
+    header.addEventListener("click", function() {
+      var collapsed = body.classList.toggle("thinking-collapsed");
+      header.querySelector(".thinking-inline-arrow").textContent = collapsed ? "▶" : "▼";
+    });
+  }
+}
 
+function updateThinkingForStreaming(msg) {
   var turnId = msg.turnId || msg.sessionId || "unknown";
   var store = thinkingStore.get(turnId);
   store.model = msg.model || "";
 
   if (!thinkingStore.appendText(turnId, msg.text || "")) return;
 
-  var existingBlock = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
-  if (!existingBlock) {
-    thinkingStore.startTick(turnId);
-    renderThinkingBlock({
-      turnId: turnId,
-      text: store.text,
-      model: store.model,
-      phase: store.phase,
-      time: store.startTime,
-    }, container);
-  } else {
-    var body = existingBlock.querySelector(".thinking-body");
-    if (body) body.textContent = store.text;
-    if (store.phase === "tooling") existingBlock.classList.add("thinking-tool-active");
-    else existingBlock.classList.remove("thinking-tool-active");
+  // 检查是否已有关联的 streaming 消息
+  if (streamingMsgEl) {
+    var inline = streamingMsgEl.querySelector(".thinking-inline");
+    if (!inline) {
+      attachThinkingToMessage(streamingMsgEl, turnId);
+      thinkingStore.startTick(turnId);
+    } else {
+      // 更新正文
+      var body = inline.querySelector(".thinking-inline-body");
+      if (body) body.textContent = store.text;
+      // 更新 tool 状态
+      if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
+      else inline.classList.remove("thinking-tool-active");
+    }
   }
 
-  scrollBottom();
   thinkingStore.scheduleFlush(turnId);
 }
 
@@ -2011,56 +2063,28 @@ function handleToolEvent(msg) {
   var turnId = msg.turnId || msg.sessionId || "unknown";
   thinkingStore.setPhase(turnId, "tooling");
 
-  var container = messagesEl;
-  if (!container) return;
-  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
-  if (block) {
-    block.classList.add("thinking-tool-active");
-    var label = block.querySelector(".thinking-label");
-    if (label) label.textContent = "正在调用工具...";
+  if (!messagesEl) return;
+  var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (inline) {
+    inline.classList.add("thinking-tool-active");
+    updateInlineThinkingLabel(turnId, "正在调用工具...");
   }
 }
 
-function finalizeThinking(turnId) {
-  if (!turnId) return;
-  thinkingStore.finalize(turnId);
-  var container = messagesEl;
-  if (!container) return;
-  var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
-  if (!block) return;
-  var label = block.querySelector(".thinking-label");
-  if (label) {
-    var store = thinkingStore.turns[turnId];
-    var elapsed = store ? Math.floor((Date.now() - store.startTime) / 1000) : 0;
-    label.textContent = "已思考 " + Math.max(0, elapsed) + " 秒";
-  }
-}
-
-function cleanupTurn(turnId) {
-  if (!turnId) return;
-  thinkingStore.cleanup(turnId);
+function finalizeAllThinking() {
+  if (!messagesEl) return;
+  Object.keys(thinkingStore.turns).forEach(function(turnId) {
+    var t = thinkingStore.turns[turnId];
+    if (!t || t.phase === "final") return;
+    thinkingStore.finalize(turnId);
+    var elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+    updateInlineThinkingLabel(turnId, "已思考 " + Math.max(0, elapsed) + " 秒");
+  });
 }
 
 function cleanupAllThinking() {
   Object.keys(thinkingStore.turns).forEach(function(turnId) {
     thinkingStore.cleanup(turnId);
-  });
-}
-
-function finalizeAllThinking() {
-  var container = messagesEl;
-  Object.keys(thinkingStore.turns).forEach(function(turnId) {
-    var t = thinkingStore.turns[turnId];
-    if (!t || t.phase === "final") return;
-    thinkingStore.finalize(turnId);
-    if (!container) return;
-    var block = container.querySelector('.thinking-block[data-turn-id="' + CSS.escape(turnId) + '"]');
-    if (!block) return;
-    var label = block.querySelector(".thinking-label");
-    if (label) {
-      var elapsed = Math.floor((Date.now() - t.startTime) / 1000);
-      label.textContent = "已思考 " + Math.max(0, elapsed) + " 秒";
-    }
   });
 }
 
@@ -2097,6 +2121,7 @@ function connect() {
             hideTyping();
             streamingMsgEl = renderMsg({ from:"ke", text:msg.text, time: now() }, false);
             streamingText = msg.text;
+            attachThinkingToMessage(streamingMsgEl, msg.turnId || "");
           } else {
             streamingText += msg.text;
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
@@ -2125,7 +2150,7 @@ function connect() {
         if (msgMatchesModel(msg)) showApprovalDialog(msg);
         break;
       case "thinking":
-        appendThinkingBlock(msg);
+        updateThinkingForStreaming(msg);
         break;
       case "tool_event":
         handleToolEvent(msg);
@@ -2150,7 +2175,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=29").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=30").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
