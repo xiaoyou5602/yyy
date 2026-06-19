@@ -887,21 +887,24 @@ async function loadModels() {
       if (settings.model) sel.value = settings.model;
     }
 
-    // 确保默认值（首次加载），并迁移旧通用 key 的历史
+    // 迁移旧通用 key "withtoge-chat-history"（旧 DS 默认）到模型专属 key
+    const oldDefaultKey = STORAGE_KEY; // "withtoge-chat-history"
+    try {
+      const oldData = localStorage.getItem(oldDefaultKey);
+      if (oldData && list.length) {
+        const dsModelName = list.find(m => m.key === "ds")?.modelName || list[0].modelName;
+        const newKey = `withtoge-chat-history-${dsModelName}`;
+        const existing = JSON.parse(localStorage.getItem(newKey) || "[]");
+        const old = JSON.parse(oldData);
+        const merged = [...old, ...existing].slice(-500);
+        localStorage.setItem(newKey, JSON.stringify(merged));
+        localStorage.removeItem(oldDefaultKey);
+        console.log("[loadModels] migrated " + old.length + " old-DS messages to " + newKey);
+      }
+    } catch {}
+
+    // 确保默认值
     if (!settings.model && list.length) {
-      const oldKey = STORAGE_KEY; // "withtoge-chat-history"（旧默认 key）
-      try {
-        const oldData = localStorage.getItem(oldKey);
-        if (oldData) {
-          const newKey = `withtoge-chat-history-${list[0].modelName}`;
-          const existing = JSON.parse(localStorage.getItem(newKey) || "[]");
-          const old = JSON.parse(oldData);
-          const merged = [...old, ...existing].slice(-500);
-          localStorage.setItem(newKey, JSON.stringify(merged));
-          localStorage.removeItem(oldKey);
-          console.log("[loadModels] migrated " + old.length + " messages from default key to " + newKey);
-        }
-      } catch {}
       settings.model = list[0].modelName;
       saveSettings(settings);
     }
