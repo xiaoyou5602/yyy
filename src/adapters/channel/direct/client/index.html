@@ -2029,6 +2029,9 @@ function attachThinkingToMessage(msgEl, turnId) {
   if (inner && bubble) {
     inner.insertBefore(inline, bubble);
   }
+  // 启动计时器（如果 thinking 还在进行中）
+  var t = thinkingStore.turns[turnId];
+  if (t && t.phase !== "final") thinkingStore.startTick(turnId);
 }
 
 function updateInlineThinkingLabel(turnId, labelText) {
@@ -2132,7 +2135,7 @@ function connect() {
             streamingText = "";
           } else {
             const div = renderMsg({ from:"ke", text:msg.text, time: now() });
-            if (div) notify(msg.text);
+            if (div) { notify(msg.text); attachThinkingToMessage(div, ""); }
           }
         } else {
           if (!streamingMsgEl) {
@@ -2193,7 +2196,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=31").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=32").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);

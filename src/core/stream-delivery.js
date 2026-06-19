@@ -164,7 +164,8 @@ class StreamDelivery {
       case "runtime.tool.started": {
         const state = this.ensureRunState(threadId, turnId);
         this.attachReplyTarget(state);
-        if (state.target && typeof this.channelAdapter.sendToolEvent === "function") {
+        // tool_event 也是广播，target 可能尚未就绪
+        if (typeof this.channelAdapter.sendToolEvent === "function") {
           await this.channelAdapter.sendToolEvent({
             userId: state.target.userId,
             turnId: turnId || "",
