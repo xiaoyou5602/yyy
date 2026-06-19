@@ -18,7 +18,7 @@ const MODELS = {
     displayName: "Claude Opus 4.6（55api）",
     baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
     apiKey: process.env.CYBERBOSS_55API_KEY || "",
-    apiModel: "[A-按量]claude-opus-4-6",
+    apiModel: "[A8-按量]claude-opus-4-6",
     modelName: "claude-opus-4-6",
   },
   // 以后加新模型：复制上面一段，改 type/baseUrl/apiKey/apiModel/modelName/displayName
