@@ -2000,8 +2000,23 @@ function buildInlineThinking(turnId) {
   return inline;
 }
 
+function findActiveThinkingTurnId() {
+  // 找 thinkStore 中最近的非 final turn
+  var best = null;
+  var bestTime = 0;
+  Object.keys(thinkingStore.turns).forEach(function(turnId) {
+    var t = thinkingStore.turns[turnId];
+    if (!t || t.phase === "final") return;
+    if (!t.text) return;
+    if (t.startTime > bestTime) { bestTime = t.startTime; best = turnId; }
+  });
+  return best;
+}
+
 function attachThinkingToMessage(msgEl, turnId) {
-  if (!msgEl || !turnId) return;
+  if (!msgEl) return;
+  turnId = turnId || findActiveThinkingTurnId();
+  if (!turnId) return;
   var existing = msgEl.querySelector(".thinking-inline");
   if (existing) return; // 已有 thinking，不重复附加
 
@@ -2178,7 +2193,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=30").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=31").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
