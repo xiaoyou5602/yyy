@@ -3,6 +3,23 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-20 · 小手机主页嵌入——踩坑实录
+
+> 把 Gemini 生成的独立 HTML 页面嵌入 App。排查耗时 3h，根因全是 CSS 层的问题，JS 全程没崩。
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| CSS 解析全炸 | 所有页面样式异常 | Edit 工具误吞 `.mcp-add-form button {}` 的 `}` | 每次改完 CSS 跑括号平衡 `node -e` |
+| `*` reset 冲突 | 卡片内边距消失、字体变默认 | `#phone-home-page * { margin:0;padding:0;font-family:... }` 覆盖 App 样式 | 只留 `box-sizing` |
+| 内容挤左边 | 桌面端全宽拉伸 | Gemini 412px 设计无宽度约束 | `max-width:480px`+`align-items:center` |
+| App Grid 消失 | JS 渲染了但不可见 | CSS 解析被前面错误阻断 | 修括号后恢复 |
+| 星星漂移 | Dock 不贴底 | `min-height` 缺失 + Android `fixed` 降级 | `min-height:0`+显式四边 |
+| 天气狂闪 | 点一次切多次 | 未防抖 | 800ms debounce |
+| 过渡白屏 | 快速切换两页全消失 | setTimeout 未存 ID | `clearTimeout`+`currentPage` 守卫 |
+| 隧道崩 | 11 个 cloudflared 互抢 | 反复重启攒僵尸 | 前端改动不重启 |
+
+核心教训：Gemini→App 集成，问题永远在 CSS 层（变量作用域、reset 冲突、WebView 兼容），JS 反而是最稳的。
+
 ## 2026-06-17~18 · 多模型混合架构重建
 
 - **背景**：cyberboss 需要同时跑 DS（DeepSeek）+ Opus（55api）两个模型。originally 两个都走 Claude CLI 子进程，但 Opus 不管怎么配——env vars、HOME 隔离、`--settings`、`--bare`、跳过 cmd.exe——Claude CLI 都把 POST 发到 DeepSeek 而不是 55api。
