@@ -79,6 +79,79 @@ haiku: {
 
 前端自动出现（侧边栏 + 设置页），无需改 HTML。API key 放 `.env` 文件。
 
+## 嵌入新页面指南（以"小手机主页"为案例）
+
+> 把 Gemini / 其他工具生成的独立 HTML 页面嵌入 App。踩过的坑和标准流程。
+
+### 文件规范
+
+每个页面 **必须拆成独立文件**，不要全塞 index.html：
+
+```
+src/adapters/channel/direct/client/
+  js/xxx.js        ← 页面 JS（时钟/渲染/事件）
+  css/xxx.css      ← 页面 CSS（可选，量少可放 main.css 但要加注释分隔）
+  components/xxx/  ← 复杂页面走组件目录（tokens.json + js + css）
+```
+
+HTML 放在 `index.html` 的 `<body>` 内，和 chat-page / memory-page **平级**，不要嵌套在其他页面 div 里。
+
+### CSS 铁律（最坑）
+
+1. **所有 CSS 变量必须加页面前缀**，不能直接用 `:root`。Gemini 生成的 `--bg` → 改成 `--ph-bg`，定义在页面容器上：
+   ```css
+   #xxx-page { --ph-bg: #fff; --ph-accent: #333; }
+   ```
+
+2. **不要用 `*` 全局 reset**——`margin:0; padding:0` 会炸掉 App 现有样式。最多保留 `box-sizing: border-box`。
+
+3. **`position: fixed` 不用 `inset`**，显式写 `top:0; right:0; bottom:0; left:0`（Android/Harmony WebView 兼容）。
+
+4. **SVG 展示属性不支持 `var()`**。`stroke="var(--x)"` 无效，改成 `style="stroke:var(--x)"`。
+
+5. **桌面端加 `max-width` 居中**。Gemini 页面通常按 412px 手机宽度设计，桌面端需要 `max-width: 480px; margin: 0 auto` 之类约束，否则全屏拉伸。
+
+6. **Flex 子元素加 `min-height: 0`**，否则 `overflow: auto` 在部分 WebView 下失效。
+
+7. **改完 CSS 务必跑括号平衡检查**：编辑工具 replace 容易吃掉闭合 `}`。
+
+### JS 接入
+
+1. JS 用 IIFE 包裹，通过 `window.xxx` 暴露 API：
+   ```js
+   (function() {
+     window.phInit = function() { /* 初始化 */ };
+     window.phDestroy = function() { /* 清理 */ };
+   })();
+   ```
+
+2. `showPage()` 里加页面切换逻辑。如果需要过渡动画：CSS `@keyframes` + JS `setTimeout` 清理 class。**保存 timeout ID + clearTimeout 防竞态**。
+
+3. 页面入口加在侧边栏或"更多"面板，调 `showPage('xxx')`。
+
+4. 调参台接入：在 `page-tokens.js` 加 scope，在 `tweak.js` 的 `suggestScope()` 加映射。
+
+### 调试经验
+
+- **前端改动不需要重启服务**，刷新浏览器即可。`Ctrl+Shift+R` 硬刷新清缓存。
+- **多次重启会制造 cloudflared 僵尸进程**，`tasklist | grep cloudflared | wc -l` 超过 2 就 `kill-bridge.ps1` 清一遍。
+- **手机缓存顽固**，无痕模式也清不掉时，把 CSS/JS 版本号 `?v=N` bump 一版。
+- **Console 日志是定位神器**：在 `phInit()` 每一步加 `console.log('①')...console.log('②')`，一秒定位崩溃点。
+
+### 小手机主页集成：踩坑实录
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| CSS 解析全炸 | 所有页面样式异常 | Edit 工具误吞 `.mcp-add-form button {}` 的闭合 `}` | 每次改完跑括号平衡检查 |
+| `*` reset 冲突 | 卡片内边距消失、字体变系统默认 | `#phone-home-page * { margin:0;padding:0;font-family:... }` 覆盖了 App 样式 | 只留 `box-sizing` |
+| 内容挤左边 | 桌面端全宽拉伸 | Gemini 412px 手机设计无宽度约束 | `max-width:480px` + `align-items:center` |
+| 字体巨大 | 字号异常 | 根字号未被改，是 `*` reset 字体覆盖 + 缺少 ph-content 字体声明 | `.ph-content` 加 `font-family` |
+| App Grid 完全不可见 | JS 渲染了但看不到 | CSS `display:grid` 未被加载（之前的 CSS 错误阻断了整个文件解析） | 修 CSS 括号 |
+| 星星漂浮右下角 | Dock 不在底部 | Flex `min-height` 缺失 + Android WebView `position:fixed` 降级 | `min-height:0` + 显式四边定位 |
+| 天气狂闪 | 点一次切换多次 | 点击事件未防抖 | 800ms debounce |
+| 滑块过渡白屏 | 快速切换后两个页面都消失 | setTimeout 未保存 ID，旧 timeout 误删 class | `clearTimeout` + `currentPage` 守卫 |
+| 隧道挂了 | 手机连不上 | 反复重启攒了 11 个 cloudflared 僵尸 | 前端改动不重启；定期 `kill-bridge` |
+
 ## 已完成功能一览
 
 | 模块                  | 说明                                                        | 关键文件                                                                                  |
@@ -91,7 +164,8 @@ haiku: {
 | **涂鸦页**            | Canvas 粒子绘画                                             | `src/adapters/channel/direct/client/js/graffiti.js`                                       |
 | **桌宠**              | SVG 螃蟹，随机走动 + 眼球追踪                               | `src/adapters/channel/direct/client/js/pet.js`                                            |
 | **聊天搜索**          | 前端搜 localStorage + 服务端搜历史 JSONL                    | `src/adapters/channel/direct/client/js/search.js`, ws-server `/api/search`                |
-| **视觉调参台**        | CSS 变量实时调节                                            | `src/adapters/channel/direct/client/js/tweak.js`                                          |
+| **视觉调参台**        | CSS 变量实时调节，13 个页面独立 scope                       | `src/adapters/channel/direct/client/js/tweak.js`, `js/page-tokens.js`                     |
+| **小手机主页**        | Gemini 生成页面集成：实时时钟、天气（杭州萧山↔余姚）、日历小组件、备忘录、拖拽应用网格、星尘粒子 | `src/adapters/channel/direct/client/index.html`（HTML+JS）、`css/main.css`（phone-home 区段） |
 | **PWA**               | Service Worker 离线缓存                                     | `src/adapters/channel/direct/client/sw.js`, `manifest.json`                               |
 | **多模型**            | DS(CLI/agent) + Opus(直调API/聊天) + 动态加载 + 历史隔离   | `src/core/model-routes.js`, `src/core/app.js`                                             |
 | **Session 管理**      | claudecode runtime（仅 DS），启动清旧 session               | `src/adapters/runtime/claudecode/`                                                        |
