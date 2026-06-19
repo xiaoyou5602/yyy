@@ -2161,6 +2161,7 @@ footer {
   width: 100%; max-width: 480px;
   overflow-y: auto; position: relative; z-index: 2;
   scrollbar-width: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 .ph-content::-webkit-scrollbar { display: none; }
 
@@ -2170,8 +2171,9 @@ footer {
   padding: 10px 4px 10px 0; margin-bottom: 20px; flex-shrink: 0;
 }
 .ph-timepiece .time-digit-container {
-  display: flex; overflow: hidden; height: 52px;
+  display: flex; overflow: hidden; height: 52px; align-self: flex-end;
 }
+.ph-timepiece .date-row { align-self: flex-end; }
 .ph-timepiece .time-char {
   font-size: 52px; font-weight: 300; color: var(--ph-slate-dark);
   letter-spacing: -1px; line-height: 52px;
