@@ -176,7 +176,8 @@
       meditation: 'meditation', graffiti: 'graffiti',
       worldbook: 'worldbook', gifts: 'gifts',
       camera: 'camera', mcp: 'mcp', bookmarks: 'bookmarks',
-      bubbletea: 'bubbletea'
+      bubbletea: 'bubbletea',
+      'phone-home': 'phone-home'
     };
     var scopeId = map[page] || 'global';
     if (window._pageTokens && window._pageTokens[scopeId]) return scopeId;

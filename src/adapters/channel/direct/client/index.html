@@ -555,6 +555,79 @@
   </div>
 </div>
 
+<!-- ═══ PHONE HOME PAGE ═══ -->
+<div id="phone-home-page">
+  <canvas id="phone-home-canvas"></canvas>
+  <div class="ph-content">
+    <button class="ph-back-btn" id="ph-back-btn" title="返回聊天">←</button>
+
+    <div class="ph-timepiece" id="ph-timepiece">
+      <div class="time-digit-container" id="ph-time-display"></div>
+      <div class="date-row">
+        <span class="date-day" id="ph-date-day">FRI.</span>
+        <span class="date-month-year" id="ph-date-month">JAN 23</span>
+      </div>
+    </div>
+
+    <div class="ph-widgets-row">
+      <div class="ph-soft-card ph-widget-weather">
+        <div class="weather-icon-wrap">
+          <svg class="ph-icon-svg" style="width:32px;height:32px" viewBox="0 0 24 24">
+            <path class="sun-core" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"/>
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25" stroke="var(--ph-focus-blue)" fill="none" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="weather-info">
+          <div class="temp-num">--°C</div>
+          <div class="weather-status">加载中…</div>
+          <div class="weather-city" style="font-size:9px;color:var(--ph-cloud-medium);margin-top:2px;">杭州萧山区</div>
+        </div>
+      </div>
+
+      <div class="ph-soft-card ph-widget-calendar">
+        <div class="calendar-header">
+          <span id="ph-cal-title">JUNE 2026</span>
+          <span style="color:var(--ph-focus-blue)">●</span>
+        </div>
+        <div class="calendar-grid" id="ph-cal-grid"></div>
+      </div>
+    </div>
+
+    <div class="ph-soft-card ph-widget-todo">
+      <div class="todo-header">
+        <span class="todo-title">MEMO & TO-DO</span>
+        <div class="btn-add-todo" onclick="phAddTodo()">
+          <svg class="ph-icon-svg" style="width:12px;height:12px" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+      </div>
+      <ul class="todo-list" id="ph-todo-list">
+        <li class="todo-item completed" onclick="phToggleTodo(this)">
+          <div class="todo-checkbox checked">✓</div>
+          <span class="todo-text">1. Update Memory Heat Log</span>
+        </li>
+        <li class="todo-item" onclick="phToggleTodo(this)">
+          <div class="todo-checkbox"></div>
+          <span class="todo-text">2. Core Foreground UI Optimization</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="ph-app-grid" id="ph-app-grid"></div>
+
+    <div class="ph-dock">
+      <div class="ph-dock-btn" id="ph-star-btn">
+        <svg class="ph-icon-svg" viewBox="0 0 24 24" style="stroke-width:2.5;fill:#ffffff">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ BOOKMARKS PAGE ═══ -->
 <div id="bookmarks-page" style="display:none">
   <header>
@@ -674,6 +747,7 @@ const cameraPage = document.getElementById("camera-page");
 const mcpPage = document.getElementById("mcp-page");
 const bookmarksPage = document.getElementById("bookmarks-page");
 var gamesPage = document.getElementById("games-page");
+var phoneHomePage = document.getElementById("phone-home-page");
 const messagesEl = document.getElementById("messages");
 const typingEl = document.getElementById("typing-indicator");
 const inputEl = document.getElementById("input");
@@ -695,9 +769,14 @@ let streamingText = "";
 /* ── Page switching ── */
 let currentPage = "chat";
 function showPage(page) {
+  var prevPage = currentPage;
   currentPage = page;
   window.dispatchEvent(new CustomEvent('page-changed', { detail: { page: page } }));
-  chatPage.classList.toggle("show", page === "chat");
+  // Chat visibility: skip during slide transitions (handled below)
+  var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home");
+  if (!isSlide) {
+    chatPage.classList.toggle("show", page === "chat");
+  }
   if (page === "calendar" && window._componentRegistry) {
     window._componentRegistry.switchTo("calendar");
   } else {
@@ -740,6 +819,34 @@ function showPage(page) {
     if (typeof initGames === "function") initGames();
   } else {
     gamesPage.classList.remove("show");
+  }
+
+  /* ── Phone home with slide transition ── */
+  if (page === "phone-home" && prevPage === "chat") {
+    chatPage.classList.remove("slide-in");
+    chatPage.classList.add("slide-out");
+    phoneHomePage.classList.add("show", "slide-in");
+    if (typeof window.phInit === 'function') window.phInit();
+    setTimeout(function() {
+      chatPage.classList.remove("show", "slide-out");
+      phoneHomePage.classList.remove("slide-in");
+    }, 360);
+  } else if (page === "chat" && prevPage === "phone-home") {
+    if (typeof window.phDestroy === 'function') window.phDestroy();
+    phoneHomePage.classList.remove("slide-in");
+    chatPage.classList.remove("slide-out");
+    phoneHomePage.classList.add("slide-out");
+    chatPage.classList.add("show", "slide-in");
+    setTimeout(function() {
+      phoneHomePage.classList.remove("show", "slide-out");
+      chatPage.classList.remove("slide-in");
+    }, 360);
+  } else if (page === "phone-home") {
+    phoneHomePage.classList.add("show");
+    if (typeof window.phInit === 'function') window.phInit();
+  } else {
+    if (typeof window.phDestroy === 'function') window.phDestroy();
+    phoneHomePage.classList.remove("show", "slide-in", "slide-out");
   }
 }
 
@@ -2277,5 +2384,270 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
+
+<!-- ═══ Phone Home Page JS ═══ -->
+<script>
+(function() {
+  var page = document.getElementById('phone-home-page');
+  var canvas = document.getElementById('phone-home-canvas');
+  var ctx = null;
+  try { if (canvas) ctx = canvas.getContext('2d'); } catch(e) {}
+  var particles = [];
+  var clockTimer = null;
+  var lastTimeStr = '';
+  var phInited = false;
+
+  /* ── Weather ── */
+  var weatherData = { temp: '--', status: '加载中…', city: '杭州萧山区' };
+  var phCities = [
+    { name:'杭州萧山区', lat:30.25, lon:120.22 },
+    { name:'余姚', lat:30.04, lon:121.15 }
+  ];
+  var phCityIdx = 0;
+
+  function fetchWeather() {
+    var c = phCities[phCityIdx];
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat + '&longitude=' + c.lon + '&current=temperature_2m,weather_code&timezone=auto&forecast_days=1';
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+      if (data && data.current) {
+        weatherData.temp = Math.round(data.current.temperature_2m) + '°C';
+        weatherData.status = weatherText(data.current.weather_code);
+        weatherData.city = c.name;
+        updateWeatherUI();
+      }
+    }).catch(function() {});
+  }
+  function weatherText(code) {
+    if (code <= 1) return '晴天'; if (code <= 3) return '多云';
+    if (code <= 48) return '雾'; if (code <= 57) return '毛毛雨';
+    if (code <= 67) return '雨'; if (code <= 77) return '雪';
+    if (code <= 82) return '阵雨'; if (code <= 86) return '阵雪';
+    return '雷暴';
+  }
+  function updateWeatherUI() {
+    var t = document.querySelector('#phone-home-page .temp-num');
+    var s = document.querySelector('#phone-home-page .weather-status');
+    var c = document.querySelector('#phone-home-page .weather-city');
+    if (t) t.textContent = weatherData.temp;
+    if (s) s.textContent = weatherData.status;
+    if (c) c.textContent = weatherData.city;
+  }
+
+  window.phSwitchCity = function() {
+    phCityIdx = (phCityIdx + 1) % phCities.length;
+    fetchWeather();
+  };
+
+  /* ── App grid ── */
+  var APP_GRID = [
+    { id:'memory', label:'记忆', nav:'memory', svg:'<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-4.12 2.5 2.5 0 0 1 0-4.12A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-4.12 2.5 2.5 0 0 0 0-4.12A2.5 2.5 0 0 0 14.5 2Z"/>' },
+    { id:'chat', label:'聊天', nav:'chat', svg:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { id:'graffiti', label:'涂鸦', nav:'graffiti', svg:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' },
+    { id:'meditation', label:'冥想', nav:'meditation', svg:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>' }
+  ];
+
+  function renderAppGrid() {
+    var grid = document.getElementById('ph-app-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    APP_GRID.forEach(function(app) {
+      var el = document.createElement('div');
+      el.className = 'ph-app-item';
+      el.setAttribute('data-app-id', app.id);
+      el.setAttribute('draggable', 'true');
+      el.innerHTML = '<div class="ph-app-block"><svg class="ph-icon-svg" viewBox="0 0 24 24">' + app.svg + '</svg></div><span class="ph-app-label">' + app.label + '</span>';
+      if (app.nav) el.addEventListener('click', function() { showPage(app.nav); });
+      initDrag(el);
+      grid.appendChild(el);
+    });
+  }
+
+  var dragSrc = null;
+  function initDrag(el) {
+    el.addEventListener('dragstart', function(e) {
+      dragSrc = this; this.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', this.getAttribute('data-app-id'));
+    });
+    el.addEventListener('dragenter', function() { if (dragSrc !== this) this.classList.add('drag-over'); });
+    el.addEventListener('dragover', function(e) { e.preventDefault(); });
+    el.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+    el.addEventListener('drop', function(e) {
+      if (dragSrc !== this) {
+        var th = this.innerHTML, ti = this.getAttribute('data-app-id');
+        this.innerHTML = dragSrc.innerHTML; this.setAttribute('data-app-id', dragSrc.getAttribute('data-app-id'));
+        dragSrc.innerHTML = th; dragSrc.setAttribute('data-app-id', ti);
+      }
+    });
+    el.addEventListener('dragend', function() {
+      document.querySelectorAll('.ph-app-item').forEach(function(i) { i.classList.remove('dragging','drag-over'); });
+    });
+  }
+
+  /* ── Clock ── */
+  function updateClock() {
+    var now = new Date();
+    var str = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    var c = document.getElementById('ph-time-display');
+    if (!c) return;
+    if (lastTimeStr === '') {
+      c.innerHTML = '';
+      str.split('').forEach(function(ch) {
+        var sp = document.createElement('span'); sp.className = 'time-char'; sp.innerText = ch; c.appendChild(sp);
+      });
+    } else if (str !== lastTimeStr) {
+      var spans = c.querySelectorAll('.time-char');
+      str.split('').forEach(function(ch, i) {
+        if (ch !== lastTimeStr[i] && spans[i]) {
+          spans[i].classList.add('changing');
+          setTimeout(function(s) { s.innerText = ch; }, 220, spans[i]);
+          setTimeout(function(s) { s.classList.remove('changing'); }, 500, spans[i]);
+        }
+      });
+    }
+    lastTimeStr = str;
+    var days = ['SUN.','MON.','TUE.','WED.','THU.','FRI.','SAT.'];
+    var mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    var de = document.getElementById('ph-date-day');
+    var me = document.getElementById('ph-date-month');
+    if (de) de.textContent = days[now.getDay()];
+    if (me) me.textContent = mons[now.getMonth()] + ' ' + now.getDate();
+  }
+
+  /* ── Calendar widget ── */
+  function renderCalWidget() {
+    var g = document.getElementById('ph-cal-grid');
+    var t = document.getElementById('ph-cal-title');
+    if (!g || !t) return;
+    var now = new Date();
+    var mons = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    t.textContent = mons[now.getMonth()] + ' ' + now.getFullYear();
+    var y = now.getFullYear(), m = now.getMonth();
+    var fd = new Date(y, m, 1).getDay();
+    var dim = new Date(y, m + 1, 0).getDate();
+    var today = now.getDate();
+    var h = '<span class="grid-day-label">M</span><span class="grid-day-label">T</span><span class="grid-day-label">W</span><span class="grid-day-label">T</span><span class="grid-day-label">F</span><span class="grid-day-label">S</span><span class="grid-day-label">S</span>';
+    var off = fd === 0 ? 6 : fd - 1;
+    var pmd = new Date(y, m, 0).getDate();
+    for (var i = 0; i < off; i++) h += '<span style="color:var(--ph-cloud-light)">' + (pmd - off + i + 1) + '</span>';
+    var d;
+    for (d = 1; d <= 7 - off; d++) h += '<span>' + d + '</span>';
+    for (var row = 1; row < 6; row++) {
+      for (var col = 0; col < 7; col++, d++) {
+        if (d > dim) break;
+        h += '<span' + (d === today ? ' class="day-cell today"' : '') + '>' + (d === today ? '&nbsp;' + d + '&nbsp;' : d) + '</span>';
+      }
+      if (d > dim) break;
+    }
+    g.innerHTML = h;
+  }
+
+  /* ── Particles ── */
+  function resizeCanvas() { if (canvas && ctx) { canvas.width = page.clientWidth; canvas.height = page.clientHeight; } }
+  function DustParticle(x, y, charge) {
+    this.x = x; this.y = y;
+    this.size = (Math.random() * 5 + 3) * (0.8 + charge * 0.4);
+    var a = -Math.PI/2 + (Math.random() - 0.5) * 0.8;
+    var sp = (Math.random() * 4 + 4) * (0.6 + charge * 0.5);
+    this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
+    this.gravity = 0.16; this.opacity = 1;
+    this.alphaSpeed = (Math.random() * 0.012 + 0.006) / (0.7 + charge * 0.5);
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.04;
+    var r = Math.random();
+    this.shape = r < 0.45 ? 'star' : r < 0.75 ? 'square' : 'circle';
+    this.color = ['#5989b9','#cc7b5c','#a4c2e6'][Math.floor(Math.random() * 3)];
+  }
+  DustParticle.prototype.update = function() { this.x += this.vx; this.vy += this.gravity; this.y += this.vy; this.opacity -= this.alphaSpeed; this.rotation += this.rotationSpeed; };
+  DustParticle.prototype.draw = function() {
+    if (this.opacity <= 0 || !ctx) return;
+    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rotation); ctx.globalAlpha = this.opacity; ctx.fillStyle = this.color;
+    if (this.shape === 'star') { ctx.font = (this.size*1.4)+'px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('★',0,0); }
+    else if (this.shape === 'square') ctx.fillRect(-this.size/2,-this.size/2,this.size,this.size*0.7);
+    else { ctx.beginPath(); ctx.arc(0,0,this.size/2,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  };
+  function spawnDust(x, y, dur) {
+    var hold = Math.min(dur, 1500), ratio = hold / 1500;
+    for (var i = 0, n = Math.floor(3 + ratio * 17); i < n; i++) particles.push(new DustParticle(x, y, ratio));
+  }
+  function animParticles() {
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles = particles.filter(function(p) { return p.opacity > 0; });
+    particles.forEach(function(p) { p.update(); p.draw(); });
+    if (page.classList.contains('show')) requestAnimationFrame(animParticles);
+  }
+
+  /* ── Star ── */
+  var pressStart = 0;
+  function starDown() { var b = document.getElementById('ph-star-btn'); if (b) { b.classList.remove('jelly-bounce'); b.classList.add('pressing'); pressStart = Date.now(); } }
+  function starUp() {
+    var b = document.getElementById('ph-star-btn');
+    if (!b || !b.classList.contains('pressing')) return;
+    var dur = Date.now() - pressStart; b.classList.remove('pressing');
+    var r = b.getBoundingClientRect(), pr = page.getBoundingClientRect();
+    spawnDust(r.left - pr.left + r.width/2, r.top - pr.top, dur);
+    b.classList.add('jelly-bounce');
+    setTimeout(function() { b.classList.remove('jelly-bounce'); }, 600);
+  }
+
+  /* ── Public API: called by showPage ── */
+  window.phInit = function() {
+    if (phInited) return;
+    phInited = true;
+    renderAppGrid();
+    updateClock();
+    renderCalWidget();
+    fetchWeather();
+    if (ctx) { resizeCanvas(); animParticles(); }
+    clockTimer = setInterval(updateClock, 1000);
+    var sb = document.getElementById('ph-star-btn');
+    if (sb) {
+      sb.addEventListener('mousedown', starDown); sb.addEventListener('mouseup', starUp);
+      sb.addEventListener('mouseleave', function() { sb.classList.remove('pressing'); });
+      sb.addEventListener('touchstart', starDown, {passive:true});
+      sb.addEventListener('touchend', starUp, {passive:true});
+    }
+    if (canvas) window.addEventListener('resize', resizeCanvas);
+    var ww = document.querySelector('#phone-home-page .ph-widget-weather');
+    if (ww) ww.addEventListener('click', function(e) { e.stopPropagation(); window.phSwitchCity(); });
+    var cw = document.querySelector('#phone-home-page .ph-widget-calendar');
+    if (cw) cw.addEventListener('click', function(e) { e.stopPropagation(); showPage('calendar'); });
+  };
+
+  window.phDestroy = function() {
+    phInited = false;
+    particles = [];
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    lastTimeStr = '';
+    if (canvas) window.removeEventListener('resize', resizeCanvas);
+  };
+
+  /* ── Todo ── */
+  window.phToggleTodo = function(el) {
+    var cb = el.querySelector('.todo-checkbox');
+    if (el.classList.contains('completed')) {
+      el.classList.remove('completed'); cb.classList.remove('checked'); cb.innerHTML = '';
+    } else {
+      el.classList.add('completed'); cb.classList.add('checked'); cb.innerHTML = '✓';
+    }
+  };
+  window.phAddTodo = function() {
+    var list = document.getElementById('ph-todo-list');
+    if (!list) return;
+    var li = document.createElement('li');
+    li.className = 'todo-item';
+    li.onclick = function() { window.phToggleTodo(li); };
+    li.innerHTML = '<div class="todo-checkbox"></div><span class="todo-text">New item</span>';
+    list.appendChild(li);
+  };
+
+  /* ── Back button ── */
+  var backBtn = document.getElementById('ph-back-btn');
+  if (backBtn) backBtn.addEventListener('click', function() { showPage('chat'); });
+
+  /* ── Init immediately if already shown (edge case) ── */
+  if (page && page.classList.contains('show')) window.phInit();
+})();
+</script>
 </body>
 </html>

@@ -9,6 +9,7 @@
 ### 流体玻璃（Liquid Glass）— SVG 滤镜
 
 来源：toge 朋友的 prompt（2026-06-17）
+⚠️ **移动端不兼容**：`feDisplacementMap` + `feTurbulence` 在移动端浏览器 CPU 扛不住，桌面端正常。做移动端玻璃效果 → 用 `backdrop-filter: blur()` + 半透明边框，别走 SVG 滤镜路线。
 
 **核心思路**：不用 `backdrop-filter: blur()`，用 SVG `<filter>` 的 `<feTurbulence>` + `<feDisplacementMap>` 做真实的像素折射和边缘扭曲，模拟水滴/厚玻璃的物理光学效果。
 

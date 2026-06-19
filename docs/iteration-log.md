@@ -14,8 +14,16 @@
   - `src/core/app.js` — `isApiModel()` 分支到 `_dispatchApiTurn()`，复用 channelAdapter
   - claudecode runtime 清理：移除 HOME 隔离/`--bare`/`--settings`/反代集成，保留 Clawd 标记剥离 + 代理变量剥离 + `NO_PROXY`
 - **结果**：Opus 直调 API 首次消息即通。55api 请求可追踪。
-- **遗留**：`Completed.` 重复（dispatchApiTurn 的 onDone 和 stream-delivery 都触发了）；多轮上下文待从 session store 补齐。
-- **后续**：前端模型列表改为动态加载（`/api/models` + `loadModels()`），以后加模型只在 `model-routes.js` 加一行，侧边栏 + 设置页自动出现。
+- **遗留**：Opus 多轮上下文（messageStore 未接入）、工具调用能力（dream/diary/checkin）。
+
+### 后续修复（同日）
+
+- **DS 历史迁移**：动态模型加载后 localStorage key 变化（旧通用 key → 模型专属 key），`loadModels()` 中无条件迁移旧数据。
+- **Opus 文本缓冲**：SSE delta 不再逐字发送，改为按句子边界/80字缓冲后批量 push，消除碎片气泡 + 多余 Completed。
+- **系统消息过滤**：`prepared.provider === "system"` 时不走直调 API，防止 checkin 的 `{"action":"silent"}` 被当用户消息发给 55api。
+- **隧道自启**：cyberboss 启动时自动 `spawn cloudflared tunnel run`，不再手动拉隧道。
+- **模型列表动态化**：`/api/models` 端点 + `loadModels()` 前端，加新模型只改 `model-routes.js`，侧边栏/设置页自动出现。
+- **55api 503**：确认是上游分发通道不可用（"No available channel"），非本地 bug。
 
 ---
 

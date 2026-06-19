@@ -2110,6 +2110,267 @@ footer {
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
+
+/* ═══ PHONE HOME PAGE ═══ */
+#phone-home-page {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background-color: #e5e5e0;
+  flex-direction: column;
+  padding: calc(20px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+  overflow: hidden;
+  --ph-slate-dark: #1f1f1f;
+  --ph-slate-medium: #2d2d2d;
+  --ph-slate-light: #40403e;
+  --ph-cloud-dark: #5d6061;
+  --ph-cloud-medium: #919392;
+  --ph-cloud-light: #bfbfba;
+  --ph-ivory-dark: #e5e4df;
+  --ph-ivory-medium: #f0f0eb;
+  --ph-ivory-light: #fafaf7;
+  --ph-focus-blue: #5989b9;
+  --ph-focus-blue-alpha: rgba(89,137,185,0.15);
+  --ph-soft-blue-light: #a4c2e6;
+  --ph-terracotta: #cc7b5c;
+  --ph-terracotta-light: #d4a27f;
+  --ph-soft-shadow-out: 6px 6px 16px rgba(145,147,146,0.15), -6px -6px 16px rgba(255,255,255,0.8);
+  --ph-bezier: cubic-bezier(0.25,0.8,0.25,1);
+}
+#phone-home-page.show { display: flex; }
+#phone-home-page *,
+#phone-home-page *::before,
+#phone-home-page *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+}
+
+/* ── Canvas ── */
+#phone-home-canvas {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 3;
+}
+
+/* ── Content scroll ── */
+.ph-content {
+  flex: 1; display: flex; flex-direction: column;
+  overflow-y: auto; position: relative; z-index: 2;
+  scrollbar-width: none;
+}
+.ph-content::-webkit-scrollbar { display: none; }
+
+/* ── Back button ── */
+#phone-home-page .ph-back-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--ph-cloud-light); background: var(--ph-ivory-light);
+  font-size: 16px; cursor: pointer; color: var(--ph-slate-medium);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+#phone-home-page .ph-back-btn:hover { background: var(--ph-ivory-dark); }
+
+/* ── Timepiece ── */
+.ph-timepiece {
+  display: flex; flex-direction: column;
+  padding: 10px 4px 10px 0; margin-bottom: 20px; flex-shrink: 0;
+}
+.ph-timepiece .time-digit-container {
+  display: flex; overflow: hidden; height: 52px;
+}
+.ph-timepiece .time-char {
+  font-size: 52px; font-weight: 300; color: var(--ph-slate-dark);
+  letter-spacing: -1px; line-height: 52px;
+  display: inline-block; position: relative;
+}
+.time-char.changing { animation: ph-timeFlip 0.5s cubic-bezier(0.4,0,0.2,1) forwards; }
+@keyframes ph-timeFlip {
+  0%   { transform: translateY(0); opacity: 1; filter: blur(0px); }
+  45%  { transform: translateY(15px); opacity: 0; filter: blur(2px); }
+  50%  { transform: translateY(-15px); opacity: 0; filter: blur(2px); }
+  100% { transform: translateY(0); opacity: 1; filter: blur(0px); }
+}
+.ph-timepiece .date-row {
+  display: flex; gap: 6px; margin-top: 8px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+}
+.ph-timepiece .date-day { color: var(--ph-focus-blue); }
+.ph-timepiece .date-month-year {
+  color: var(--ph-focus-blue); position: relative;
+  display: inline-block; padding-bottom: 4px;
+}
+.ph-timepiece .date-month-year::after {
+  content: ''; position: absolute; left: 0; bottom: 0;
+  width: 100%; height: 2px; background-color: var(--ph-terracotta);
+  animation: ph-dateLine 4s var(--ph-bezier) infinite;
+}
+@keyframes ph-dateLine {
+  0%,100% { opacity: 0.7; transform: scaleX(0.95); }
+  50%     { opacity: 1; transform: scaleX(1); }
+}
+
+/* ── Widget row ── */
+.ph-widgets-row {
+  display: flex; gap: 16px; margin-bottom: 16px; flex-shrink: 0;
+}
+.ph-soft-card {
+  background-color: var(--ph-ivory-light); border-radius: 24px;
+  box-shadow: var(--ph-soft-shadow-out); padding: 16px;
+}
+
+/* ── Weather ── */
+.ph-widget-weather { flex: 1; display: flex; flex-direction: column; justify-content: space-between; align-items: center; min-height: 135px; cursor: pointer; transition: transform 0.2s; }
+.ph-widget-weather:active { transform: scale(0.97); }
+.ph-widget-calendar { cursor: pointer; transition: transform 0.2s; }
+.ph-widget-calendar:active { transform: scale(0.97); }
+.ph-widget-weather .weather-icon-wrap {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  color: var(--ph-focus-blue); animation: ph-floatIcon 6s ease-in-out infinite;
+}
+.ph-widget-weather .weather-icon-wrap svg .sun-core {
+  transform-origin: center; animation: ph-slowSpin 16s linear infinite;
+}
+@keyframes ph-floatIcon {
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-4px); }
+}
+@keyframes ph-slowSpin {
+  from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+}
+.ph-widget-weather .temp-num { font-size: 26px; font-weight: 600; color: var(--ph-focus-blue); }
+.ph-widget-weather .weather-status { font-size: 11px; color: var(--ph-cloud-dark); font-weight: 500; }
+
+/* ── Calendar widget ── */
+.ph-widget-calendar { flex: 1.8; display: flex; flex-direction: column; }
+.ph-widget-calendar .calendar-header {
+  display: flex; justify-content: space-between;
+  font-size: 10px; font-weight: 700; color: var(--ph-cloud-dark);
+  padding-bottom: 6px; border-bottom: 1px solid var(--ph-focus-blue-alpha); margin-bottom: 8px;
+}
+.ph-widget-calendar .calendar-grid {
+  display: grid; grid-template-columns: repeat(7,1fr);
+  gap: 4px; text-align: center; font-size: 10px; color: var(--ph-slate-light);
+}
+.ph-widget-calendar .grid-day-label { color: var(--ph-cloud-medium); font-weight: 700; }
+.ph-widget-calendar .day-cell.today {
+  background-color: var(--ph-terracotta); color: white;
+  border-radius: 50%; font-weight: 700; display: inline-block;
+}
+
+/* ── Todo widget ── */
+.ph-widget-todo { margin-bottom: 16px; flex-shrink: 0; }
+.ph-widget-todo .todo-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.ph-widget-todo .todo-title { font-size: 12px; font-weight: 700; color: var(--ph-slate-dark); }
+.ph-widget-todo .btn-add-todo {
+  width: 20px; height: 20px; border-radius: 50%;
+  background-color: var(--ph-focus-blue-alpha); color: var(--ph-focus-blue);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.ph-widget-todo .todo-item {
+  display: flex; align-items: center; padding: 8px 0;
+  border-bottom: 1px solid rgba(145,147,146,0.1);
+  font-size: 12px; color: var(--ph-slate-medium); cursor: pointer;
+}
+.ph-widget-todo .todo-checkbox {
+  width: 14px; height: 14px; border: 1.5px solid var(--ph-focus-blue);
+  border-radius: 4px; margin-right: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 9px; color: transparent;
+}
+.ph-widget-todo .todo-checkbox.checked { background-color: var(--ph-focus-blue); color: white; }
+.ph-widget-todo .todo-text { position: relative; }
+.ph-widget-todo .todo-item.completed .todo-text { color: var(--ph-cloud-medium); }
+.ph-widget-todo .todo-item.completed .todo-text::after {
+  content: ''; position: absolute; left: 0; top: 50%;
+  width: 100%; height: 1.5px; background-color: var(--ph-terracotta);
+}
+
+/* ── App grid ── */
+.ph-app-grid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 16px; margin-bottom: 20px; padding: 4px; flex-shrink: 0;
+}
+.ph-app-item {
+  display: flex; flex-direction: column; align-items: center; cursor: grab;
+}
+.ph-app-item.dragging { opacity: 0.3; transform: scale(1.1); }
+.ph-app-item.drag-over { transform: scale(0.95); }
+.ph-app-block {
+  width: 60px; height: 60px; background-color: var(--ph-ivory-light);
+  border-radius: 18px; box-shadow: var(--ph-soft-shadow-out);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ph-focus-blue); margin-bottom: 8px; pointer-events: none;
+}
+.ph-app-item[data-app-id='memory'] .ph-app-block {
+  background-color: var(--ph-terracotta); color: #ffffff;
+}
+.ph-app-label {
+  font-size: 10px; font-weight: 600; color: var(--ph-slate-light); pointer-events: none;
+}
+
+/* ── Dock bar ── */
+.ph-dock {
+  height: 76px; background-color: var(--ph-terracotta); border-radius: 24px;
+  display: flex; justify-content: center; align-items: center;
+  margin-top: auto; flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(204,123,92,0.3); position: relative;
+}
+.ph-dock-btn {
+  width: 48px; height: 48px; border-radius: 50%;
+  background-color: var(--ph-focus-blue);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(89,137,185,0.4);
+  position: relative; z-index: 5;
+  transition: transform 0.45s cubic-bezier(0.175,0.885,0.32,1.2);
+}
+.ph-dock-btn.pressing {
+  transform: scale(0.85) rotate(-135deg);
+  transition: transform 1.2s cubic-bezier(0.08,0.6,0.2,1);
+}
+.ph-dock-btn.jelly-bounce { animation: ph-jiggle 0.6s ease-out; }
+@keyframes ph-jiggle {
+  0%   { transform: scale(0.85) rotate(0deg); }
+  30%  { transform: scale(1.12,0.9) skewX(-4deg); }
+  50%  { transform: scale(0.93,1.05) skewX(2deg); }
+  70%  { transform: scale(1.02,0.98); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.ph-icon-svg {
+  width: 24px; height: 24px; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ── Slide transition ── */
+@keyframes ph-slideOutLeft {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-30%); opacity: 0.5; }
+}
+@keyframes ph-slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes ph-slideOutRight {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+@keyframes ph-slideInLeft {
+  from { transform: translateX(-30%); opacity: 0.5; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+#chat-page.slide-out { animation: ph-slideOutLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+#phone-home-page.slide-in { animation: ph-slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+#phone-home-page.slide-out { animation: ph-slideOutRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+#chat-page.slide-in { animation: ph-slideInLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+@media (max-width: 480px) {
+  #phone-home-page { padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) 14px; }
+  .ph-timepiece .time-char { font-size: 40px; }
+  .ph-timepiece .time-digit-container { height: 42px; }
+  .ph-widgets-row { gap: 10px; }
+  .ph-app-grid { gap: 10px; }
+  .ph-app-block { width: 50px; height: 50px; border-radius: 14px; }
+}
 }
 .mcp-action-log { max-height: 200px; overflow-y: auto; }
 .mcp-log-item {
