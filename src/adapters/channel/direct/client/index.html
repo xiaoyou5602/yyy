@@ -2602,26 +2602,37 @@ window.updateKe = function () {
 
   /* ── Public API: called by showPage ── */
   window.phInit = function() {
-    if (phInited) return;
-    phInited = true;
-    renderAppGrid();
-    updateClock();
-    renderCalWidget();
-    fetchWeather();
-    if (ctx) { resizeCanvas(); animParticles(); }
-    clockTimer = setInterval(updateClock, 1000);
-    var sb = document.getElementById('ph-star-btn');
-    if (sb) {
-      sb.addEventListener('mousedown', starDown); sb.addEventListener('mouseup', starUp);
-      sb.addEventListener('mouseleave', function() { sb.classList.remove('pressing'); });
-      sb.addEventListener('touchstart', starDown, {passive:true});
-      sb.addEventListener('touchend', starUp, {passive:true});
+    if (phInited) { console.log('[phInit] already inited, skip'); return; }
+    try {
+      console.log('[phInit] start');
+      phInited = true;
+      console.log('[phInit] renderAppGrid...');
+      renderAppGrid();
+      console.log('[phInit] updateClock...');
+      updateClock();
+      console.log('[phInit] renderCalWidget...');
+      renderCalWidget();
+      console.log('[phInit] fetchWeather...');
+      fetchWeather();
+      console.log('[phInit] canvas ctx:', !!ctx);
+      if (ctx) { resizeCanvas(); animParticles(); }
+      clockTimer = setInterval(updateClock, 1000);
+      var sb = document.getElementById('ph-star-btn');
+      if (sb) {
+        sb.addEventListener('mousedown', starDown); sb.addEventListener('mouseup', starUp);
+        sb.addEventListener('mouseleave', function() { sb.classList.remove('pressing'); });
+        sb.addEventListener('touchstart', starDown, {passive:true});
+        sb.addEventListener('touchend', starUp, {passive:true});
+      }
+      if (canvas) window.addEventListener('resize', resizeCanvas);
+      var ww = document.querySelector('#phone-home-page .ph-widget-weather');
+      if (ww) ww.addEventListener('click', function(e) { e.stopPropagation(); window.phSwitchCity(); });
+      var cw = document.querySelector('#phone-home-page .ph-widget-calendar');
+      if (cw) cw.addEventListener('click', function(e) { e.stopPropagation(); showPage('calendar'); });
+      console.log('[phInit] done. grid children:', document.getElementById('ph-app-grid')?.children.length, 'time HTML:', document.getElementById('ph-time-display')?.innerHTML?.length||0, 'cal children:', document.getElementById('ph-cal-grid')?.children.length);
+    } catch(e) {
+      console.error('[phInit] CRASH:', e.message, e.stack);
     }
-    if (canvas) window.addEventListener('resize', resizeCanvas);
-    var ww = document.querySelector('#phone-home-page .ph-widget-weather');
-    if (ww) ww.addEventListener('click', function(e) { e.stopPropagation(); window.phSwitchCity(); });
-    var cw = document.querySelector('#phone-home-page .ph-widget-calendar');
-    if (cw) cw.addEventListener('click', function(e) { e.stopPropagation(); showPage('calendar'); });
   };
 
   window.phDestroy = function() {
