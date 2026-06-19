@@ -748,6 +748,7 @@ const mcpPage = document.getElementById("mcp-page");
 const bookmarksPage = document.getElementById("bookmarks-page");
 var gamesPage = document.getElementById("games-page");
 var phoneHomePage = document.getElementById("phone-home-page");
+var phoneHomeTimer = null;
 const messagesEl = document.getElementById("messages");
 const typingEl = document.getElementById("typing-indicator");
 const inputEl = document.getElementById("input");
@@ -822,12 +823,15 @@ function showPage(page) {
   }
 
   /* ── Phone home with slide transition ── */
+  clearTimeout(phoneHomeTimer);
   if (page === "phone-home" && prevPage === "chat") {
     chatPage.classList.remove("slide-in");
     chatPage.classList.add("slide-out");
     phoneHomePage.classList.add("show", "slide-in");
     if (typeof window.phInit === 'function') window.phInit();
-    setTimeout(function() {
+    var targetPage = page;
+    phoneHomeTimer = setTimeout(function() {
+      if (currentPage !== targetPage) return;
       chatPage.classList.remove("show", "slide-out");
       phoneHomePage.classList.remove("slide-in");
     }, 360);
@@ -837,7 +841,9 @@ function showPage(page) {
     chatPage.classList.remove("slide-out");
     phoneHomePage.classList.add("slide-out");
     chatPage.classList.add("show", "slide-in");
-    setTimeout(function() {
+    var targetPage2 = page;
+    phoneHomeTimer = setTimeout(function() {
+      if (currentPage !== targetPage2) return;
       phoneHomePage.classList.remove("show", "slide-out");
       chatPage.classList.remove("slide-in");
     }, 360);

@@ -2110,6 +2110,7 @@ footer {
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
+}
 
 /* ═══ PHONE HOME PAGE ═══ */
 #phone-home-page {
@@ -2370,7 +2371,6 @@ footer {
   .ph-widgets-row { gap: 10px; }
   .ph-app-grid { gap: 10px; }
   .ph-app-block { width: 50px; height: 50px; border-radius: 14px; }
-}
 }
 .mcp-action-log { max-height: 200px; overflow-y: auto; }
 .mcp-log-item {
