@@ -549,8 +549,9 @@ class CyberbossApp {
         : sessionModel;
 
       // 分支路由：type="api" 直调 API，type="cli" 走 Claude CLI
+      // 系统消息（checkin 等）不走直调——它们需要 CLI 协议理解 silent/resume 等
       const modelKey = resolveModelKey(sessionModel);
-      if (isApiModel(modelKey)) {
+      if (isApiModel(modelKey) && prepared.provider !== "system") {
         return await this._dispatchApiTurn({
           bindingKey, workspaceRoot, prepared, pendingScopeKey,
           modelKey, sessionModel, contextModel,
