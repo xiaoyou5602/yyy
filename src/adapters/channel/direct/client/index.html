@@ -563,8 +563,6 @@
 <div id="phone-home-page">
   <canvas id="phone-home-canvas"></canvas>
   <div class="ph-content">
-    <button class="ph-back-btn" id="ph-back-btn" title="返回聊天">←</button>
-
     <div class="ph-timepiece" id="ph-timepiece">
       <div class="time-digit-container" id="ph-time-display"></div>
       <div class="date-row">
@@ -579,13 +577,13 @@
           <svg class="ph-icon-svg" style="width:32px;height:32px" viewBox="0 0 24 24">
             <path class="sun-core" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"/>
             <circle cx="12" cy="12" r="4" fill="currentColor"/>
-            <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25" stroke="var(--ph-focus-blue)" fill="none" stroke-width="2"/>
+            <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25" style="stroke:var(--ph-focus-blue);fill:none;stroke-width:2"/>
           </svg>
         </div>
         <div class="weather-info">
+          <div class="weather-city" style="font-size:9px;color:var(--ph-cloud-medium);margin-bottom:2px;">杭州萧山区</div>
           <div class="temp-num">--°C</div>
           <div class="weather-status">加载中…</div>
-          <div class="weather-city" style="font-size:9px;color:var(--ph-cloud-medium);margin-top:2px;">杭州萧山区</div>
         </div>
       </div>
 
@@ -866,6 +864,28 @@ document.getElementById("back-btn").addEventListener("click", () => showPage("ch
 document.getElementById("med-back-btn").addEventListener("click", () => { stopMeditation(); showPage("chat"); });
 document.getElementById("graf-back-btn").addEventListener("click", () => showPage("chat"));
 document.getElementById("games-back-btn").addEventListener("click", () => showPage("chat"));
+
+/* ── Chat swipe → phone-home ── */
+(function() {
+  var startX = 0, startY = 0;
+  chatPage.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  }, {passive: true});
+  chatPage.addEventListener('touchend', function(e) {
+    var dx = startX - e.changedTouches[0].clientX;
+    var dy = Math.abs(startY - e.changedTouches[0].clientY);
+    if (dx > 60 && dy < dx * 0.6 && currentPage === 'chat') showPage('phone-home');
+  });
+  // Also allow swipe on phone-home to go back to chat
+  phoneHomePage.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  }, {passive: true});
+  phoneHomePage.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = Math.abs(startY - e.changedTouches[0].clientY);
+    if (dx > 60 && dy < dx * 0.6 && currentPage === 'phone-home') showPage('chat');
+  });
+})();
 
 /* ── settings ── */
 let settings = { nickname: "", wallpaper: "", model: "" };
@@ -2629,6 +2649,7 @@ window.updateKe = function () {
       if (ww) ww.addEventListener('click', function(e) { e.stopPropagation(); window.phSwitchCity(); });
       var cw = document.querySelector('#phone-home-page .ph-widget-calendar');
       if (cw) cw.addEventListener('click', function(e) { e.stopPropagation(); showPage('calendar'); });
+      initTodoLongPress();
       console.log('[phInit] done. grid children:', document.getElementById('ph-app-grid')?.children.length, 'time HTML:', document.getElementById('ph-time-display')?.innerHTML?.length||0, 'cal children:', document.getElementById('ph-cal-grid')?.children.length);
     } catch(e) {
       console.error('[phInit] CRASH:', e.message, e.stack);
@@ -2658,13 +2679,56 @@ window.updateKe = function () {
     var li = document.createElement('li');
     li.className = 'todo-item';
     li.onclick = function() { window.phToggleTodo(li); };
-    li.innerHTML = '<div class="todo-checkbox"></div><span class="todo-text">New item</span>';
+    li.innerHTML = '<div class="todo-checkbox"></div><span class="todo-text" contenteditable="false">New item</span>';
+    addLongPress(li);
     list.appendChild(li);
   };
-
-  /* ── Back button ── */
-  var backBtn = document.getElementById('ph-back-btn');
-  if (backBtn) backBtn.addEventListener('click', function() { showPage('chat'); });
+  function addLongPress(li) {
+    var timer;
+    li.addEventListener('touchstart', function(e) {
+      timer = setTimeout(function() { showTodoMenu(li, e); }, 600);
+    }, {passive: true});
+    li.addEventListener('touchend', function() { clearTimeout(timer); });
+    li.addEventListener('touchmove', function() { clearTimeout(timer); });
+  }
+  function showTodoMenu(li, e) {
+    // Remove existing menu
+    var old = document.querySelector('.ph-todo-menu');
+    if (old) old.remove();
+    var menu = document.createElement('div');
+    menu.className = 'ph-todo-menu';
+    menu.innerHTML = '<button class="ph-todo-menu-btn edit">✎ 编辑</button><button class="ph-todo-menu-btn delete">✕ 删除</button>';
+    menu.style.cssText = 'position:absolute;z-index:99;background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:4px;display:flex;gap:4px;';
+    var rect = li.getBoundingClientRect();
+    var pageRect = document.getElementById('phone-home-page').getBoundingClientRect();
+    menu.style.left = (rect.left - pageRect.left + 10) + 'px';
+    menu.style.top = (rect.top - pageRect.top - 40) + 'px';
+    li.style.position = 'relative';
+    li.appendChild(menu);
+    menu.querySelector('.edit').onclick = function(e) {
+      e.stopPropagation();
+      var span = li.querySelector('.todo-text');
+      span.contentEditable = 'true'; span.focus();
+      span.addEventListener('blur', function() { span.contentEditable = 'false'; });
+      menu.remove();
+    };
+    menu.querySelector('.delete').onclick = function(e) {
+      e.stopPropagation();
+      li.style.transition = 'opacity 0.2s'; li.style.opacity = '0';
+      setTimeout(function() { li.remove(); }, 200);
+      menu.remove();
+    };
+    // Dismiss on tap elsewhere
+    setTimeout(function() {
+      document.addEventListener('click', function dismiss() { menu.remove(); document.removeEventListener('click', dismiss); }, {once: true});
+    }, 50);
+  }
+  // Add long-press to existing todo items on init
+  var phTodoInitDone = false;
+  function initTodoLongPress() {
+    if (phTodoInitDone) return; phTodoInitDone = true;
+    document.querySelectorAll('#ph-todo-list .todo-item').forEach(function(li) { addLongPress(li); });
+  }
 
   /* ── Init immediately if already shown (edge case) ── */
   if (page && page.classList.contains('show')) window.phInit();

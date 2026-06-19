@@ -2119,7 +2119,7 @@ footer {
   flex-direction: column;
   align-items: center;
   min-height: 0;
-  padding: calc(20px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+  padding: calc(var(--ph-padding-top) + env(safe-area-inset-top)) var(--ph-padding-x) calc(var(--ph-padding-bottom) + env(safe-area-inset-bottom)) var(--ph-padding-x);
   overflow: hidden;
   --ph-slate-dark: #1f1f1f;
   --ph-slate-medium: #2d2d2d;
@@ -2137,6 +2137,9 @@ footer {
   --ph-terracotta-light: #d4a27f;
   --ph-soft-shadow-out: 6px 6px 16px rgba(145,147,146,0.15), -6px -6px 16px rgba(255,255,255,0.8);
   --ph-bezier: cubic-bezier(0.25,0.8,0.25,1);
+  --ph-padding-top: 20px;
+  --ph-padding-x: 20px;
+  --ph-padding-bottom: 16px;
 }
 #phone-home-page.show { display: flex; }
 #phone-home-page *,
@@ -2161,19 +2164,9 @@ footer {
 }
 .ph-content::-webkit-scrollbar { display: none; }
 
-/* ── Back button ── */
-#phone-home-page .ph-back-btn {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 1px solid var(--ph-cloud-light); background: var(--ph-ivory-light);
-  font-size: 16px; cursor: pointer; color: var(--ph-slate-medium);
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-#phone-home-page .ph-back-btn:hover { background: var(--ph-ivory-dark); }
-
 /* ── Timepiece ── */
 .ph-timepiece {
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; align-items: flex-end;
   padding: 10px 4px 10px 0; margin-bottom: 20px; flex-shrink: 0;
 }
 .ph-timepiece .time-digit-container {
@@ -2320,6 +2313,7 @@ footer {
 .ph-dock-btn {
   width: 48px; height: 48px; border-radius: 50%;
   background-color: var(--ph-focus-blue);
+  user-select: none; -webkit-user-select: none;
   display: flex; align-items: center; justify-content: center;
   color: #ffffff; cursor: pointer;
   box-shadow: 0 4px 12px rgba(89,137,185,0.4);

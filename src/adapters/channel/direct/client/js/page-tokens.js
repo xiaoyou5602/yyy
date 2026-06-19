@@ -226,8 +226,11 @@ window._pageTokens = {
       { key:'--ph-slate-dark',   label:'深石板色', section:'色彩', type:'color', default:'#1f1f1f' },
       { key:'--ph-focus-blue',   label:'焦点蓝',   section:'色彩', type:'color', default:'#5989b9' },
       { key:'--ph-terracotta',   label:'陶土色',   section:'色彩', type:'color', default:'#cc7b5c' },
-      { key:'--ph-ivory-light',  label:'象牙白',   section:'色彩', type:'color', default:'#fafaf7' },
-      { key:'--ph-ivory-medium', label:'象牙中',   section:'色彩', type:'color', default:'#f0f0eb' },
+      { key:'--ph-ivory-light',  label:'象牙白',     section:'色彩', type:'color', default:'#fafaf7' },
+      { key:'--ph-ivory-medium', label:'象牙中',     section:'色彩', type:'color', default:'#f0f0eb' },
+      { key:'--ph-padding-top',  label:'页面上内距', section:'间距', type:'range', min:0, max:60, step:2, unit:'px', default:20 },
+      { key:'--ph-padding-x',    label:'页面左右距', section:'间距', type:'range', min:6, max:48, step:2, unit:'px', default:20 },
+      { key:'--ph-padding-bottom',label:'页面下内距',section:'间距', type:'range', min:0, max:60, step:2, unit:'px', default:16 },
     ]
   },
 
