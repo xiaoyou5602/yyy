@@ -25,9 +25,9 @@ npm run safe
 # 普通启动
 npm start
 
-# 重启：先杀再起
+# 重启：先杀再起（必须用守护模式，崩了自动拉起）
 powershell -ExecutionPolicy Bypass -File scripts/kill-bridge.ps1
-npm start
+npm run safe
 ```
 
 启动后在桌宠面板看 `youzi` session —— 它在，app+网页就在。
