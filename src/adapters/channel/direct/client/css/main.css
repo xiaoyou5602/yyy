@@ -3119,3 +3119,302 @@ body.selecting .msg.you::before { display: none; }
 
 .thinking-inline-body.thinking-collapsed { display: none; }
 
+/* ═══ Conversation Memory (phone-home) ═══ */
+
+/* -- List page -- */
+#conversation-list-page {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+#conversation-list-page.show {
+  display: flex;
+}
+
+#conversation-list-page header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light, #e5e5ea);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#conversation-list-page header h1 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text, #1c1c1e);
+}
+
+.conv-list-search-wrap {
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+.conv-list-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-light, #e5e5ea);
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--surface-secondary, #f2f2f7);
+  color: var(--text, #1c1c1e);
+  outline: none;
+  box-sizing: border-box;
+}
+.conv-list-search-input:focus {
+  border-color: var(--ph-focus-blue, #007aff);
+  background: var(--surface, #fff);
+}
+
+.conv-list-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conv-card {
+  background: var(--surface, #fff);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--border-light, #e5e5ea);
+}
+.conv-card:active {
+  transform: scale(0.98);
+  background: var(--surface-secondary, #f2f2f7);
+}
+
+.conv-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.conv-card-topic {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #1c1c1e);
+}
+.conv-card-count {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+  background: var(--surface-secondary, #f2f2f7);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.conv-thinking-badge {
+  font-size: 13px;
+}
+
+.conv-card-date {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+  margin-bottom: 6px;
+}
+.conv-card-preview {
+  font-size: 13px;
+  color: var(--text-tertiary, #aeaeb2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -- Detail page -- */
+#conversation-detail-page {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+#conversation-detail-page.show {
+  display: flex;
+}
+
+#conversation-detail-page header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light, #e5e5ea);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#conversation-detail-page header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text, #1c1c1e);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--ph-focus-blue, #007aff);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.back-btn:hover {
+  background: var(--surface-secondary, #f2f2f7);
+}
+
+.conv-detail-search-btn {
+  background: none;
+  border: none;
+  color: var(--ph-focus-blue, #007aff);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.conv-detail-search-btn:hover {
+  background: var(--surface-secondary, #f2f2f7);
+}
+
+.conv-detail-search-bar {
+  padding: 8px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-light, #e5e5ea);
+}
+
+/* Message area */
+.conv-msg-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Thinking block in messages */
+.conv-thinking-wrap {
+  margin-top: 8px;
+  border-top: 1px dashed var(--border-light, #e5e5ea);
+  padding-top: 6px;
+}
+.conv-thinking-toggle {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+  cursor: pointer;
+  padding: 2px 0;
+}
+.conv-thinking-toggle:hover {
+  color: var(--ph-focus-blue, #007aff);
+}
+.conv-thinking-body {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-secondary, #f2f2f7);
+  border-radius: 8px;
+  padding: 8px 10px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Highlight animation */
+.conv-msg-highlight {
+  animation: conv-highlight-pulse 0.6s ease-in-out 3;
+}
+@keyframes conv-highlight-pulse {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(0, 122, 255, 0.12); }
+}
+
+/* -- Global search overlay -- */
+.conv-global-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+}
+.conv-global-search-overlay.show {
+  display: flex;
+}
+
+.conv-global-search-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.conv-global-search-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light, #e5e5ea);
+  flex-shrink: 0;
+}
+.conv-global-search-header input {
+  flex: 1;
+}
+
+.conv-global-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conv-search-result-item {
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border: 1px solid var(--border-light, #e5e5ea);
+  transition: background 0.15s;
+}
+.conv-search-result-item:active {
+  background: var(--surface-secondary, #f2f2f7);
+}
+
+.conv-search-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.conv-search-result-topic {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ph-focus-blue, #007aff);
+}
+.conv-search-result-date {
+  font-size: 11px;
+  color: var(--text-secondary, #8e8e93);
+  flex: 1;
+}
+.conv-search-thinking-badge {
+  font-size: 10px;
+  background: #f0f0f5;
+  color: var(--text-secondary, #8e8e93);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+.conv-search-result-snippet {
+  font-size: 13px;
+  color: var(--text, #1c1c1e);
+  line-height: 1.4;
+}
+

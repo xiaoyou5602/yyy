@@ -630,6 +630,51 @@
   </div>
 </div>
 
+<!-- ═══ CONVERSATION LIST PAGE (phone-home memory) ═══ -->
+<div id="conversation-list-page" style="display:none">
+  <header>
+    <button class="back-btn" onclick="showPage('phone-home')" title="返回小手机">&#8592;</button>
+    <h1>记忆库</h1>
+    <div style="flex:1"></div>
+  </header>
+  <div class="conv-list-search-wrap">
+    <input type="text" class="conv-list-search-input" placeholder="搜索会话…" oninput="window.filterConvList(this.value)">
+  </div>
+  <div class="conv-list-grid" id="conv-list-grid">
+    <div class="empty-state">加载中…</div>
+  </div>
+</div>
+
+<!-- ═══ CONVERSATION DETAIL PAGE ═══ -->
+<div id="conversation-detail-page" style="display:none">
+  <header>
+    <button class="back-btn" onclick="window.closeConversationDetail()" title="返回会话列表">&#8592;</button>
+    <h1 id="conv-detail-title">会话</h1>
+    <button class="conv-detail-search-btn" onclick="window.toggleConvGlobalSearch()" title="搜索全部会话">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+  </header>
+  <div class="conv-detail-search-bar" id="conv-detail-search-bar" style="display:none">
+    <input type="text" class="conv-list-search-input" id="conv-detail-search" placeholder="在当前会话中搜索…" oninput="window.searchInConversation(this.value)">
+  </div>
+  <div class="conv-msg-area" id="conv-msg-area">
+    <div class="empty-state">加载中…</div>
+  </div>
+
+  <!-- Global search overlay -->
+  <div class="conv-global-search-overlay" id="conv-global-search-overlay">
+    <div class="conv-global-search-inner">
+      <div class="conv-global-search-header">
+        <input type="text" class="conv-list-search-input" id="conv-global-search-input" placeholder="搜索全部聊天记录…" onkeydown="if(event.key==='Enter')window.searchAllConversations(this.value)">
+        <button class="back-btn" onclick="window.toggleConvGlobalSearch()">&#10005;</button>
+      </div>
+      <div class="conv-global-search-results" id="conv-global-search-results"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ BOOKMARKS PAGE ═══ -->
 <div id="bookmarks-page" style="display:none">
   <header>
@@ -750,6 +795,8 @@ const mcpPage = document.getElementById("mcp-page");
 const bookmarksPage = document.getElementById("bookmarks-page");
 var gamesPage = document.getElementById("games-page");
 var phoneHomePage = document.getElementById("phone-home-page");
+const conversationListPage = document.getElementById("conversation-list-page");
+const conversationDetailPage = document.getElementById("conversation-detail-page");
 var phoneHomeTimer = null;
 const messagesEl = document.getElementById("messages");
 const typingEl = document.getElementById("typing-indicator");
@@ -810,6 +857,14 @@ function showPage(page) {
     renderBookmarksList();
   } else {
     bookmarksPage.style.display = "none";
+  }
+  conversationListPage.classList.toggle("show", page === "conversation-list");
+  if (page === "conversation-list") {
+    if (typeof window.showConversationList === "function") window.showConversationList();
+  }
+  conversationDetailPage.classList.toggle("show", page === "conversation-detail");
+  if (page === "conversation-detail") {
+    if (typeof window.initConvScroll === "function") window.initConvScroll();
   }
   if (page === "memory") {
     if (window._memoryTab) { memoryTab = window._memoryTab; window._memoryTab = null; }
@@ -2414,6 +2469,7 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
+<script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->
 <script>
@@ -2480,7 +2536,7 @@ window.updateKe = function () {
 
   /* ── App grid ── */
   var APP_GRID = [
-    { id:'memory', label:'记忆库', nav:'memory', svg:'<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-4.12 2.5 2.5 0 0 1 0-4.12A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-4.12 2.5 2.5 0 0 0 0-4.12A2.5 2.5 0 0 0 14.5 2Z"/>' },
+    { id:'memory', label:'记忆库', nav:'conversation-list', svg:'<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-4.12 2.5 2.5 0 0 1 0-4.12A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-4.12 2.5 2.5 0 0 0 0-4.12A2.5 2.5 0 0 0 14.5 2Z"/>' },
     { id:'chat', label:'聊天', nav:'chat', svg:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
     { id:'graffiti', label:'涂鸦', nav:'graffiti', svg:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' },
     { id:'meditation', label:'冥想', nav:'meditation', svg:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>' }
