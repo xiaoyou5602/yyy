@@ -27,7 +27,8 @@ $crashWindow = 300  # 5 minutes
 $maxDelay = 60
 $restartHistory = @()
 
-# cloudflared is now managed by Windows Service — not by this guardian
+# cloudflared is managed by this guardian since Windows Service was abandoned
+# (LocalSystem can't read user-profile config.yml)
 
 # Check if port 9726 is already listening
 function Test-CyberbossAlive {
@@ -35,6 +36,32 @@ function Test-CyberbossAlive {
     try {
         $conn = (Get-NetTCPConnection -LocalPort 9726 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" })
         if ($conn) { $alive = $true }
+    } catch {}
+    return $alive
+}
+
+function Start-Cloudflared {
+    $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
+    if (-not (Test-Path $cfExe)) {
+        Write-Host "[guardian] cloudflared.exe not found at $cfExe"
+        return
+    }
+    # Kill any existing cloudflared instances first (prevents zombie pile-up)
+    $existing = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
+    if ($existing) {
+        $existing | Stop-Process -Force
+        Write-Host "[guardian] Killed $($existing.Count) old cloudflared instance(s) before start"
+        Start-Sleep -Seconds 2
+    }
+    Write-Host "[guardian] Starting cloudflared tunnel..."
+    Start-Process -FilePath $cfExe -ArgumentList "tunnel run ke-tunnel" -WindowStyle Hidden
+}
+
+function Test-CloudflaredAlive {
+    $alive = $false
+    try {
+        $proc = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
+        if ($proc) { $alive = $true }
     } catch {}
     return $alive
 }
@@ -53,6 +80,11 @@ while ($true) {
                 if (Test-Path $killZombiesScript) {
                     & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
                 }
+            }
+            # Keep cloudflared alive too
+            if (-not (Test-CloudflaredAlive)) {
+                Write-Host "[guardian] cloudflared is down. Restarting..."
+                Start-Cloudflared
             }
         }
         Write-Host "[guardian] cyberboss died. Restarting..."
@@ -88,7 +120,13 @@ while ($true) {
         $delay = 5
     }
 
-    Write-Host "[guardian] Starting cyberboss... (restart #$restartCount, recent crashes=$($restartHistory.Count))"
+    # Ensure cloudflared is running before starting cyberboss
+if (-not (Test-CloudflaredAlive)) {
+    Write-Host "[guardian] cloudflared not running. Starting..."
+    Start-Cloudflared
+}
+
+Write-Host "[guardian] Starting cyberboss... (restart #$restartCount, recent crashes=$($restartHistory.Count))"
     $startedAt = Get-Date
     $process = Start-Process -FilePath "node" -ArgumentList "./bin/cyberboss.js start" -PassThru -NoNewWindow -Wait
 
