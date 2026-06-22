@@ -4,6 +4,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const { createMessageStore } = require("../shared/message-store");
 const { resolveModelKey, modelToDisplayName, ALL_MODEL_KEYS } = require("../../../core/config");
+const { parseArchive, combineConversations, getConversationMessages, searchMessages, ARCHIVE_BASE } = require("../../../services/chat-archive-parser");
 
 function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir, memoryDir, stateDir }) {
   let wss = null;
@@ -20,6 +21,10 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
   };
 
   const messageStore = stateDir ? createMessageStore(stateDir) : null;
+
+  // ── Chat archive parser cache ──
+  const archiveCachePath = path.join(stateDir, "chat-archives-parsed.json");
+  let archiveParsed = parseArchive(ARCHIVE_BASE, archiveCachePath);
 
   const serverInstance = http.createServer((req, res) => {
     const urlPath = decodeURIComponent(req.url.split("?")[0]);
@@ -81,6 +86,102 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
         const results = searchTranscripts(q);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ results }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // ── API: conversations (chat archive memory) ──
+
+    // GET /api/conversations — 会话列表
+    if (urlPath === "/api/conversations" && req.method === "GET") {
+      try {
+        const conversations = combineConversations(archiveParsed);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ conversations }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // GET /api/conversations/search — 搜索消息
+    if (urlPath === "/api/conversations/search" && req.method === "GET") {
+      try {
+        const q = (query.q || "").trim();
+        const date = query.date || "";
+        if (!q || q.length < 1) {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ results: [] }));
+          return;
+        }
+        const results = searchMessages(archiveParsed, q, date || undefined);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ results }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/conversations/refresh — 强制刷新缓存（必须在正则路由之前）
+    if (urlPath === "/api/conversations/refresh" && req.method === "POST") {
+      try {
+        try { fs.unlinkSync(archiveCachePath); } catch {}
+        archiveParsed = parseArchive(ARCHIVE_BASE, archiveCachePath);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, conversations: combineConversations(archiveParsed).length }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // GET /api/conversations/:id/messages/:messageId — 单条消息定位（必须在 /:id 之前）
+    const convMsgMatch = urlPath.match(/^\/api\/conversations\/([^/]+)\/messages\/([^/]+)$/);
+    if (convMsgMatch && req.method === "GET") {
+      try {
+        const convId = decodeURIComponent(convMsgMatch[1]);
+        const msgId = decodeURIComponent(convMsgMatch[2]);
+        let found = null;
+        for (const [, fileData] of Object.entries(archiveParsed.files)) {
+          const msg = fileData.messages.find(m => m.id === msgId);
+          if (msg) { found = msg; break; }
+        }
+        if (!found) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: "Message not found" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ message: found }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // GET /api/conversations/:id — 会话消息（懒加载，排除 search/refresh）
+    const convMatch = urlPath.match(/^\/api\/conversations\/([^/]+)$/);
+    if (convMatch && convMatch[1] !== "search" && convMatch[1] !== "refresh" && req.method === "GET") {
+      try {
+        const convId = decodeURIComponent(convMatch[1]);
+        const before = query.before || "";
+        const limit = Math.min(Number.parseInt(query.limit, 10) || 80, 200);
+        const result = getConversationMessages(archiveParsed, convId, before || undefined, limit);
+        if (!result) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: "Conversation not found" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(500);
         res.end(JSON.stringify({ error: err.message }));
