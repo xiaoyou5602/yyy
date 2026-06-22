@@ -17,7 +17,6 @@
   // ── Session list ──
 
   window.showConversationList = async function () {
-    showPage("conversation-list");
     const grid = document.getElementById("conv-list-grid");
     if (!grid) return;
     grid.innerHTML = '<div class="empty-state">加载中…</div>';
@@ -316,8 +315,6 @@
   // ── Detail page back button ──
   window.closeConversationDetail = function () {
     showPage("conversation-list");
-    // Refresh list if needed
-    window.showConversationList();
   };
 
   // Init scroll detection on first detail open
