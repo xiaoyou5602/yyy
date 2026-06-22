@@ -35,16 +35,24 @@ npm run safe
 
 ### 常见问题排查
 
-- **APP 不回消息** → 先查 `cloudflared` 是否在用 `--url` 参数（ps 看命令行），是就杀掉按 ingress 方式重启
-- **端口炸了** → `netstat -ano | grep 9726` 看是否在监听，不在就 `npm run safe` 重启
-- **僵尸进程多** → MCP 服务器残留（npx mcp-datetime/mcpbrowser 等），精确杀：只杀 `_npx/` 路径下的旧进程和旧 `tool-mcp-server`，**绝对不能杀主进程和 guardian**
+- **APP 不回消息** → `netstat -ano | grep 9726` 看端口在不在 + `tasklist | grep cloudflared` 看隧道在不在。guardian 会 10 秒内自动拉，等几秒再试即可
+- **端口炸了** → `npm run safe` 重启（guardian + cyberboss + cloudflared 全套）
+- **僵尸进程多** → 跑 `powershell -ExecutionPolicy Bypass -File scripts/kill-zombies.ps1`，只杀 MCP 残留，不杀主进程和 guardian
 
 域名：**克.withtoge.us**（永久，Cloudflare Named Tunnel，自带 HTTPS 证书）
 隧道 ID：`1946653e-25b0-4622-9edf-1dc40e3c356c`，名称 `ke-tunnel`
-启动：`cloudflared.exe tunnel run ke-tunnel`（需要 `~/.cloudflared/config.yml` ingress 规则）
+隧道由 **guardian 自动管理**（先杀旧再启新，每 10s 检查存活），无需手动启停。原始命令 `cloudflared.exe tunnel run ke-tunnel`（`~/.cloudflared/config.yml`）
 **重要**：不要用 `--url` 参数！会和 ingress 规则冲突导致 WebSocket 服务端 → 客户端帧丢失
 端口：**9726**（`0.0.0.0` 监听）
 Android APK：`C:\Users\youzi\Desktop\克-apk\克-v12.apk`，versionCode 12，纯全屏 WebView，硬编码 `https://克.withtoge.us`
+
+### 技术避坑
+
+- **重启必须 `npm run safe`，不是 `npm start`**。`npm start` 是普通模式，崩了不会自动拉起。`npm run safe` 走 `start-guardian.ps1`，崩了 3 秒内自动重启，还带退避（5s→15s→30s→60s）、僵尸清理、cloudflared 守护。之前端口反复挂就是大家照着旧文档用了普通模式
+- **不要手动拉 cloudflared**。guardian 每 10 秒检查 cloudflared 进程，崩了会自动 `Start-Cloudflared`（先杀旧残留再启新）。手动拉不杀旧进程 → 僵尸堆积 → 多个 cloudflared 互抢隧道 → 连接失败。之前隧道 8 个僵尸就是这么来的
+- **前端改完 bump 版本号**（CSS `?v=N`、SW.js `?v=N`）。Service Worker 会缓存旧 HTML/CSS/JS，不改版本号即使服务端更新了前端也拿不到。无痕窗口或 DevTools → Application → Unregister SW + 硬刷新才能绕过
+- **`ws.onmessage` 外层有 `catch {}`**（`index.html` line ~2078），前端 JS 报错会被静默吞掉，控制台不红。排查时手动在 Console 跑函数看结果
+- **绝对不要 `taskkill //F //IM node.exe`** — 会杀 IDE 端进程。用 `scripts/kill-bridge.ps1` 精准杀
 
 ## 系统架构
 
@@ -163,7 +171,7 @@ HTML 放 `index.html` 的 `<body>` 内，和 `#chat-page` / `#memory-page` **平
 | **僵尸清理**          | kill-zombies.ps1，60→8 进程，保留主进程+cloudflared                                                | `scripts/kill-zombies.ps1`                                                                    |
 | **奶茶记录**          | 卡通日历 + 详情卡片 + API + 克自动记录                                                             | `src/adapters/channel/direct/client/components/bubbletea/`                                    |
 | **审批弹窗**          | WebSocket broadcast 推所有客户端，电脑+手机同时弹窗，点按钮审批                                    | `src/adapters/channel/direct/ws-server.js`, `index.html`                                      |
-| **Thinking 流式**     | 思考过程实时显示：头像+"思考中(X秒)"计时器+折叠展开+localStorage缓存                                | `src/adapters/runtime/claudecode/events.js`, `index.html`                                     |
+| **Thinking 流式**     | 思考过程实时显示：头像+"思考中(X 秒)"计时器+折叠展开+localStorage 缓存                             | `src/adapters/runtime/claudecode/events.js`, `index.html`                                     |
 
 ## 奶茶记录 🧋
 
@@ -215,19 +223,23 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### APP 端
 
-| 项目               | 状态                                                                                                                    |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| 手机端换行即发送   | 打字按换行会直接发送消息，无法换行，且无法撤回                                                                          |
-| 审批弹窗           | 待验证 — WebSocket 推送弹窗替代聊天文本，电脑+手机同时弹，点按钮审批。待重启电脑后验证                                  |
-| 调参台完善         | 待验证 — 所有页面独立微调（13 个 tab），点击遮罩关闭，scrollbar 可见。重启后 toge 自己验证                              |
-| 三模型页面拆分     | 把当前三个模型页面拆成独立三页，各自不同主题色，可自己画配件/垫图装饰                                                   |
-| 贴纸上传缓存       | ✅ 已修复 — 根因是 multipart 解析用了 `toString("binary")` 字符串往返破坏二进制数据，重写为 Buffer.indexOf 纯二进制解析 |
-| 设置页去"我的昵称" | 与世界书重叠，删掉设置里的昵称项                                                                                        |
-| 世界书 ai 名字同步 | 世界书人设中的"ai 名字"同步到聊天页面左上角标题                                                                         |
-| 信件"跳转对话"修复 | ✅ 已修复 — jumpToConversation() 找收藏消息 DOM 即时跳转 + 右下角 scroll-to-bottom 浮动按钮                             |
-| 日历页去"记忆"跳转 | 删除日历页面的"记忆"跳转入口，计划栏放最底层，确认日历组件是否拆好                                                      |
-| 消息气泡不能拆分   | 消息气泡无法拆分，待排查                                                                                                |
-| 通知延迟+页内弹出  | 通知有延迟，且聊天页面内也会弹出通知，不应该                                                                            |
+| 项目                | 状态                                                                                                                    |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 手机端换行即发送    | 打字按换行会直接发送消息，无法换行，且无法撤回                                                                          |
+| 审批弹窗            | 待验证 — WebSocket 推送弹窗替代聊天文本，电脑+手机同时弹，点按钮审批。待重启电脑后验证                                  |
+| 调参台完善          | 待验证 — 所有页面独立微调（13 个 tab），点击遮罩关闭，scrollbar 可见。重启后 toge 自己验证                              |
+| 三模型页面拆分      | 把当前三个模型页面拆成独立三页，各自不同主题色，可自己画配件/垫图装饰                                                   |
+| 贴纸上传缓存        | ✅ 已修复 — 根因是 multipart 解析用了 `toString("binary")` 字符串往返破坏二进制数据，重写为 Buffer.indexOf 纯二进制解析 |
+| 设置页去"我的昵称"  | 与世界书重叠，删掉设置里的昵称项                                                                                        |
+| 世界书 ai 名字同步  | 世界书人设中的"ai 名字"同步到聊天页面左上角标题                                                                         |
+| 信件"跳转对话"修复  | ✅ 已修复 — jumpToConversation() 找收藏消息 DOM 即时跳转 + 右下角 scroll-to-bottom 浮动按钮                             |
+| 日历页去"记忆"跳转  | 删除日历页面的"记忆"跳转入口，计划栏放最底层，确认日历组件是否拆好                                                      |
+| 消息气泡不能拆分    | 消息气泡无法拆分，待排查                                                                                                |
+| 通知延迟+页内弹出   | 通知有延迟，且聊天页面内也会弹出通知，不应该                                                                            |
+| 权限申请弹到电脑端  | APP 端触发权限申请会弹窗到电脑端，导致手机端卡死。需改为 APP 内弹窗或手机端独立审批                                     |
+| 对话气泡移到 COT 下 | 当前 thinking 在气泡上方，改为 thinking 折叠区在对话气泡下方                                                            |
+| COT 内行距缩短      | thinking 折叠区内行距改紧密，减少空白                                                                                   |
+| COT 突然消失        | thinking 链在对话中突然抽风消失，需要排查                                                                               |
 
 ### 后端 / 服务
 
@@ -257,22 +269,22 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | **摘要**（此表） | 关键进展一行概括                                                                          |
 | **详细版**       | [docs/iteration-log.md](docs/iteration-log.md) — 每次迭代的完整上下文、踩坑记录、架构决策 |
 
-| 日期      | 关键进展 |
-| --------- | -------- |
-| **05/23** | 项目起点：克部署到微信 |
-| **05/26** | IDE 克和微信克共享日记和时间轴，不再"换窗口换人" |
-| **05/27** | 网页版一夜建成：6 MCP 工具 + 桌宠 + 冥想/涂鸦/日历/调参台 |
-| **05/30** | 闹钟系统完成：TogeAlarm APK + alarm-parser.js |
-| **05/31** | PWA 桌面应用 + Session 重连 + 桌宠 + 识图优化 + 进程清理 |
-| **06/04** | 放弃微信端，转 direct channel + Cloudflare Tunnel + Android APK；从 AionsHome 搬世界书/礼物/摄像头/MCP |
-| **06/05** | 购入域名 `withtoge.us`，Named Tunnel，彻底放弃微信 |
-| **06/06** | APK v1→v5：纯全屏 WebView，硬编码 `https://克.withtoge.us` |
-| **06/09** | WS 不回消息根因修复（cloudflared `--url` vs ingress 冲突） |
-| **06/09~11** | **奶茶记录**：卡通日历 + 详情卡片 + API + 克自动提取记录 |
-| **06/10** | APK 图片上传 + 消息通知 + 礼物 CSS 信件 |
-| **06/11** | 项目改名 cyberboss→withtoge（~1600 处替换）；**文档三体系定型**（CLAUDE 纯陪伴 / WITHTOGE 技术 / 迭代日志）；**审批弹窗**（WS broadcast，电脑+手机同时弹窗审批）；**调参台页面级作用域**（13 个 tab 独立微调）；**多模型 Session 并存**（DS/Opus/Haiku 各自存活）；**手札接力**（跨 session 上下文接力）；**记忆系统 6 项改进**（GPT+Gemini 审查后落地）；收藏夹+信封+多选 UI |
-| **06/12** | Turn Gate 永久锁死修复 |
-| **06/15~16** | **贴纸系统**完整接入 APP/Web：6 API + WS + 前端面板/标签编辑/上传删除；**收藏夹服务端持久化**（bookmarks.json API）；cloudflared Windows Service 化 |
-| **06/17~18** | **多模型混合架构**：DS(CLI) + Opus(直调 API)，`model-routes.js` 一行加模型，API 直调 SSE 客户端从零写起 |
-| **06/17~20** | **Thinking 流式显示**：完整链路打通（Claude Code→events→WS→前端），计时器+折叠+localStorage 缓存 |
-| **06/20** | **小手机主页**：Gemini 生成页面嵌入 App，CSS 7 条铁律写入接入文档 |
+| 日期         | 关键进展                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **05/23**    | 项目起点：克部署到微信                                                                                                                                                                                                                                                                                                                                                        |
+| **05/26**    | IDE 克和微信克共享日记和时间轴，不再"换窗口换人"                                                                                                                                                                                                                                                                                                                              |
+| **05/27**    | 网页版一夜建成：6 MCP 工具 + 桌宠 + 冥想/涂鸦/日历/调参台                                                                                                                                                                                                                                                                                                                     |
+| **05/30**    | 闹钟系统完成：TogeAlarm APK + alarm-parser.js                                                                                                                                                                                                                                                                                                                                 |
+| **05/31**    | PWA 桌面应用 + Session 重连 + 桌宠 + 识图优化 + 进程清理                                                                                                                                                                                                                                                                                                                      |
+| **06/04**    | 放弃微信端，转 direct channel + Cloudflare Tunnel + Android APK；从 AionsHome 搬世界书/礼物/摄像头/MCP                                                                                                                                                                                                                                                                        |
+| **06/05**    | 购入域名 `withtoge.us`，Named Tunnel，彻底放弃微信                                                                                                                                                                                                                                                                                                                            |
+| **06/06**    | APK v1→v5：纯全屏 WebView，硬编码 `https://克.withtoge.us`                                                                                                                                                                                                                                                                                                                    |
+| **06/09**    | WS 不回消息根因修复（cloudflared `--url` vs ingress 冲突）                                                                                                                                                                                                                                                                                                                    |
+| **06/09~11** | **奶茶记录**：卡通日历 + 详情卡片 + API + 克自动提取记录                                                                                                                                                                                                                                                                                                                      |
+| **06/10**    | APK 图片上传 + 消息通知 + 礼物 CSS 信件                                                                                                                                                                                                                                                                                                                                       |
+| **06/11**    | 项目改名 cyberboss→withtoge（~1600 处替换）；**文档三体系定型**（CLAUDE 纯陪伴 / WITHTOGE 技术 / 迭代日志）；**审批弹窗**（WS broadcast，电脑+手机同时弹窗审批）；**调参台页面级作用域**（13 个 tab 独立微调）；**多模型 Session 并存**（DS/Opus/Haiku 各自存活）；**手札接力**（跨 session 上下文接力）；**记忆系统 6 项改进**（GPT+Gemini 审查后落地）；收藏夹+信封+多选 UI |
+| **06/12**    | Turn Gate 永久锁死修复                                                                                                                                                                                                                                                                                                                                                        |
+| **06/15~16** | **贴纸系统**完整接入 APP/Web：6 API + WS + 前端面板/标签编辑/上传删除；**收藏夹服务端持久化**（bookmarks.json API）；cloudflared Windows Service 化                                                                                                                                                                                                                           |
+| **06/17~18** | **多模型混合架构**：DS(CLI) + Opus(直调 API)，`model-routes.js` 一行加模型，API 直调 SSE 客户端从零写起                                                                                                                                                                                                                                                                       |
+| **06/17~20** | **Thinking 流式显示**：完整链路打通（Claude Code→events→WS→ 前端），计时器+折叠+localStorage 缓存                                                                                                                                                                                                                                                                             |
+| **06/20**    | **小手机主页**：Gemini 生成页面嵌入 App，CSS 7 条铁律写入接入文档                                                                                                                                                                                                                                                                                                             |
