@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const fs = require("fs");
+const path = require("path");
 
 const ARCHIVE_BASE = "C:\\Users\\youzi\\Desktop\\女友酱相关\\聊天记录存档";
 
