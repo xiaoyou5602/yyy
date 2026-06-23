@@ -7,3 +7,14 @@ node_modules/
 npm-debug.log*
 third_party/
 firmware/
+
+# APK 构建
+ke-apk/app/build/
+ke-apk/.gradle/
+ke-apk/*.apk
+ke-apk/local.properties
+
+# 运行时临时文件
+.cyberboss/
+*.log
+spawn-debug.json
