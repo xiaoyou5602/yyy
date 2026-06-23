@@ -3,6 +3,56 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-23 · 聊天记录存档导入 + 记忆库统一 MemoryItem 架构 + 信件区
+
+### 聊天记录存档解析器
+
+- **输入**：`C:\Users\youzi\Desktop\女友酱相关\聊天记录存档\` 下 15 个 Markdown 存档目录
+- **Parser**：`src/services/chat-archive-parser.js`
+  - Markdown → 结构化消息（id / role / text / thinking / hasThinking / attachments）
+  - `> ` 行识别为 thinking 块，附属于上一条克消息
+  - 发言人映射：`克`/`Claude` → `ke`，时间补零容错
+  - mtime+size 增量缓存，500 个 md 也秒启
+  - sha1(folder) 生成稳定 conversation ID，改标题不影响 URL
+
+### 记忆库统一架构
+
+- **MemoryItem 接口**：`{ id, type, title, date, preview, category?, sortOrder? }`
+- `GET /api/memory-items` 统一入口，合并 conversations + letters
+- 卡片按 type 显示不同图标（💬💌🖼🎵🎁🎮），加新类型不改架构
+
+### 信件区
+
+- **存储**：`stateDir/letters/manifest.json` + HTML 文件
+- **API**：CRUD `/api/letters`、`/api/letters/:id/view`（`text/html` for iframe）
+- **前端**：
+  - `#letter-detail-page`：iframe 全屏阅读，header 浮在顶部
+  - `#letter-editor-page`：标题/日期/分类/HTML 编辑器
+  - 纯文本自动包装成基础 HTML 信件
+  - 类别标签系统（生日/情书/日常/纪念日/鼓励/其他 + 自定义）
+  - 排序切换（日期/类型/自定义）
+- **iframe 同源渲染**，不跳浏览器，始终在 app 内
+
+### 踩坑
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| inline style 覆盖 CSS class | 页面不可见（只有底色） | `style="display:none"` 优先级 1000 > `.show { display:flex }` 优先级 110 | 去掉 inline style，和其他页面一致用 CSS 控制 |
+| CSS 页面未加入共享选择器 | 高度 0 + 背景透明 | `#chat-page,#memory-page,...` 选择器没有新页面 | 加入共享 selector，共享 100vh/width/overflow |
+| JS 无限递归 | 页面卡死 | `showConversationList` 调 `showPage` → `showPage` 回调 → 循环 | 去掉冗余的 showPage 调用 |
+| DELETE 变量引用错误 | 删除 500 | PATCH 的 `letterPatchMatch` 改名后 DELETE 没同步 | 统一为 `letterByIdMatch` |
+| linter 频繁改文件 | Edit 工具连续报 "file modified" | IDE hook 每次保存触发 LF→CRLF | 切 Bash `node -e` 直写 |
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `src/services/chat-archive-parser.js` | 新增：Markdown 解析 + 增量缓存 + combineConversations |
+| `src/adapters/channel/direct/ws-server.js` | 信件 CRUD + /api/memory-items + /api/letters/view |
+| `src/adapters/channel/direct/client/index.html` | 信件详情页/编辑器 DOM + 排序栏 + showPage 集成 |
+| `src/adapters/channel/direct/client/js/conversation-memory.js` | 重写：MemoryItem 模式 + 信件逻辑 + 编辑器 + 排序 |
+| `src/adapters/channel/direct/client/css/main.css` | 新页面加入共享选择器 + 编辑器/信纸样式 |
+
 ## 2026-06-17 · 通知系统三连修：延迟 + 页内弹出 + 掉线显示在线
 
 ### 根因分析

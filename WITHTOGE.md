@@ -235,9 +235,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | 消息气泡不能拆分    | 消息气泡无法拆分，待排查                                                                                                |
 | 通知延迟+页内弹出+掉线显示在线 | 待验证 — APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s |
 | 权限申请弹到电脑端  | APP 端触发权限申请会弹窗到电脑端，导致手机端卡死。需改为 APP 内弹窗或手机端独立审批                                     |
-| 对话气泡移到 COT 下 | 当前 thinking 在气泡上方，改为 thinking 折叠区在对话气泡下方                                                            |
-| COT 内行距缩短      | thinking 折叠区内行距改紧密，减少空白                                                                                   |
-| COT 突然消失        | thinking 链在对话中突然抽风消失，需要排查                                                                               |
+| COT 内行距缩短      | ✅ 已修 — line-height 1.5→1.3，事件委托防点击失效，指纹精确恢复防消失                                                                                   |
+| COT 突然消失        | ✅ 已修 — 根因是 loadCachedThinking 盲匹配+全删重建，改为 msgFingerprint 精确恢复 + 事件委托 |
 
 ### 后端 / 服务
 
