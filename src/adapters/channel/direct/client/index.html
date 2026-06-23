@@ -2307,9 +2307,11 @@ function attachThinkingToMessage(msgEl, turnId) {
   var inline = buildInlineThinking(turnId);
   if (!inline) return;
 
-  // 插入到 msg-inner 末尾（COT 在气泡下方）
+  // 插入到 msg-bubble 之前（COT 在气泡上方）
   var inner = msgEl.querySelector(".msg-inner");
-  if (inner) inner.appendChild(inline);
+  var bubble = msgEl.querySelector(".msg-bubble");
+  if (inner && bubble) inner.insertBefore(inline, bubble);
+  else if (inner) inner.appendChild(inline);
   // 启动计时器（如果 thinking 还在进行中）
   var t = thinkingStore.turns[turnId];
   if (t && t.phase !== "final") thinkingStore.startTick(turnId);
@@ -2347,13 +2349,7 @@ function ensureBubbleInStreaming(msgText) {
   var bubble = document.createElement("div");
   bubble.className = "msg-bubble";
   bubble.innerHTML = esc(msgText) + '<div class="time">' + now() + '</div>';
-  // 如果已有 thinking-inline，bubble 插入到它之前（COT 在气泡下方）
-  var inline = inner.querySelector(".thinking-inline");
-  if (inline) {
-    inner.insertBefore(bubble, inline);
-  } else {
-    inner.appendChild(bubble);
-  }
+  inner.appendChild(bubble);
   return true;
 }
 

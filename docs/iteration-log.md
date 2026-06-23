@@ -3,6 +3,47 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-17 · 通知系统三连修：延迟 + 页内弹出 + 掉线显示在线
+
+### 根因分析
+
+通知系统有两条路径：
+- **Bridge 快速路径**：JS `notify()` → `window.Android.notifyMessage(text)` → Java `KeJsBridge` → 即时弹通知 + 更新 `sLastNotifyEpoch`
+- **HTTP 轮询兜底**：Java `pollRunnable` 每 120s 调 `GET /api/last-ke-message`，比较 `msgEpoch > sLastNotifyEpoch` 决定是否弹
+
+**bug 1 通知延迟**：Bridge 路径失效时（WebView 后台冻结），退化到 HTTP 轮询要等最长 120s。
+
+**bug 2 页内弹出**：页面可见时 `notify()` 正确跳过 Bridge 通知，但 `sLastNotifyEpoch` 没更新。HTTP 轮询不知情，照弹。
+
+**bug 3 掉线显示在线**：前台 Notification 在 `onCreate()` 写死 `"在线"`，永不更新。WebSocket 断开后仍然显示在线。
+
+### 修复
+
+**APK 端** (`KeNotificationService.java`)：
+- 加 `sInstance` 单例 + `updateForegroundStatus(String)` 静态方法，允许 WebView 动态更新前台通知文字
+- 加 `heartbeat(long epochMillis)` 静态方法，允许 WebView 在消息可见时同步 `sLastNotifyEpoch`
+- 轮询间隔 120s → 60s，缩短退化路径延迟
+
+**APK 端** (`MainActivity.java`)：
+- `KeJsBridge` 加 `heartbeat(long)` — JS 调用来同步 epoch（不弹通知）
+- `KeJsBridge` 加 `setOnlineStatus(String)` — JS 调用来更新前台通知状态
+
+**前端** (`index.html`)：
+- `notify()`：页面可见时调 `Android.heartbeat(Date.now())` 阻止 HTTP 轮询重复弹
+- `online()`：连接/断开时调 `Android.setOnlineStatus("在线"/"离线")` 同步前台通知
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `ke-apk/.../KeNotificationService.java` | `sInstance` + `updateForegroundStatus()` + `heartbeat()` + 轮询 60s |
+| `ke-apk/.../MainActivity.java` | `KeJsBridge` 加 `heartbeat()` + `setOnlineStatus()` |
+| `src/adapters/channel/direct/client/index.html` | `notify()` 加 heartbeat、`online()` 加 setOnlineStatus |
+
+### 编译
+
+APK v13 debug 已编译（`克-v13-debug.apk`），待安装验证。
+
 ## 2026-06-20 · 小手机主页嵌入——踩坑实录
 
 > 把 Gemini 生成的独立 HTML 页面嵌入 App。排查耗时 3h，根因全是 CSS 层的问题，JS 全程没崩。

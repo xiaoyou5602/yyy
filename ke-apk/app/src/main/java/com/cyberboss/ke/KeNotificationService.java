@@ -24,10 +24,18 @@ public class KeNotificationService extends Service {
     private static final String CHANNEL_ID = "ke-messages";
     private static final int FOREGROUND_ID = 1;
     private static final int MESSAGE_NOTIFY_ID = 2;
-    private static final long POLL_INTERVAL_MS = 120_000;
+    private static final long POLL_INTERVAL_MS = 60_000;
     private static final String BASE_URL = "https://克.withtoge.us";
 
     public static long sLastNotifyEpoch = 0;
+    private static KeNotificationService sInstance;
+
+    public static void updateForegroundStatus(String status) {
+        if (sInstance != null) {
+            Notification n = sInstance.buildForegroundNotification(status);
+            sInstance.startForeground(FOREGROUND_ID, n);
+        }
+    }
 
     private HandlerThread handlerThread;
     private Handler handler;
@@ -36,8 +44,26 @@ public class KeNotificationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        sInstance = this;
         createNotificationChannel();
         startForeground(FOREGROUND_ID, buildForegroundNotification("在线"));
+    }
+
+    @Override
+    public void onDestroy() {
+        sInstance = null;
+        running = false;
+        if (handler != null) {
+            handler.removeCallbacks(pollRunnable);
+        }
+        if (handlerThread != null) {
+            handlerThread.quitSafely();
+        }
+        super.onDestroy();
+    }
+
+    public static void heartbeat(long epochMillis) {
+        sLastNotifyEpoch = epochMillis;
     }
 
     @Override
@@ -50,18 +76,6 @@ public class KeNotificationService extends Service {
             handler.post(pollRunnable);
         }
         return START_STICKY;
-    }
-
-    @Override
-    public void onDestroy() {
-        running = false;
-        if (handler != null) {
-            handler.removeCallbacks(pollRunnable);
-        }
-        if (handlerThread != null) {
-            handlerThread.quitSafely();
-        }
-        super.onDestroy();
     }
 
     @Override

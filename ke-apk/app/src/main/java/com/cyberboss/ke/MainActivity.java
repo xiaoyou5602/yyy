@@ -105,6 +105,16 @@ public class MainActivity extends Activity {
 
     public class KeJsBridge {
         @JavascriptInterface
+        public void heartbeat(long epochMillis) {
+            KeNotificationService.heartbeat(epochMillis);
+        }
+
+        @JavascriptInterface
+        public void setOnlineStatus(String status) {
+            KeNotificationService.updateForegroundStatus(status);
+        }
+
+        @JavascriptInterface
         public void notifyMessage(String text) {
             String preview = (text == null || text.isEmpty()) ? "克给你发了新消息" : text;
             if (preview.length() > 80) preview = preview.substring(0, 80) + "…";
