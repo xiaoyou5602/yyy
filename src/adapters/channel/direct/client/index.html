@@ -632,11 +632,13 @@
     <button class="back-btn" onclick="showPage('phone-home')" title="返回小手机">&#8592;</button>
     <h1>记忆库</h1>
     <div style="flex:1"></div>
+    <button class="conv-add-btn" onclick="window.openLetterEditor()" title="新建信件">+</button>
   </header>
   <div class="conv-list-search-wrap">
     <input type="text" class="conv-list-search-input" placeholder="搜索会话…" oninput="window.filterConvList(this.value)">
   </div>
-  <div class="conv-list-grid" id="conv-list-grid">
+  <div class="conv-sort-bar"><button class="conv-sort-btn active" id="conv-sort-date" onclick="window.setSortMode(&quot;date&quot;)">按日期</button><button class="conv-sort-btn" id="conv-sort-type" onclick="window.setSortMode(&quot;type&quot;)">按类型</button><button class="conv-sort-btn" id="conv-sort-custom" onclick="window.setSortMode(&quot;custom&quot;)">自定义</button></div>
+<div class="conv-list-grid" id="conv-list-grid">
     <div class="empty-state">加载中…</div>
   </div>
 </div>
@@ -849,6 +851,8 @@ var gamesPage = document.getElementById("games-page");
 var phoneHomePage = document.getElementById("phone-home-page");
 const conversationListPage = document.getElementById("conversation-list-page");
 const conversationDetailPage = document.getElementById("conversation-detail-page");
+const letterDetailPage = document.getElementById("letter-detail-page");
+const letterEditorPage = document.getElementById("letter-editor-page");
 var phoneHomeTimer = null;
 const messagesEl = document.getElementById("messages");
 const typingEl = document.getElementById("typing-indicator");
@@ -912,9 +916,14 @@ function showPage(page) {
   }
   conversationListPage.classList.toggle("show", page === "conversation-list");
   if (page === "conversation-list") {
-    if (typeof window.showConversationList === "function") window.showConversationList();
+    if (typeof window.showMemoryItems === "function") window.showConversationList();
   }
   conversationDetailPage.classList.toggle("show", page === "conversation-detail");
+  letterDetailPage.classList.toggle("show", page === "letter-detail");
+  if (page === "letter-detail") {
+    if (typeof window.initLetterView === "function") window.initLetterView();
+  }
+  letterEditorPage.classList.toggle("show", page === "letter-editor");
   if (page === "conversation-detail") {
     if (typeof window.initConvScroll === "function") window.initConvScroll();
   }
@@ -2338,7 +2347,13 @@ function ensureBubbleInStreaming(msgText) {
   var bubble = document.createElement("div");
   bubble.className = "msg-bubble";
   bubble.innerHTML = esc(msgText) + '<div class="time">' + now() + '</div>';
-  inner.appendChild(bubble);
+  // 如果已有 thinking-inline，bubble 插入到它之前（COT 在气泡下方）
+  var inline = inner.querySelector(".thinking-inline");
+  if (inline) {
+    inner.insertBefore(bubble, inline);
+  } else {
+    inner.appendChild(bubble);
+  }
   return true;
 }
 
@@ -2487,7 +2502,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=34").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=35").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);

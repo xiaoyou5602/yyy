@@ -189,6 +189,159 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: memory-items (统一记忆库) ──
+    if (urlPath === "/api/memory-items" && req.method === "GET") {
+      try {
+        const conversations = combineConversations(archiveParsed);
+        const letters = readLetters(stateDir);
+        const items = [];
+
+        for (const c of conversations) {
+          items.push({
+            id: c.id, type: "conversation", title: c.topic,
+            date: c.dateRange[c.dateRange.length - 1] || "",
+            preview: c.preview,
+            messageCount: c.messageCount, hasThinking: c.hasThinking,
+          });
+        }
+        for (const l of letters) {
+          items.push({
+            id: l.id, type: "letter", title: l.title,
+            date: l.date, preview: l.preview,
+            category: l.category || "", sortOrder: l.sortOrder,
+          });
+        }
+        // Sort by date descending
+        items.sort((a, b) => (b.date || "").localeCompare(a.date || "", "zh-CN"));
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(items));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // ── API: letters ──
+    if (urlPath === "/api/letters" && req.method === "GET") {
+      try {
+        const category = query.category || "";
+        let letters = readLetters(stateDir);
+        if (category) letters = letters.filter(l => l.category === category);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(letters));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/letters — 新建信件
+    if (urlPath === "/api/letters" && req.method === "POST") {
+      try {
+        const chunks = [];
+        req.on("data", chunk => chunks.push(chunk));
+        req.on("end", () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+            if (!body.title || !body.html) { res.writeHead(400); res.end(JSON.stringify({ error: "title and html required" })); return; }
+            const letter = saveLetter(stateDir, body);
+            if (!letter) { res.writeHead(409); res.end(JSON.stringify({ error: "Duplicate id" })); return; }
+            res.writeHead(201, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(letter));
+          } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+        });
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/letters/reorder — 排序
+    if (urlPath === "/api/letters/reorder" && req.method === "POST") {
+      try {
+        const chunks = [];
+        req.on("data", chunk => chunks.push(chunk));
+        req.on("end", () => {
+          try {
+            const { ids } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+            if (!Array.isArray(ids)) { res.writeHead(400); res.end(JSON.stringify({ error: "ids array required" })); return; }
+            const letters = readLetters(stateDir);
+            ids.forEach((id, i) => {
+              const letter = letters.find(l => l.id === id);
+              if (letter) letter.sortOrder = i;
+            });
+            writeLetters(stateDir, letters);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: true }));
+          } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+        });
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // GET /api/letters/:id/view — 返回 HTML 信件
+    const letterViewMatch = urlPath.match(/^\/api\/letters\/([^/]+)\/view$/);
+    if (letterViewMatch && req.method === "GET") {
+      try {
+        const id = decodeURIComponent(letterViewMatch[1]);
+        const letter = getLetter(stateDir, id);
+        if (!letter) { res.writeHead(404); res.end("Letter not found"); return; }
+        const htmlPath = path.join(lettersDir(stateDir), letter.file);
+        if (!fs.existsSync(htmlPath)) { res.writeHead(404); res.end("HTML file not found"); return; }
+        const html = fs.readFileSync(htmlPath, "utf8");
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+      } catch (err) {
+        res.writeHead(500);
+        res.end("Error serving letter");
+      }
+      return;
+    }
+
+    // PATCH /api/letters/:id — 更新信件
+    const letterByIdMatch = urlPath.match(/^\/api\/letters\/([^/]+)$/);
+    if (letterByIdMatch && req.method === "PATCH") {
+      try {
+        const id = decodeURIComponent(letterByIdMatch[1]);
+        const chunks = [];
+        req.on("data", chunk => chunks.push(chunk));
+        req.on("end", () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+            const letter = updateLetter(stateDir, id, body);
+            if (!letter) { res.writeHead(404); res.end(JSON.stringify({ error: "Letter not found" })); return; }
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(letter));
+          } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+        });
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // DELETE /api/letters/:id — 删除信件
+    if (letterByIdMatch && req.method === "DELETE") {
+      try {
+        const id = decodeURIComponent(letterPatchMatch[1]);
+        const ok = deleteLetter(stateDir, id);
+        if (!ok) { res.writeHead(404); res.end(JSON.stringify({ error: "Letter not found" })); return; }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── API: memory rollups ──
     if (urlPath === "/api/memory/rollups") {
       try {
@@ -1516,6 +1669,83 @@ function writeBookmarks(stateDir, bookmarks) {
   const fp = path.join(stateDir, "bookmarks.json");
   if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
   fs.writeFileSync(fp, JSON.stringify(bookmarks, null, 2), "utf8");
+}
+
+// ── Letter helpers ──
+function lettersDir(stateDir) {
+  const dir = path.join(stateDir, "letters");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+function lettersManifestPath(stateDir) {
+  return path.join(lettersDir(stateDir), "manifest.json");
+}
+function readLetters(stateDir) {
+  const fp = lettersManifestPath(stateDir);
+  if (!fs.existsSync(fp)) return [];
+  try { return JSON.parse(fs.readFileSync(fp, "utf8")); } catch { return []; }
+}
+function writeLetters(stateDir, letters) {
+  const fp = lettersManifestPath(stateDir);
+  if (!fs.existsSync(path.dirname(fp))) fs.mkdirSync(path.dirname(fp), { recursive: true });
+  fs.writeFileSync(fp, JSON.stringify(letters, null, 2), "utf8");
+}
+function getLetter(stateDir, id) {
+  return readLetters(stateDir).find(l => l.id === id) || null;
+}
+function shortHash(str) {
+  const crypto = require("crypto");
+  return crypto.createHash("sha1").update(str, "utf8").digest("hex").slice(0, 8);
+}
+function saveLetter(stateDir, data) {
+  const letters = readLetters(stateDir);
+  const id = data.id || `letter_${shortHash((data.title || "") + (data.date || Date.now()))}`;
+  if (letters.some(l => l.id === id)) return null; // duplicate
+  const file = `${id}.html`;
+  const letter = {
+    id, title: data.title || "", date: data.date || "", preview: data.preview || "",
+    file, category: data.category || "", sortOrder: data.sortOrder ?? letters.length,
+    createdAt: new Date().toISOString(),
+  };
+  letters.push(letter);
+  writeLetters(stateDir, letters);
+  // Write HTML file
+  const htmlPath = path.join(lettersDir(stateDir), file);
+  fs.writeFileSync(htmlPath, data.html || "", "utf8");
+  return letter;
+}
+function updateLetter(stateDir, id, data) {
+  const letters = readLetters(stateDir);
+  const idx = letters.findIndex(l => l.id === id);
+  if (idx === -1) return null;
+  const letter = letters[idx];
+  if (data.title !== undefined) letter.title = data.title;
+  if (data.date !== undefined) letter.date = data.date;
+  if (data.preview !== undefined) letter.preview = data.preview;
+  if (data.category !== undefined) letter.category = data.category;
+  if (data.sortOrder !== undefined) letter.sortOrder = data.sortOrder;
+  letters[idx] = letter;
+  writeLetters(stateDir, letters);
+  // Update HTML content if provided
+  if (data.html !== undefined) {
+    const htmlPath = path.join(lettersDir(stateDir), letter.file);
+    fs.writeFileSync(htmlPath, data.html, "utf8");
+  }
+  return letter;
+}
+function deleteLetter(stateDir, id) {
+  const letters = readLetters(stateDir);
+  const idx = letters.findIndex(l => l.id === id);
+  if (idx === -1) return false;
+  const letter = letters[idx];
+  // Delete HTML file
+  try {
+    const htmlPath = path.join(lettersDir(stateDir), letter.file);
+    if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
+  } catch {}
+  letters.splice(idx, 1);
+  writeLetters(stateDir, letters);
+  return true;
 }
 
 module.exports = { createDirectWebSocketServer };
