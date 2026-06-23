@@ -1903,6 +1903,14 @@ class CyberbossApp {
     }).catch(() => {});
   }
 
+  resolveCurrentModel(bindingKey) {
+    const sessionStore = this.runtimeAdapter.getSessionStore();
+    const workspaceRoots = sessionStore.listWorkspaceRoots(bindingKey) || [];
+    const workspaceRoot = workspaceRoots[0] || "";
+    if (!workspaceRoot) return "";
+    return (sessionStore.getRuntimeParamsForWorkspace(bindingKey, workspaceRoot)?.model || "").trim();
+  }
+
   async sendApprovalPrompt({ bindingKey, approval }) {
     const target = this.resolveReplyTargetForBinding(bindingKey);
     if (!target) {
@@ -1911,15 +1919,16 @@ class CyberbossApp {
       );
       return;
     }
+    const model = this.resolveCurrentModel(bindingKey);
     console.log(
-      `[cyberboss] approval prompt sending binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""}`
+      `[cyberboss] approval prompt sending binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""} model=${model || "(none)"}`
     );
 
     // Direct 通道：弹窗 + 文本消息双发（手机可能收不到弹窗，但文本消息会进历史）
     if (target.provider === "direct" && typeof this.channelAdapter.sendApproval === "function") {
-      await this.channelAdapter.sendApproval({ userId: target.userId, approval });
+      await this.channelAdapter.sendApproval({ userId: target.userId, approval, model });
       console.log(
-        `[cyberboss] approval prompt delivered via dialog binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""}`
+        `[cyberboss] approval prompt delivered via dialog binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""} model=${model || "(none)"}`
       );
       // 继续往下走，也发一条文本消息（像 WeChat 时代一样）
     }
@@ -1934,6 +1943,7 @@ class CyberbossApp {
       text: buildApprovalPromptText(approval),
       contextToken: target.contextToken,
       preserveBlock: true,
+      model,
     });
     console.log(
       `[cyberboss] approval prompt delivered binding=${bindingKey} user=${target.userId} requestId=${approval?.requestId || ""}`
