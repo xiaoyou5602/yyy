@@ -330,7 +330,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
     // DELETE /api/letters/:id — 删除信件
     if (letterByIdMatch && req.method === "DELETE") {
       try {
-        const id = decodeURIComponent(letterPatchMatch[1]);
+        const id = decodeURIComponent(letterByIdMatch[1]);
         const ok = deleteLetter(stateDir, id);
         if (!ok) { res.writeHead(404); res.end(JSON.stringify({ error: "Letter not found" })); return; }
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
