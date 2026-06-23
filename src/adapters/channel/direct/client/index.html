@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=28">
+<link rel="stylesheet" href="/css/main.css?v=29">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -306,10 +306,6 @@
 <div id="settings-overlay">
   <div id="settings-panel">
     <h2>设置</h2>
-    <div class="setting-row">
-      <label>你的昵称</label>
-      <input id="setting-nickname" type="text" placeholder="输入昵称…" maxlength="20">
-    </div>
     <div class="setting-row">
       <label>背景壁纸</label>
       <div class="wallpaper-control">
@@ -675,6 +671,62 @@
   </div>
 </div>
 
+<!-- ═══ LETTER DETAIL PAGE ═══ -->
+<div id="letter-detail-page">
+  <header>
+    <button class="back-btn" onclick="window.closeLetterDetail()">&#8592;</button>
+    <h1 id="letter-detail-title">信件</h1>
+    <div style="flex:1"></div>
+    <button class="conv-detail-search-btn" onclick="window.editCurrentLetter()" title="编辑信件">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
+  </header>
+  <iframe id="letter-iframe" class="letter-iframe" sandbox="allow-same-origin"></iframe>
+</div>
+
+<!-- ═══ LETTER EDITOR PAGE ═══ -->
+<div id="letter-editor-page">
+  <header>
+    <button class="back-btn" onclick="window.closeLetterEditor()">&#8592;</button>
+    <h1 id="letter-editor-title">新建信件</h1>
+  </header>
+  <div class="letter-editor-form">
+    <div class="letter-field">
+      <label>标题</label>
+      <input type="text" id="le-title" placeholder="信件标题">
+    </div>
+    <div class="letter-field">
+      <label>日期</label>
+      <input type="date" id="le-date">
+    </div>
+    <div class="letter-field">
+      <label>预览文字</label>
+      <input type="text" id="le-preview" placeholder="卡片上显示的简短描述">
+    </div>
+    <div class="letter-field">
+      <label>分类</label>
+      <div class="le-category-chips" id="le-category-chips"></div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <input type="text" id="le-new-category" placeholder="新建分类…" style="flex:1;padding:4px 8px;font-size:13px;border:1px solid var(--border-light,#e5e5ea);border-radius:6px">
+        <button onclick="window.leAddCategory()" class="le-btn-sm">+</button>
+      </div>
+    </div>
+    <div class="letter-field">
+      <label>HTML 内容</label>
+      <textarea id="le-html" class="le-html-textarea" placeholder="粘贴 HTML 或纯文本&#10;纯文本会自动包装成信件格式"></textarea>
+    </div>
+    <div class="letter-editor-actions">
+      <button onclick="window.previewLetter()" class="le-btn">预览</button>
+      <button onclick="window.saveLetter()" class="le-btn le-btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+
+
 <!-- ═══ BOOKMARKS PAGE ═══ -->
 <div id="bookmarks-page" style="display:none">
   <header>
@@ -943,7 +995,7 @@ document.getElementById("games-back-btn").addEventListener("click", () => showPa
 })();
 
 /* ── settings ── */
-let settings = { nickname: "", wallpaper: "", model: "" };
+let settings = { wallpaper: "", model: "" };
 function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch { return {}; } }
 function saveSettings(s) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} }
 function cssImageUrl(src) {
@@ -960,11 +1012,8 @@ function updateWallpaperPreview(src) {
     preview.classList.remove("show");
   }
 }
-function applySettings(s) {
+async function applySettings(s) {
   settings = s;
-  const n = s.nickname || "克";
-  headerTitle.textContent = n;
-  document.title = n;
   if (s.wallpaper) {
     document.body.style.backgroundImage = cssImageUrl(s.wallpaper);
     document.body.classList.add("has-wallpaper");
@@ -973,6 +1022,18 @@ function applySettings(s) {
     document.body.classList.remove("has-wallpaper");
   }
   applyModelTheme(s.model || "");
+  syncHeaderFromWorldbook(s.model || "");
+}
+
+async function syncHeaderFromWorldbook(model) {
+  try {
+    const url = model ? `/api/worldbook?model=${encodeURIComponent(model)}` : "/api/worldbook";
+    const res = await fetch(url);
+    const data = await res.json();
+    const name = data.ai?.name || "克";
+    headerTitle.textContent = name;
+    document.title = name;
+  } catch {}
 }
 settings = loadSettings();
 loadModels().then(() => applySettings(settings));
@@ -1021,6 +1082,7 @@ function selectSidebarModel(el) {
   saveSettings(settings);
   document.getElementById("setting-model").value = model;
   applyModelTheme(model);
+  syncHeaderFromWorldbook(model);
   switchModelHistory();
   setTimeout(() => syncHistoryFromServer(), 300);
   // Reload worldbook if settings page worldbook tab is open
@@ -1344,6 +1406,19 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && selecting) exitSelectMode();
 });
 
+// Thinking inline 点击：事件委托，永不失效
+messagesEl.addEventListener("click", function(e) {
+  var header = e.target.closest(".thinking-inline-header");
+  if (!header) return;
+  var inline = header.closest(".thinking-inline");
+  if (!inline) return;
+  var body = inline.querySelector(".thinking-inline-body");
+  if (!body) return;
+  var collapsed = body.classList.toggle("thinking-collapsed");
+  var arrow = header.querySelector(".thinking-inline-arrow");
+  if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
+});
+
 // Toast
 function showToast(text) {
   const t = document.createElement("div");
@@ -1480,12 +1555,11 @@ window.addEventListener("page-changed", function(e) {
 
 
 document.getElementById("settings-btn").addEventListener("click", () => {
-  document.getElementById("setting-nickname").value = settings.nickname || "";
   document.getElementById("setting-wallpaper").value = settings.wallpaper || "";
   document.getElementById("setting-model").value = settings.model || "";
   updateWallpaperPreview(settings.wallpaper || "");
   document.getElementById("settings-overlay").classList.add("show");
-  document.getElementById("setting-nickname").focus();
+  document.getElementById("setting-wallpaper").focus();
 });
 document.getElementById("setting-wallpaper").addEventListener("input", (e) => {
   updateWallpaperPreview(e.target.value.trim());
@@ -1511,7 +1585,6 @@ document.getElementById("settings-cancel").addEventListener("click", () => {
 });
 document.getElementById("settings-save").addEventListener("click", () => {
   const ns = {
-    nickname: document.getElementById("setting-nickname").value.trim(),
     wallpaper: document.getElementById("setting-wallpaper").value.trim(),
     model: document.getElementById("setting-model").value.trim(),
   };
@@ -1789,8 +1862,10 @@ function online(v) {
     applyModelTheme(settings.model || "");
     inputEl.focus();
     fetchPendingApprovals();
+    if (window.Android && window.Android.setOnlineStatus) window.Android.setOnlineStatus("在线");
   } else {
     statusDot.className = ""; statusText.textContent = "离线"; sendBtn.disabled = true;
+    if (window.Android && window.Android.setOnlineStatus) window.Android.setOnlineStatus("离线");
   }
 }
 
@@ -1801,13 +1876,16 @@ var pageHidden = document.hidden;
 document.addEventListener('visibilitychange', () => { pageHidden = document.hidden; });
 
 function notify(text) {
-  if (!document.hidden && !pageHidden) return;
+  if (!document.hidden && !pageHidden) {
+    if (window.Android && window.Android.heartbeat) window.Android.heartbeat(Date.now());
+    return;
+  }
   if (window.Android && window.Android.notifyMessage) {
     window.Android.notifyMessage(text);
     return;
   }
   if (Notification.permission !== "granted") return;
-  try { new Notification(settings.nickname || "克", { body: text.slice(0, 200) }); } catch {}
+  try { new Notification(headerTitle.textContent || "克", { body: text.slice(0, 200) }); } catch {}
 }
 
 /* ── send ── */
@@ -2113,7 +2191,19 @@ function flushOneTurn(turnId) {
     var items = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(items)) return;
     var idx = items.findIndex(function(x) { return x.turnId === turnId; });
-    var entry = { turnId: turnId, text: t.text, model: t.model, time: Date.now(), phase: t.phase };
+    // 取关联消息的文本指纹用于恢复时精确匹配
+    var fp = "";
+    try {
+      var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+      if (inline) {
+        var msgEl = inline.closest(".msg");
+        if (msgEl) {
+          var bubble = msgEl.querySelector(".msg-bubble");
+          if (bubble) fp = (bubble.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+        }
+      }
+    } catch (e) {}
+    var entry = { turnId: turnId, text: t.text, model: t.model, time: Date.now(), phase: t.phase, fingerprint: fp };
     if (idx >= 0) items[idx] = entry; else items.push(entry);
     while (items.length > THINKING_MAX) items.shift();
     localStorage.setItem(THINKING_CACHE_KEY, JSON.stringify(items));
@@ -2121,47 +2211,43 @@ function flushOneTurn(turnId) {
 }
 
 function loadCachedThinking() {
-  // 页面加载后，将缓存的 thinking 附加到已有的 .msg.ke 消息上
+  // 页面加载后，按消息文本指纹精确匹配，将缓存的 thinking 附加到对应消息
   try {
     var raw = localStorage.getItem(THINKING_CACHE_KEY);
     if (!raw) return;
     var items = JSON.parse(raw);
     if (!Array.isArray(items) || !items.length || !messagesEl) return;
-    messagesEl.querySelectorAll(".thinking-inline").forEach(function(el) { el.remove(); });
     items.forEach(function(item) {
       if (item.phase !== "final") return; // 只恢复已完成的 thinking
+      if (!item.fingerprint) return;       // 无指纹无法匹配
       thinkingStore.turns[item.turnId] = {
         phase: "final",
         text: item.text,
-        model: item.model,
-        startTime: item.time,
+        model: item.model || "",
+        startTime: item.time || Date.now(),
         tickInterval: null,
         flushTimer: null,
       };
+      // 按指纹精确匹配消息
+      var matched = null;
+      var keMsgs = messagesEl.querySelectorAll(".msg.ke");
+      keMsgs.forEach(function(msgEl) {
+        if (matched) return;
+        if (msgEl.querySelector(".thinking-inline")) return;
+        var bubble = msgEl.querySelector(".msg-bubble");
+        if (!bubble) return;
+        var bubbleFp = (bubble.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+        if (bubbleFp === item.fingerprint) matched = msgEl;
+      });
+      if (matched) {
+        var inline = buildInlineThinking(item.turnId);
+        if (inline) {
+          var inner = matched.querySelector(".msg-inner");
+          if (inner) inner.appendChild(inline);
+        }
+      }
     });
-    // 尝试附加到已有消息（按时间匹配：thinking time 在消息 time 附近）
-    tryReattachThinking();
   } catch (e) { /* ignore */ }
-}
-
-function tryReattachThinking() {
-  if (!messagesEl) return;
-  var keMsgs = messagesEl.querySelectorAll(".msg.ke");
-  keMsgs.forEach(function(msgEl) {
-    // 为每个尚无 thinking 的 ke 消息尝试匹配
-    if (msgEl.querySelector(".thinking-inline")) return;
-    // 遍历 store 中未附加的 thinking，匹配最近的一条
-    var bestTurnId = null;
-    Object.keys(thinkingStore.turns).forEach(function(turnId) {
-      if (bestTurnId) return;
-      var t = thinkingStore.turns[turnId];
-      if (!t || t.phase !== "final") return;
-      // 检查这条 thinking 是否还未被附加到任何消息
-      var alreadyAttached = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
-      if (!alreadyAttached) bestTurnId = turnId;
-    });
-    if (bestTurnId) attachThinkingToMessage(msgEl, bestTurnId);
-  });
 }
 
 function buildInlineThinking(turnId) {
@@ -2176,16 +2262,13 @@ function buildInlineThinking(turnId) {
   var header = document.createElement("div");
   header.className = "thinking-inline-header";
   var labelText = store.phase === "tooling" ? "正在调用工具..." : (store.phase === "final" ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-inline-arrow">▶</span> ' + labelText;
+  header.innerHTML = '<span class="thinking-inline-arrow">▶</span> <span class="thinking-inline-label">' + labelText + '</span>';
 
   var body = document.createElement("div");
   body.className = "thinking-inline-body thinking-collapsed";
   body.textContent = store.text;
 
-  header.addEventListener("click", function() {
-    var collapsed = body.classList.toggle("thinking-collapsed");
-    header.querySelector(".thinking-inline-arrow").textContent = collapsed ? "▶" : "▼";
-  });
+  // 不再绑 click——由 messagesEl 事件委托统一处理
 
   inline.appendChild(header);
   inline.appendChild(body);
@@ -2215,12 +2298,9 @@ function attachThinkingToMessage(msgEl, turnId) {
   var inline = buildInlineThinking(turnId);
   if (!inline) return;
 
-  // 插入到 msg-inner 内、msg-bubble 之前
+  // 插入到 msg-inner 末尾（COT 在气泡下方）
   var inner = msgEl.querySelector(".msg-inner");
-  var bubble = msgEl.querySelector(".msg-bubble");
-  if (inner && bubble) {
-    inner.insertBefore(inline, bubble);
-  }
+  if (inner) inner.appendChild(inline);
   // 启动计时器（如果 thinking 还在进行中）
   var t = thinkingStore.turns[turnId];
   if (t && t.phase !== "final") thinkingStore.startTick(turnId);
@@ -2230,20 +2310,8 @@ function updateInlineThinkingLabel(turnId, labelText) {
   if (!messagesEl) return;
   var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (!inline) return;
-  var header = inline.querySelector(".thinking-inline-header");
-  if (!header) return;
-  // 保留箭头，更新文本
-  var arrow = header.querySelector(".thinking-inline-arrow");
-  var arrowChar = arrow ? arrow.textContent : "▶";
-  header.innerHTML = '<span class="thinking-inline-arrow">' + arrowChar + '</span> ' + labelText;
-  // 重新绑定点击事件
-  var body = inline.querySelector(".thinking-inline-body");
-  if (body) {
-    header.addEventListener("click", function() {
-      var collapsed = body.classList.toggle("thinking-collapsed");
-      header.querySelector(".thinking-inline-arrow").textContent = collapsed ? "▶" : "▼";
-    });
-  }
+  var label = inline.querySelector(".thinking-inline-label");
+  if (label) label.textContent = labelText;
 }
 
 function createThinkingPlaceholder(turnId) {
@@ -2419,7 +2487,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=33").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=34").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
