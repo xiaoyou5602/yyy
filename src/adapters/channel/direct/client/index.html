@@ -2307,11 +2307,9 @@ function attachThinkingToMessage(msgEl, turnId) {
   var inline = buildInlineThinking(turnId);
   if (!inline) return;
 
-  // 插入到 msg-bubble 之前（COT 在气泡上方）
+  // 插入到 msg-inner 之前（COT 独占一行，气泡上方）
   var inner = msgEl.querySelector(".msg-inner");
-  var bubble = msgEl.querySelector(".msg-bubble");
-  if (inner && bubble) inner.insertBefore(inline, bubble);
-  else if (inner) inner.appendChild(inline);
+  if (inner) msgEl.insertBefore(inline, inner);
   // 启动计时器（如果 thinking 还在进行中）
   var t = thinkingStore.turns[turnId];
   if (t && t.phase !== "final") thinkingStore.startTick(turnId);
@@ -2334,7 +2332,7 @@ function createThinkingPlaceholder(turnId) {
   var inline = buildInlineThinking(turnId);
   div.innerHTML = '<div class="msg-inner"><div class="avatar-sm"><img src="/icon.png" alt="克"></div></div>';
   var inner = div.querySelector(".msg-inner");
-  if (inner && inline) inner.appendChild(inline);
+  if (inner && inline) div.insertBefore(inline, inner);
 
   messagesEl.appendChild(div);
   scrollBottom();
