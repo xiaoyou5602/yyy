@@ -53,6 +53,16 @@
 | `src/adapters/channel/direct/client/js/conversation-memory.js` | 重写：MemoryItem 模式 + 信件逻辑 + 编辑器 + 排序 |
 | `src/adapters/channel/direct/client/css/main.css` | 新页面加入共享选择器 + 编辑器/信纸样式 |
 
+### 设置页去昵称 + 世界书 AI 名字同步（同日续）
+
+- **设置页去掉"我的昵称"**：世界书里已有 `wb-user-name`，设置页再搞一个昵称字段纯属重复。删掉 HTML 输入框、JS 读写逻辑、默认值、通知栏引用。
+- **世界书 AI 名字与聊天页标题同步**：保存世界书时立即更新 `headerTitle` 和 `document.title`；新增 `syncHeaderFromWorldbook(model)` 按模型拉取 AI 名字；页面加载和切模型时自动同步，每个模型的标题独立。
+
+| 文件 | 改动 |
+|------|------|
+| `src/adapters/channel/direct/client/index.html` | 删昵称 HTML + JS；`applySettings` 改为 async + `syncHeaderFromWorldbook()`；切模型时同步标题；通知标题改用 header |
+| `src/adapters/channel/direct/client/js/worldbook.js` | 保存后更新 `headerTitle` + `document.title`；加 `headerTitle` global 声明 |
+
 ## 2026-06-17 · 通知系统三连修：延迟 + 页内弹出 + 掉线显示在线
 
 ### 根因分析
