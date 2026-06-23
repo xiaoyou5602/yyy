@@ -1,4 +1,4 @@
-/* global fetch, showPage */
+/* global fetch, showPage, headerTitle */
 
 let _wbLoaded = false;
 window._wbDirty = false;
@@ -79,6 +79,9 @@ async function saveWorldbook() {
     if (res.ok) {
       window._wbDirty = false;
       showToast("世界书已保存");
+      const aiName = data.ai.name || "克";
+      headerTitle.textContent = aiName;
+      document.title = aiName;
       showPage("chat");
     } else {
       const err = await res.json();
