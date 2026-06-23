@@ -42,19 +42,22 @@ function Test-CyberbossAlive {
 
 function Start-Cloudflared {
     $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
+    $cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
     if (-not (Test-Path $cfExe)) {
         Write-Host "[guardian] cloudflared.exe not found at $cfExe"
         return
     }
     # Kill any existing cloudflared instances first (prevents zombie pile-up)
-    $existing = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
-    if ($existing) {
-        $existing | Stop-Process -Force
-        Write-Host "[guardian] Killed $($existing.Count) old cloudflared instance(s) before start"
-        Start-Sleep -Seconds 2
+    # Use taskkill /F because Stop-Process -Force fails on elevated processes
+    taskkill /F /IM cloudflared.exe 2>$null
+    Start-Sleep -Seconds 2
+    # Verify kill
+    $survivors = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
+    if ($survivors) {
+        Write-Host "[guardian] WARNING: $($survivors.Count) cloudflared still alive after taskkill"
     }
     Write-Host "[guardian] Starting cloudflared tunnel..."
-    Start-Process -FilePath $cfExe -ArgumentList "tunnel run ke-tunnel" -WindowStyle Hidden
+    Start-Process -FilePath $cfExe -ArgumentList "--config `"$cfConfig`" tunnel run ke-tunnel" -WindowStyle Hidden
 }
 
 function Test-CloudflaredAlive {
