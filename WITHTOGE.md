@@ -237,6 +237,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | 消息气泡不能拆分    | 消息气泡无法拆分，待排查                                                                                                |
 | 通知延迟+页内弹出+掉线显示在线 | 待验证 — APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s |
 | 权限申请弹到电脑端  | APP 端触发权限申请会弹窗到电脑端，导致手机端卡死。需改为 APP 内弹窗或手机端独立审批                                     |
+| **APP 加强制刷新键** | 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史                                            |
 | COT 内行距缩短      | ✅ 已修 — line-height 1.5→1.3，事件委托防点击失效，指纹精确恢复防消失                                                                                   |
 | COT 突然消失        | ✅ 已修 — 根因是 loadCachedThinking 盲匹配+全删重建，改为 msgFingerprint 精确恢复 + 事件委托 |
 
