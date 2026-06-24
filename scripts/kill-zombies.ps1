@@ -24,6 +24,13 @@ foreach ($p in $allNode) {
     }
 }
 
+# Also protect all running Claude Code processes — IDE-side MCPs
+# (mcp-datetime, mcpbrowser) are children of claude.exe, not cyberboss
+$allClaude = Get-Process claude -ErrorAction SilentlyContinue
+foreach ($p in $allClaude) {
+    $keepPids[$p.Id] = "claude"
+}
+
 # Helper: trace process ancestry up to N levels, check if any ancestor is protected
 function IsChildOfProtected($targetPid, $protectedPids, $maxDepth = 8) {
     $current = $targetPid
