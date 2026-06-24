@@ -25,6 +25,18 @@ if (Test-Path $pidFile) {
     Write-Host "Cleaned up claude-child-pids.txt"
 }
 
+# Kill guardian powershell processes
+Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object {
+    $_.CommandLine -like "*start-guardian*"
+} | ForEach-Object {
+    Write-Host "Killing guardian: PID $($_.ProcessId)"
+    Stop-ProcessTree -PidToKill $_.ProcessId
+}
+
+# Remove stale guardian PID file so new guardian can start clean
+$guardianPidFile = "$env:USERPROFILE\.cyberboss\logs\guardian.pid"
+if (Test-Path $guardianPidFile) { Remove-Item -Force $guardianPidFile }
+
 # Clean up stale socket files that cause EACCES on restart
 $sockPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock"
 $tokenPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock.token"

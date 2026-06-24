@@ -14,14 +14,23 @@ $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
 $cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
 $cfLogFile = Join-Path $logsDir "tunnel.log"
 
-# ── Single-instance via PID file ──
+# ── Single-instance via PID file with exclusive lock ──
 $guardianPidFile = Join-Path $logsDir "guardian.pid"
+$guardianLockFile = Join-Path $logsDir "guardian.lock"
+try {
+    $lockStream = [System.IO.File]::Open($guardianLockFile, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+} catch {
+    Write-Host "[guardian] Cannot acquire lock. Another guardian may be starting. Exiting."
+    exit 1
+}
+# Check for existing live guardian
 if (Test-Path $guardianPidFile) {
     try {
         $existingPid = [int](Get-Content $guardianPidFile -Raw).Trim()
         if ($existingPid -gt 0) {
             $existingProc = Get-Process -Id $existingPid -ErrorAction Stop
             if ($existingProc.Name -match "powershell") {
+                $lockStream.Close()
                 Write-Host "[guardian] Another guardian is already running (PID $existingPid). Exiting."
                 exit 1
             }
