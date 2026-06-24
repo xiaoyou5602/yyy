@@ -43,21 +43,28 @@ function Test-CyberbossAlive {
 function Start-Cloudflared {
     $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
     $cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
+    $cfPidFile = "$env:USERPROFILE\.cyberboss\logs\cloudflared.pid"
     if (-not (Test-Path $cfExe)) {
         Write-Host "[guardian] cloudflared.exe not found at $cfExe"
         return
     }
-    # Kill any existing cloudflared instances first (prevents zombie pile-up)
-    # Use taskkill /F because Stop-Process -Force fails on elevated processes
-    taskkill /F /IM cloudflared.exe 2>$null
-    Start-Sleep -Seconds 2
-    # Verify kill
-    $survivors = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
-    if ($survivors) {
-        Write-Host "[guardian] WARNING: $($survivors.Count) cloudflared still alive after taskkill"
+    # Kill previously tracked instance if still running
+    if (Test-Path $cfPidFile) {
+        try {
+            $oldPid = [int](Get-Content $cfPidFile -Raw).Trim()
+            if ($oldPid -gt 0) {
+                taskkill /F /PID $oldPid 2>$null
+                Start-Sleep -Seconds 1
+            }
+        } catch {}
+        Remove-Item -Force -ErrorAction SilentlyContinue $cfPidFile
     }
     Write-Host "[guardian] Starting cloudflared tunnel..."
-    Start-Process -FilePath $cfExe -ArgumentList "--config `"$cfConfig`" tunnel run ke-tunnel" -WindowStyle Hidden
+    $proc = Start-Process -FilePath $cfExe -ArgumentList "--config `"$cfConfig`" tunnel run ke-tunnel" -WindowStyle Hidden -PassThru
+    if ($proc -and $proc.Id) {
+        Set-Content -Path $cfPidFile -Value "$($proc.Id)" -NoNewline
+        Write-Host "[guardian] cloudflared started PID=$($proc.Id)"
+    }
 }
 
 function Test-CloudflaredAlive {
