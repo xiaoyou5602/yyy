@@ -215,6 +215,18 @@ $consecutiveTunnelFailures = 0
 $consecutiveCyberbossFailures = 0
 $cyberbossProc = $null
 
+# ── Startup self-test — catch contract mismatches before they become silent failures ──
+Write-Host "[guardian] Running startup self-tests..."
+$selfTests = @{
+    "cyberboss HEAD /healthz" = { Test-CyberbossLocal }
+    "tunnel HEAD /healthz"    = { Test-TunnelEndToEnd }
+    "Test-CloudflaredHealthy" = { (Test-CloudflaredHealthy) -in @("all_ok","cyberboss_down","tunnel_down") }
+}
+foreach ($testName in $selfTests.Keys) {
+    try { $testOk = & $selfTests[$testName] } catch { $testOk = $false }
+    Write-Host "[selftest] $testName => $testOk"
+}
+
 Write-Host "[guardian] Starting main watch loop..."
 
 # Start cyberboss on first iteration (non-blocking)

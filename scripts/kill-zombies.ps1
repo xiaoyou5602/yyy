@@ -25,8 +25,8 @@ foreach ($p in $allNode) {
 }
 
 # Helper: trace process ancestry up to N levels, check if any ancestor is protected
-function IsChildOfProtected($pid, $protectedPids, $maxDepth = 8) {
-    $current = $pid
+function IsChildOfProtected($targetPid, $protectedPids, $maxDepth = 8) {
+    $current = $targetPid
     for ($i = 0; $i -lt $maxDepth; $i++) {
         if ($protectedPids.ContainsKey($current)) { return $true }
         try {
@@ -37,12 +37,16 @@ function IsChildOfProtected($pid, $protectedPids, $maxDepth = 8) {
     return $false
 }
 
-# 2. Kill ALL known zombie patterns (no age limit — MCP servers spawn fast)
+# 2. Kill zombie patterns — with 30s age floor to protect newborn legitimate MCPs
 $killed = 0
-$allProtected = $keepPids.Clone()
+$now = Get-Date
+$ageFloorSecs = 30
 
 foreach ($p in $allNode) {
     if ($keepPids.ContainsKey($p.Id)) { continue }
+
+    # Skip processes younger than age floor (still establishing parent chain)
+    if (($now - $p.StartTime).TotalSeconds -lt $ageFloorSecs) { continue }
 
     try {
         $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)").CommandLine
@@ -68,8 +72,14 @@ foreach ($p in $allNode) {
 
     if ($shouldKill) {
         taskkill /F /T /PID $p.Id 2>$null
-        Write-Host "Killed zombie PID $($p.Id) (+tree) — started $($p.StartTime)"
-        $killed++
+        Start-Sleep -Milliseconds 200
+        $survivor = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+        if (-not $survivor) {
+            Write-Host "Killed zombie PID $($p.Id) (+tree) — started $($p.StartTime)"
+            $killed++
+        } else {
+            Write-Host "WARNING: Failed to kill zombie PID $($p.Id) — still alive after taskkill"
+        }
     }
 }
 
