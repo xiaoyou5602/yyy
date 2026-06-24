@@ -3,6 +3,65 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-24 · cloudflared 1033 根因大修 —— 从修6次到焊死
+
+### 背景
+
+1033 bug 先后修了 6 次，每次都"修完"又复发。这次没有选择再打补丁，而是完整追因 + 重构。
+
+### 根因链（5 层）
+
+| 层 | 问题 | 影响 |
+|----|------|------|
+| A | `src/index.js` 每次 cyberboss/tool-mcp-server 启动都 spawn 一个 `cloudflared tunnel run`（不带 `--config` 和 `ke-tunnel`） | 每次重启 +N 个 cloudflared，是堆积的**真正源头** |
+| B | guardian 旧版 `Stop-Process -Force`/`taskkill /F` 对提权进程静默失败 | 旧进程杀不掉，僵尸累积 |
+| C | `Test-CloudflaredAlive` 只看 `Get-Process`，不看连接状态 | cloudflared RUNNING 但已断连，guardian 被欺骗 |
+| D | 没有 tunnel/后端分层诊断 | 后端挂时 guardian 做无效的 cloudflared 重启 |
+| E | 零可观测性 | 不知道何时断、为什么断 |
+
+### 修复
+
+**铲除源头（`src/index.js`）**：删除 `main()` 里的 `spawn(cloudflared, ["tunnel", "run"])`。cloudflared 现在只由 guardian 启动，一条路。
+
+**guardian 全面重写（`scripts/start-guardian.ps1`）**：
+- **PID 三重校验**：杀前验证 PID + 进程名 + StartTime，防 PID 复用误杀。PID 文件改为 JSON
+- **单实例 mutex**：`Global\cyberboss-guardian`，第二个实例直接 exit
+- **权限自检**：启动时检测是否管理员，是就拒绝启动
+- **数量监控**：每次巡检 `Count > 1` 写 WARNING
+- **分层健康检查**：第 1 层直探 `localhost:9726/healthz`（判断后端死活），第 2 层外网探 `https://克.withtoge.us/healthz`（判断 tunnel 死活）
+- **退避持久化**：backoff 计数器 + 时间戳落盘 `guardian-state.json`，guardian 崩溃重启不丢。阶梯 5s→15s→30s→60s，熔断 10次/小时
+- **断连快照**：重启前记录进程数/PID列表/Test-NetConnection
+- **cloudflared 日志**：启动参数加 `--logfile` + `--loglevel info`
+
+**新增 `/healthz` 端点（`ws-server.js`）**：
+- `Cache-Control: no-store, no-cache, must-revalidate`
+- 返回 `{ ok: true, pid, ts }`
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `scripts/start-guardian.ps1` | 完整重写（~200行），所有 P0/P1/P2 逻辑 |
+| `src/adapters/channel/direct/ws-server.js` | 加 `/healthz` 端点 |
+| `src/index.js` | 删除 `spawn(cloudflared)`，注释说明由 guardian 管理 |
+
+### 设计决策
+
+- **不升级 2026.6.1**：1033 根因是进程堆积不是版本 bug。清干净后如果单进程仍断，再升级有诊断价值
+- **不加 tcpKeepAlive**：第 1 次雪崩的元凶
+- **guardian 必须普通权限**：权限自检锁定，子进程 inherit 同权限，保证将来能杀得动
+
+### 验证
+
+| 结果 |
+|------|
+| 清场后 count = 0 |
+| 重启后 count = 1（首次！） |
+| localhost /healthz 200 |
+| tunnel /healthz 200 |
+| guardian-state.json 正确 |
+| cloudflared.pid.json 匹配（PID + StartTime） |
+
 ## 2026-06-23 · 聊天记录存档导入 + 记忆库统一 MemoryItem 架构 + 信件区
 
 ### 聊天记录存档解析器
