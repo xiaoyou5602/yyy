@@ -222,8 +222,6 @@ $zombieCheckTicks = 0
 $healthCheckTicks = 0
 $consecutiveTunnelFailures = 0
 
-Write-Host "[guardian] Starting main watch loop..."
-
 # ── Startup self-test — catch contract mismatches before they become silent failures ──
 Write-Host "[guardian] Running startup self-tests..."
 $selfTests = @{
@@ -237,9 +235,6 @@ foreach ($testName in $selfTests.Keys) {
 }
 
 Write-Host "[guardian] Starting main watch loop..."
-
-# Start cyberboss on first iteration (non-blocking)
-$startCyberboss = $true
 
 while ($true) {
     # ── Cloudflared ──
