@@ -794,6 +794,17 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── Health check ──
+    if (urlPath === "/healthz" && req.method === "GET") {
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+      });
+      res.end(JSON.stringify({ ok: true, pid: process.pid, ts: Date.now() }));
+      return;
+    }
+
     // ── Static pages ──
     if (req.url === "/" || req.url === "/index.html") {
       try {

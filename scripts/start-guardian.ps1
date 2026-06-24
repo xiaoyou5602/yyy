@@ -1,165 +1,318 @@
 # Cyberboss auto-restart guardian
-# Keeps the server alive. If it crashes repeatedly, restart with backoff.
+# Keeps cyberboss + cloudflared alive with self-healing.
 # Usage: powershell -ExecutionPolicy Bypass -File start-guardian.ps1
 
-$guardianPidFile = "$env:USERPROFILE\.cyberboss\logs\guardian.pid"
-$guardianPidDir = Split-Path $guardianPidFile -Parent
-if (-not (Test-Path $guardianPidDir)) { New-Item -ItemType Directory -Force -Path $guardianPidDir | Out-Null }
-if (Test-Path $guardianPidFile) {
-    $existingPid = [int](Get-Content $guardianPidFile -Raw).Trim()
-    if ($existingPid -gt 0) {
-        try {
-            $existingProc = Get-Process -Id $existingPid -ErrorAction Stop
-            Write-Host "[guardian] Another guardian is already running (PID $existingPid). Exiting."
-            exit 1
-        } catch {
-            Write-Host "[guardian] Stale guardian PID file found (PID $existingPid is dead). Taking over."
-        }
-    }
-}
-$currentPid = $pid
-Set-Content -Path $guardianPidFile -Value "$currentPid" -NoNewline
+$ErrorActionPreference = "Continue"
 
+# ── Paths ──
+$logsDir = "$env:USERPROFILE\.cyberboss\logs"
+if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Force -Path $logsDir | Out-Null }
+$guardianStateFile = Join-Path $logsDir "guardian-state.json"
+$cfPidFile = Join-Path $logsDir "cloudflared.pid.json"
 $killZombiesScript = Join-Path $PSScriptRoot "kill-zombies.ps1"
-$cyberbossPidFile = "$env:USERPROFILE\.cyberboss\logs\running.pid"
-$restartCount = 0
-$crashWindow = 300  # 5 minutes
-$maxDelay = 60
-$restartHistory = @()
+$cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
+$cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
+$cfLogFile = Join-Path $logsDir "tunnel.log"
 
-# cloudflared is managed by this guardian since Windows Service was abandoned
-# (LocalSystem can't read user-profile config.yml)
+# ── Single-instance mutex ──
+$mutex = New-Object System.Threading.Mutex($true, "Global\cyberboss-guardian")
+if (-not $mutex.WaitOne(0, $false)) {
+    Write-Host "[guardian] Another guardian instance is already running. Exiting."
+    exit 1
+}
+Write-Host "[guardian] Guardian started PID=$pid"
 
-# Check if port 9726 is already listening
-function Test-CyberbossAlive {
-    $alive = $false
+# ── Permission self-check ──
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+    Write-Host "[guardian] FATAL: Guardian must NOT run as administrator. Cloudflared would inherit elevated permissions, causing future kill failures. Exiting."
+    exit 1
+}
+
+# ── State persistence helpers ──
+function Load-State {
+    if (-not (Test-Path $guardianStateFile)) {
+        return @{ guardianRestarts = 0; cfRestartsThisHour = @(); lastCfRestartTime = $null; backoffLevel = 0 }
+    }
+    try { return Get-Content $guardianStateFile -Raw | ConvertFrom-Json -AsHashtable }
+    catch { return @{ guardianRestarts = 0; cfRestartsThisHour = @(); lastCfRestartTime = $null; backoffLevel = 0 } }
+}
+
+function Save-State($state) {
+    $json = $state | ConvertTo-Json -Compress
+    Set-Content -Path $guardianStateFile -Value $json -NoNewline
+}
+
+$state = Load-State
+
+# ── Health check ──
+function Test-CyberbossLocal {
     try {
-        $conn = (Get-NetTCPConnection -LocalPort 9726 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" })
-        if ($conn) { $alive = $true }
+        $r = Invoke-WebRequest -Uri "http://127.0.0.1:9726/healthz" -Method Head -TimeoutSecs 3 -ErrorAction Stop
+        return ($r.StatusCode -eq 200)
+    } catch { return $false }
+}
+
+function Test-TunnelEndToEnd {
+    try {
+        $ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
+        $r = Invoke-WebRequest -Uri "https://克.withtoge.us/healthz?t=$ts" -Method Head -TimeoutSecs 5 -SkipCertificateCheck -ErrorAction Stop
+        return ($r.StatusCode -eq 200)
+    } catch { return $false }
+}
+
+function Test-CloudflaredProcessAlive {
+    $procs = @(Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue)
+    $count = $procs.Count
+    if ($count -gt 1) {
+        Write-Host "[guardian] WARNING: $count cloudflared processes detected (expected 1) — possible pile-up"
+    }
+    return ($count -gt 0)
+}
+
+function Test-CloudflaredHealthy {
+    # Layer 1: Is cyberboss alive locally?
+    $cyberbossOk = Test-CyberbossLocal
+
+    # Layer 2: Is the tunnel end-to-end healthy?
+    $tunnelOk = Test-TunnelEndToEnd
+
+    if ($cyberbossOk -and $tunnelOk) { return "all_ok" }
+    if (-not $cyberbossOk) { return "cyberboss_down" }
+    if (-not $tunnelOk) { return "tunnel_down" }
+    return "unknown"
+}
+
+# ── Cloudflared lifecycle ──
+function Stop-CloudflaredByPidFile {
+    if (-not (Test-Path $cfPidFile)) { return }
+    try {
+        $data = Get-Content $cfPidFile -Raw | ConvertFrom-Json
+        $oldPid = [int]$data.pid
+        $oldStartTime = [DateTime]$data.startTime
+        if ($oldPid -gt 0) {
+            $proc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+            if ($proc -and $proc.Name -eq "cloudflared" -and $proc.StartTime -eq $oldStartTime) {
+                Write-Host "[guardian] Stopping tracked cloudflared PID=$oldPid StartTime=$($proc.StartTime)"
+                $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 1
+            }
+        }
     } catch {}
-    return $alive
+    Remove-Item -Force -ErrorAction SilentlyContinue $cfPidFile
 }
 
 function Start-Cloudflared {
-    $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
-    $cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
-    $cfPidFile = "$env:USERPROFILE\.cyberboss\logs\cloudflared.pid"
     if (-not (Test-Path $cfExe)) {
         Write-Host "[guardian] cloudflared.exe not found at $cfExe"
         return
     }
-    # Kill previously tracked instance if still running
-    if (Test-Path $cfPidFile) {
-        try {
-            $oldPid = [int](Get-Content $cfPidFile -Raw).Trim()
-            if ($oldPid -gt 0) {
-                taskkill /F /PID $oldPid 2>$null
-                Start-Sleep -Seconds 1
-            }
-        } catch {}
-        Remove-Item -Force -ErrorAction SilentlyContinue $cfPidFile
-    }
+    # Kill previously tracked instance if still alive
+    Stop-CloudflaredByPidFile
+
     Write-Host "[guardian] Starting cloudflared tunnel..."
-    $proc = Start-Process -FilePath $cfExe -ArgumentList "--config `"$cfConfig`" tunnel run ke-tunnel" -WindowStyle Hidden -PassThru
+    $cfArgs = "--config `"$cfConfig`" --logfile `"$cfLogFile`" --loglevel info tunnel run ke-tunnel"
+    $proc = Start-Process -FilePath $cfExe -ArgumentList $cfArgs -WindowStyle Hidden -PassThru
     if ($proc -and $proc.Id) {
-        Set-Content -Path $cfPidFile -Value "$($proc.Id)" -NoNewline
-        Write-Host "[guardian] cloudflared started PID=$($proc.Id)"
+        $cfState = @{ pid = [int]$proc.Id; startTime = $proc.StartTime.ToString("o") }
+        Set-Content -Path $cfPidFile -Value ($cfState | ConvertTo-Json -Compress) -NoNewline
+        Write-Host "[guardian] cloudflared started PID=$($proc.Id) StartTime=$($proc.StartTime)"
     }
 }
 
-function Test-CloudflaredAlive {
-    $alive = $false
-    try {
-        $proc = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
-        if ($proc) { $alive = $true }
-    } catch {}
-    return $alive
+# ── Backoff ──
+$backoffTimes = @(5, 15, 30, 60)
+$maxRestartsPerHour = 10
+
+function Get-BackoffDelay {
+    $level = [Math]::Min($state.backoffLevel, $backoffTimes.Count - 1)
+    return $backoffTimes[$level]
 }
+
+function Reset-BackoffIfStable {
+    $last = $state.lastCfRestartTime
+    if ($last) {
+        $elapsed = [DateTime]::Now - [DateTime]$last
+        if ($elapsed.TotalHours -gt 1) {
+            $state.backoffLevel = 0
+            $state.cfRestartsThisHour = @()
+        }
+    }
+}
+
+function Can-RestartCloudflared {
+    # Prune old restart timestamps
+    $oneHourAgo = [DateTime]::Now.AddHours(-1)
+    $state.cfRestartsThisHour = @($state.cfRestartsThisHour | Where-Object { [DateTime]$_ -gt $oneHourAgo })
+
+    if ($state.cfRestartsThisHour.Count -ge $maxRestartsPerHour) {
+        Write-Host "[guardian] CRITICAL: $maxRestartsPerHour cloudflared restarts in past hour. Circuit breaker tripped — no more auto-restarts."
+        return $false
+    }
+    return $true
+}
+
+function Record-CloudflaredRestart($exitCode) {
+    $state.cfRestartsThisHour += @([DateTime]::Now.ToString("o"))
+    $state.lastCfRestartTime = [DateTime]::Now.ToString("o")
+    $state.backoffLevel = [Math]::Min($state.backoffLevel + 1, $backoffTimes.Count - 1)
+
+    if ($exitCode -ne 0) {
+        Write-Host "[guardian] cloudflared exit code=$exitCode (0x$('{0:X}' -f $exitCode))"
+    }
+
+    Save-State $state
+}
+
+# ── Crash snapshot ──
+function Record-TunnelSnapshot($reason) {
+    $snapFile = Join-Path $logsDir "tunnel_crash_snapshots.log"
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $cfProcs = @(Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue)
+    $pids = if ($cfProcs) { ($cfProcs | ForEach-Object { $_.Id }) -join "," } else { "None" }
+    $ncResult = ""
+    try { $ncResult = Test-NetConnection -ComputerName "克.withtoge.us" -Port 443 -ErrorAction SilentlyContinue | Out-String } catch {}
+
+    $snap = @"
+==================================================
+[SNAPSHOT] $ts
+Reason: $reason
+cloudflared process count: $($cfProcs.Count)
+PIDs: $pids
+guardianRestarts: $($state.guardianRestarts)
+cfRestartsThisHour: $($state.cfRestartsThisHour.Count)
+backoffLevel: $($state.backoffLevel)
+--- Test-NetConnection ---
+$ncResult
+==================================================
+"@
+    Add-Content -Path $snapFile -Value $snap
+}
+
+# ── Main loop ──
+$zombieCheckTicks = 0
+$healthCheckTicks = 0
+$consecutiveTunnelFailures = 0
+$consecutiveCyberbossFailures = 0
+
+Write-Host "[guardian] Starting main watch loop..."
 
 while ($true) {
-    # If cyberboss is already alive (e.g. from previous run), just watch it
-    if (Test-CyberbossAlive) {
-        Write-Host "[guardian] cyberboss is already running on port 9726. Watching..."
-        $zombieCheckTicks = 0
-        while (Test-CyberbossAlive) {
+    # Ensure cloudflared is running before checking cyberboss
+    if (-not (Test-CloudflaredProcessAlive)) {
+        Write-Host "[guardian] cloudflared not running. Starting..."
+        Start-Cloudflared
+    }
+
+    # Check if cyberboss is alive locally
+    if (Test-CyberbossLocal) {
+        # ── Watching mode: cyberboss is alive ──
+        while ($true) {
             Start-Sleep -Seconds 10
             $zombieCheckTicks++
-            # Run zombie cleanup every 10 minutes (60 ticks × 10s)
+            $healthCheckTicks++
+
+            # Zombie cleanup every 10 minutes (60 ticks × 10s)
             if ($zombieCheckTicks -ge 60) {
                 $zombieCheckTicks = 0
                 if (Test-Path $killZombiesScript) {
                     & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
                 }
             }
-            # Keep cloudflared alive too
-            if (-not (Test-CloudflaredAlive)) {
-                Write-Host "[guardian] cloudflared is down. Restarting..."
-                Start-Cloudflared
+
+            # Health check every 30s (3 ticks × 10s)
+            if ($healthCheckTicks -ge 3) {
+                $healthCheckTicks = 0
+                Reset-BackoffIfStable
+
+                $health = Test-CloudflaredHealthy
+                switch ($health) {
+                    "all_ok" {
+                        $consecutiveTunnelFailures = 0
+                        $consecutiveCyberbossFailures = 0
+                    }
+                    "cyberboss_down" {
+                        $consecutiveCyberbossFailures++
+                        Write-Host "[guardian] localhost:9726 unreachable ($consecutiveCyberbossFailures/3)"
+                        if ($consecutiveCyberbossFailures -ge 3) {
+                            Write-Host "[guardian] cyberboss appears dead. Breaking watch loop to restart..."
+                            break
+                        }
+                    }
+                    "tunnel_down" {
+                        $consecutiveTunnelFailures++
+                        $consecutiveCyberbossFailures = 0
+                        Write-Host "[guardian] tunnel end-to-end failed ($consecutiveTunnelFailures/3)"
+                        if ($consecutiveTunnelFailures -ge 3) {
+                            Write-Host "[guardian] tunnel appears dead. Restarting cloudflared..."
+                            if (Can-RestartCloudflared) {
+                                Record-TunnelSnapshot "tunnel end-to-end failed 3 consecutive checks"
+                                $delay = Get-BackoffDelay
+                                Write-Host "[guardian] backoff: waiting ${delay}s before restart (level=$($state.backoffLevel))"
+                                Start-Sleep -Seconds $delay
+                                Stop-CloudflaredByPidFile
+                                Start-Cloudflared
+                                Record-CloudflaredRestart 0
+                                $consecutiveTunnelFailures = 0
+                                $healthCheckTicks = 0
+                            } else {
+                                Write-Host "[guardian] Circuit breaker active. Skipping cloudflared restart."
+                                $consecutiveTunnelFailures = 0
+                            }
+                        }
+                    }
+                }
+            }
+
+            # Check cloudflared process within watch loop
+            if (-not (Test-CloudflaredProcessAlive)) {
+                Write-Host "[guardian] cloudflared process died during watch. Restarting..."
+                if (Can-RestartCloudflared) {
+                    Start-Cloudflared
+                    Record-CloudflaredRestart $null
+                }
+            }
+
+            # Check if cyberboss is still alive
+            if (-not (Test-CyberbossLocal)) {
+                $consecutiveCyberbossFailures++
+                if ($consecutiveCyberbossFailures -ge 3) {
+                    Write-Host "[guardian] cyberboss died. Breaking watch loop to restart..."
+                    break
+                }
+            } else {
+                $consecutiveCyberbossFailures = 0
             }
         }
-        Write-Host "[guardian] cyberboss died. Restarting..."
     }
 
-    # Clear stale sockets before each start
+    # ── Cyberboss restart ──
+    # Clear stale sockets
     $sockPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock"
     $tokenPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock.token"
-    if (Test-Path $sockPath) { Remove-Item -Force -ErrorAction SilentlyContinue $sockPath }
-    if (Test-Path $tokenPath) { Remove-Item -Force -ErrorAction SilentlyContinue $tokenPath }
+    Remove-Item -Force -ErrorAction SilentlyContinue $sockPath, $tokenPath
 
-    # Clear stale cyberboss PID file
-    if (Test-Path $cyberbossPidFile) { Remove-Item -Force -ErrorAction SilentlyContinue $cyberbossPidFile }
-
-    # Kill known MCP zombie processes before each start
+    # Run zombie cleanup
     if (Test-Path $killZombiesScript) {
-        Write-Host "[guardian] Running zombie cleanup..."
+        Write-Host "[guardian] Running zombie cleanup before start..."
         & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
     }
 
-    # Back off if restarts cluster inside the crash window
-    $now = Get-Date
-    $restartHistory = @($restartHistory | Where-Object { ($now - $_).TotalSeconds -lt $crashWindow })
-    $restartHistory += $now
+    Write-Host "[guardian] Starting cyberboss..."
+    $state.guardianRestarts++
+    Save-State $state
 
-    if ($restartHistory.Count -ge 8) {
-        $delay = 60
-    } elseif ($restartHistory.Count -ge 5) {
-        $delay = 30
-    } elseif ($restartHistory.Count -ge 3) {
-        $delay = 15
-    } else {
-        $delay = 5
-    }
-
-    # Ensure cloudflared is running before starting cyberboss
-if (-not (Test-CloudflaredAlive)) {
-    Write-Host "[guardian] cloudflared not running. Starting..."
-    Start-Cloudflared
-}
-
-Write-Host "[guardian] Starting cyberboss... (restart #$restartCount, recent crashes=$($restartHistory.Count))"
     $startedAt = Get-Date
-    $process = Start-Process -FilePath "node" -ArgumentList "./bin/cyberboss.js start" -PassThru -NoNewWindow -Wait
+    $proc = Start-Process -FilePath "node" -ArgumentList "./bin/cyberboss.js start" -NoNewWindow -Wait -PassThru
+    $exitCode = $proc.ExitCode
+    $runtime = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
 
-    $exitCode = $process.ExitCode
-    $runtimeSeconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
+    Write-Host "[guardian] cyberboss exited code=$exitCode after ${runtime}s"
 
-    # If it ran for > 10 min, reset crash history (it was a good run)
-    if ($runtimeSeconds -gt 600) {
-        $restartHistory = @()
-        $restartCount = 0
-        Write-Host "[guardian] Good run (${runtimeSeconds}s). Reset crash counters."
-    } else {
-        $restartCount++
-    }
-
-    Write-Host "[guardian] Process exited with code $exitCode after ${runtimeSeconds}s. Waiting ${delay}s..."
-    Start-Sleep -Seconds $delay
-}
-
-# Clean up PID lock on exit
-if (Test-Path $guardianPidFile) {
-    $savedPid = [int](Get-Content $guardianPidFile -Raw).Trim()
-    if ($savedPid -eq $currentPid) {
-        Remove-Item -Force -ErrorAction SilentlyContinue $guardianPidFile
+    if ($runtime -gt 600) {
+        Write-Host "[guardian] Good run (${runtime}s). Reset backoff."
+        $state.backoffLevel = 0
+        $state.cfRestartsThisHour = @()
+        Save-State $state
     }
 }
