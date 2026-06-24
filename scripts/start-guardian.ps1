@@ -251,11 +251,14 @@ while ($true) {
             $zombieCheckTicks++
             $healthCheckTicks++
 
-            # Zombie cleanup every 10 minutes
+            # Zombie count check every 10 minutes (log only, no auto-kill during watch)
+            # Auto-kill is unsafe: PPID backtracking can't reliably protect IDE MCPs
+            # whose parent chain goes through cmd→npx→claude (intermediate processes die)
             if ($zombieCheckTicks -ge 60) {
                 $zombieCheckTicks = 0
-                if (Test-Path $killZombiesScript) {
-                    & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
+                $nodeCount = (Get-Process node -ErrorAction SilentlyContinue).Count
+                if ($nodeCount -gt 25) {
+                    Write-Host "[guardian] WARNING: $nodeCount node processes — possible zombie pile-up"
                 }
             }
 
