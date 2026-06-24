@@ -44,6 +44,7 @@ npm run safe
 隧道由 **guardian 自动管理**（先杀旧再启新，每 10s 检查存活），无需手动启停。原始命令 `cloudflared.exe tunnel run ke-tunnel`（`~/.cloudflared/config.yml`）
 **重要**：不要用 `--url` 参数！会和 ingress 规则冲突导致 WebSocket 服务端 → 客户端帧丢失
 端口：**9726**（`0.0.0.0` 监听）
+**VPS**：东京 LocVPS `103.85.25.226`，Ubuntu 22.04，2核4G，¥36/月，systemd 守护
 Android APK：`C:\Users\youzi\Desktop\克-apk\克-v12.apk`，versionCode 12，纯全屏 WebView，硬编码 `https://克.withtoge.us`
 
 ### 技术避坑
@@ -288,4 +289,4 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | **06/17~20** | **Thinking 流式显示**：完整链路打通（Claude Code→events→WS→ 前端），计时器+折叠+localStorage 缓存                                                                                                                                                                                                                                                                             |
 | **06/20**    | **小手机主页**：Gemini 生成页面嵌入 App，CSS 7 条铁律写入接入文档                                                                                                                                                                                                                                                                                                             |
 | **06/23**    | **聊天记录存档导入**：15 个 MD 存档解析器 + **记忆库统一 MemoryItem**（conversation+letter）+ **信件区**（CRUD+iframe 阅读+编辑器）；设置页去昵称 + 世界书 AI 名字按模型同步标题栏                                                                                                                     |
-| **06/24~25** | **cloudflared 1033 根治**：guardian 重写（PID 三重校验+分层健康检查+退避持久化+熔断），铲除 `src/index.js` 内部 spawn，PS5.1 API 兼容修复。**312 次重启循环事故**：`-Wait` 去掉导致竞态 → 紧急回滚。**kill-zombies 误杀 IDE MCP**：PPID 回溯穿不过 cmd/npx 中间层 → 摘掉定时自动杀，改数量告警。通知系统三连修补 APK v13 |
+| **06/24~25** | **cloudflared 1033 根治**：guardian 重写 + 312 次重启循环事故 + kill-zombies 误杀 IDE MCP 止血。**VPS 东京正式上线**：LocVPS ¥36/月，systemd 守护，告别 Windows guardian |

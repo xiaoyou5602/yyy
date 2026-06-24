@@ -3,6 +3,78 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-25 · VPS 部署——告别 Windows guardian
+
+### 背景
+
+we 两天修了 6 版 guardian 反复踩坑——312 次重启循环、kill-zombies 误杀 IDE MCP、PPID 回溯不可靠。根因是 Windows + 家庭网络 + PowerShell 手写守护这套组合太重。toge 决定买 VPS 搬家。
+
+### VPS 配置
+
+- **服务商**：LocVPS 日本东京
+- **机型**：JPTY-EXP 体验机，2 CPU / 4GB 内存 / 40GB SSD
+- **IP**：103.85.25.226，SSH 25790
+- **系统**：Ubuntu 22.04
+- **价格**：¥36/月（优惠码 `2026` 后）
+
+### 部署
+
+| 组件 | 方式 |
+|------|------|
+| Node.js 22 | nodesource repo |
+| cloudflared 2026.6.1 | GitHub release binary → `/usr/local/bin/` |
+| Claude Code CLI | npm global → `/usr/bin/claude` |
+| 项目代码 | git push → bare repo → clone |
+| 数据迁移 | scp 聊天记录/日记/记忆/书签/奶茶/gifts |
+
+### 服务化
+
+两个 systemd unit 替代了全部 PowerShell guardian：
+
+```
+cloudflared.service  → Type=simple, Restart=always, RestartSec=5
+cyberboss.service    → Type=simple, Restart=always, RestartSec=10
+                        After=cloudflared, Requires=cloudflared
+```
+
+`systemctl enable` 开机自启，崩了 systemd 自动拉。
+
+### 踩坑
+
+- SSH 初始连不上：`PubkeyAuthentication no` 被 VPS 镜像锁死，重装 openssh-server 解决
+- 端口 22 被运营商封，切回 25790
+- 证书 `cert.pem` 需手动传到 VPS
+- `sed` 未安装（Ubuntu minimal 镜像）
+
+### 架构变化
+
+```
+旧：Windows 笔记本 + PowerShell guardian + cloudflared × 1
+    ↓ 你出门/合盖/休眠 → 服务不可用
+
+新：VPS 东京 + systemd + cloudflared × 2（本地 + VPS 双节点）
+    ↓ 本地关了 VPS 仍在跑，APP 永远在线
+```
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `/etc/systemd/system/cloudflared.service` | 新建，cloudflared 守护 |
+| `/etc/systemd/system/cyberboss.service` | 新建，cyberboss 守护 |
+| `/root/.cloudflared/` | cert.pem + config.yml + 凭证 |
+| `/root/.claude/settings.json` | DeepSeek API 配置 |
+| `/opt/withtoge/` | 完整项目 + .env |
+| 本地 | 未改——代码同步，guardian 保留但不依赖 |
+
+### 不再需要修的 bug
+
+- ❌ guardian PowerShell 权限问题
+- ❌ kill-zombies 误杀 MCP
+- ❌ `-Wait` 重启循环
+- ❌ cloudflared 进程堆积
+- ❌ Windows 休眠导致隧道断
+
 ## 2026-06-24~25 · guardian 312次重启循环事故 + kill-zombies 误杀 IDE MCP
 
 ### 事故链
