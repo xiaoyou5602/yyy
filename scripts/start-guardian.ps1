@@ -14,13 +14,23 @@ $cfExe = Join-Path $PSScriptRoot "..\bin\cloudflared.exe" -Resolve
 $cfConfig = Join-Path $env:USERPROFILE ".cloudflared\config.yml"
 $cfLogFile = Join-Path $logsDir "tunnel.log"
 
-# ── Single-instance mutex ──
-$mutex = New-Object System.Threading.Mutex($false, "Local\cyberboss-guardian")
-try { $gotMutex = $mutex.WaitOne(100, $false) } catch { $gotMutex = $false }
-if (-not $gotMutex) {
-    Write-Host "[guardian] Another guardian instance is already running. Exiting."
-    exit 1
+# ── Single-instance via PID file ──
+$guardianPidFile = Join-Path $logsDir "guardian.pid"
+if (Test-Path $guardianPidFile) {
+    try {
+        $existingPid = [int](Get-Content $guardianPidFile -Raw).Trim()
+        if ($existingPid -gt 0) {
+            $existingProc = Get-Process -Id $existingPid -ErrorAction Stop
+            if ($existingProc.Name -match "powershell") {
+                Write-Host "[guardian] Another guardian is already running (PID $existingPid). Exiting."
+                exit 1
+            }
+        }
+    } catch {
+        Write-Host "[guardian] Stale guardian PID file (PID was $existingPid). Taking over."
+    }
 }
+Set-Content -Path $guardianPidFile -Value "$pid" -NoNewline
 Write-Host "[guardian] Guardian started PID=$pid"
 
 # ── Permission self-check ──
