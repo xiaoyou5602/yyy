@@ -221,8 +221,8 @@ $ncResult
 $zombieCheckTicks = 0
 $healthCheckTicks = 0
 $consecutiveTunnelFailures = 0
-$consecutiveCyberbossFailures = 0
-$cyberbossProc = $null
+
+Write-Host "[guardian] Starting main watch loop..."
 
 # ── Startup self-test — catch contract mismatches before they become silent failures ──
 Write-Host "[guardian] Running startup self-tests..."
@@ -248,98 +248,92 @@ while ($true) {
         Start-Cloudflared
     }
 
-    # ── Cyberboss ──
-    if ($startCyberboss -or -not (Test-CyberbossLocal)) {
-        if (-not $startCyberboss) {
-            # Only count as failure if not initial start
-            $consecutiveCyberbossFailures++
-        }
-        if ($consecutiveCyberbossFailures -ge 3 -or $startCyberboss) {
-            $startCyberboss = $false
-            $consecutiveCyberbossFailures = 0
+    # ── Check if cyberboss is alive (warm start: already running) ──
+    if (Test-CyberbossLocal) {
+        Write-Host "[guardian] cyberboss is already running on port 9726. Watching..."
+        while ($true) {
+            Start-Sleep -Seconds 10
+            $zombieCheckTicks++
+            $healthCheckTicks++
 
-            # Clear stale sockets
-            $sockPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock"
-            $tokenPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock.token"
-            Remove-Item -Force -ErrorAction SilentlyContinue $sockPath, $tokenPath
-
-            # Run zombie cleanup
-            if (Test-Path $killZombiesScript) {
-                Write-Host "[guardian] Running zombie cleanup before start..."
-                & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
+            # Zombie cleanup every 10 minutes
+            if ($zombieCheckTicks -ge 60) {
+                $zombieCheckTicks = 0
+                if (Test-Path $killZombiesScript) {
+                    & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
+                }
             }
 
-            Write-Host "[guardian] Starting cyberboss..."
-            $state.guardianRestarts++
-            Save-State $state
-            $cyberbossStartTime = Get-Date
-            $cyberbossProc = Start-Process -FilePath "node" -ArgumentList "./bin/cyberboss.js start" -NoNewWindow -PassThru
-        }
-    }
-
-    # ── Unified health checks (every 10s) ──
-    Start-Sleep -Seconds 10
-    $zombieCheckTicks++
-    $healthCheckTicks++
-
-    # Check if cyberboss process exited
-    if ($cyberbossProc -and $cyberbossProc.HasExited) {
-        $exitCode = $cyberbossProc.ExitCode
-        $runtime = [Math]::Round(((Get-Date) - $cyberbossStartTime).TotalSeconds, 1)
-        Write-Host "[guardian] cyberboss exited code=$exitCode after ${runtime}s"
-        if ($runtime -gt 600) {
-            Write-Host "[guardian] Good run (${runtime}s). Reset backoff."
-            $state.backoffLevel = 0
-            $state.cfRestartsThisHour = @()
-            Save-State $state
-        }
-        $cyberbossProc = $null
-        $startCyberboss = $true
-        continue
-    }
-
-    # Check if cyberboss is still listening (via healthz)
-    if (-not (Test-CyberbossLocal)) {
-        $consecutiveCyberbossFailures++
-        Write-Host "[guardian] localhost:9726 unreachable ($consecutiveCyberbossFailures/3)"
-    } else {
-        $consecutiveCyberbossFailures = 0
-    }
-
-    # Zombie cleanup every 10 minutes
-    if ($zombieCheckTicks -ge 60) {
-        $zombieCheckTicks = 0
-        if (Test-Path $killZombiesScript) {
-            & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
-        }
-    }
-
-    # Tunnel health check every 30s
-    if ($healthCheckTicks -ge 3) {
-        $healthCheckTicks = 0
-        Reset-BackoffIfStable
-
-        if (-not (Test-TunnelEndToEnd)) {
-            $consecutiveTunnelFailures++
-            Write-Host "[guardian] tunnel end-to-end failed ($consecutiveTunnelFailures/3)"
-            if ($consecutiveTunnelFailures -ge 3) {
-                Write-Host "[guardian] tunnel appears dead. Restarting cloudflared..."
+            # Cloudflared alive check
+            if (-not (Test-CloudflaredProcessAlive)) {
+                Write-Host "[guardian] cloudflared died during watch. Restarting..."
                 if (Can-RestartCloudflared) {
-                    Record-TunnelSnapshot "tunnel end-to-end failed 3 consecutive checks"
-                    $delay = Get-BackoffDelay
-                    Write-Host "[guardian] backoff: waiting ${delay}s before restart (level=$($state.backoffLevel))"
-                    Start-Sleep -Seconds $delay
-                    Stop-CloudflaredByPidFile
                     Start-Cloudflared
-                    Record-CloudflaredRestart 0
-                    $consecutiveTunnelFailures = 0
+                    Record-CloudflaredRestart $null
+                }
+            }
+
+            # Tunnel end-to-end health check every 30s
+            if ($healthCheckTicks -ge 3) {
+                $healthCheckTicks = 0
+                Reset-BackoffIfStable
+                if (-not (Test-TunnelEndToEnd)) {
+                    $consecutiveTunnelFailures++
+                    Write-Host "[guardian] tunnel end-to-end failed ($consecutiveTunnelFailures/3)"
+                    if ($consecutiveTunnelFailures -ge 3) {
+                        Write-Host "[guardian] Restarting cloudflared (tunnel dead)..."
+                        if (Can-RestartCloudflared) {
+                            Record-TunnelSnapshot "tunnel end-to-end failed 3x"
+                            $delay = Get-BackoffDelay
+                            Write-Host "[guardian] backoff: ${delay}s (level=$($state.backoffLevel))"
+                            Start-Sleep -Seconds $delay
+                            Stop-CloudflaredByPidFile
+                            Start-Cloudflared
+                            Record-CloudflaredRestart 0
+                            $consecutiveTunnelFailures = 0
+                        } else {
+                            Write-Host "[guardian] Circuit breaker active. Skip cloudflared restart."
+                            $consecutiveTunnelFailures = 0
+                        }
+                    }
                 } else {
-                    Write-Host "[guardian] Circuit breaker active. Skipping cloudflared restart."
                     $consecutiveTunnelFailures = 0
                 }
             }
-        } else {
-            $consecutiveTunnelFailures = 0
+
+            # Check if cyberboss died
+            if (-not (Test-CyberbossLocal)) {
+                Write-Host "[guardian] cyberboss died. Breaking watch to restart..."
+                break
+            }
         }
+    }
+
+    # ── Cyberboss cold start / restart ──
+    $sockPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock"
+    $tokenPath = "$env:USERPROFILE\.cyberboss\claudecode-runtime.sock.token"
+    Remove-Item -Force -ErrorAction SilentlyContinue $sockPath, $tokenPath
+
+    if (Test-Path $killZombiesScript) {
+        Write-Host "[guardian] Running zombie cleanup before start..."
+        & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
+    }
+
+    Write-Host "[guardian] Starting cyberboss..."
+    $state.guardianRestarts++
+    Save-State $state
+
+    $startedAt = Get-Date
+    $proc = Start-Process -FilePath "node" -ArgumentList "./bin/cyberboss.js start" -NoNewWindow -Wait -PassThru
+    $exitCode = $proc.ExitCode
+    $runtime = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
+
+    Write-Host "[guardian] cyberboss exited code=$exitCode after ${runtime}s"
+
+    if ($runtime -gt 600) {
+        Write-Host "[guardian] Good run (${runtime}s). Reset backoff."
+        $state.backoffLevel = 0
+        $state.cfRestartsThisHour = @()
+        Save-State $state
     }
 }
