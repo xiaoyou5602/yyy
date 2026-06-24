@@ -795,7 +795,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
     }
 
     // ── Health check ──
-    if (urlPath === "/healthz" && req.method === "GET") {
+    if (urlPath === "/healthz" && (req.method === "GET" || req.method === "HEAD")) {
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": "no-store, no-cache, must-revalidate",
