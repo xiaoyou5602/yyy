@@ -251,13 +251,9 @@ while ($true) {
             $zombieCheckTicks++
             $healthCheckTicks++
 
-            # Zombie cleanup every 10 minutes
-            if ($zombieCheckTicks -ge 60) {
-                $zombieCheckTicks = 0
-                if (Test-Path $killZombiesScript) {
-                    & powershell -ExecutionPolicy Bypass -File $killZombiesScript 2>&1 | ForEach-Object { Write-Host "[zombie-killer] $_" }
-                }
-            }
+            # Zombie cleanup is disabled during watch — kills legitimate IDE-side MCPs
+            # whose parent (claude.exe) is not in the keepPids protection list.
+            # It only runs on cold-start/restart when cyberboss is dead.
 
             # Cloudflared alive check
             if (-not (Test-CloudflaredProcessAlive)) {
