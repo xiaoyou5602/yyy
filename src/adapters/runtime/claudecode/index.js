@@ -68,13 +68,23 @@ function createClaudeCodeRuntimeAdapter(config) {
     return null;
   }
 
-  // CLI 路由表（仅 DS — Opus/Haiku 走直调 API，不经过这里）
+  // Model → API routing table
   const MODEL_ROUTES = {
-    "deepseek-v4-pro": {
-      baseUrl: process.env.CYBERBOSS_DEEPSEEK_ENDPOINT || "https://api.deepseek.com/anthropic",
+    "claude-opus-4-6": {
+      baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
+      apiKey: process.env.CYBERBOSS_55API_KEY || "",
+      modelName: "claude-opus-4-6",
+      apiModelName: "[A-按量]claude-opus-4-6",
+    },
+    ds: {
+      baseUrl: "https://api.deepseek.com/anthropic",
       apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
       modelName: "deepseek-v4-pro",
-      apiModelName: "deepseek-v4-pro",
+    },
+    "deepseek-v4-pro": {
+      baseUrl: "https://api.deepseek.com/anthropic",
+      apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
+      modelName: "deepseek-v4-pro",
     },
   };
 
