@@ -62,6 +62,36 @@
 | guardian-state.json 正确 |
 | cloudflared.pid.json 匹配（PID + StartTime） |
 
+### 同日追修：代码审查发现 6 个真实 bug + 系统性修复
+
+Claude Code 审查发现 guardian 健康检查因三个"契约不对齐"bug 实际是死代码：
+
+| # | bug | 影响 |
+|---|-----|------|
+| 1 | `-TimeoutSecs` 参数名错（应为 `-TimeoutSec`） | 所有 PowerShell 版本均抛异常，health check 永远 false |
+| 2 | `-SkipCertificateCheck` PS6+ only，PS5.1 不存在 | tunnel 探活在 5.1 下再炸 |
+| 3 | `-AsHashtable` PS6+ only，`Load-State` 失败 | 状态持久化全废 |
+| 4 | `-Wait` 阻塞 → watch 循环从未运行 | 所有 P1 健康检查是死代码 |
+| 5 | HEAD `/healthz` → 404（只匹配 GET） | 跟序号 1 同型——"发了 HEAD 但路由只认 GET" |
+| 6 | mutex `Global\` 前缀在非管理员 PS5.1 失败 | 单实例锁无效，两个 guardian 同时跑 |
+
+**系统性修复**：
+- 全改 PS5.1 兼容（`-TimeoutSec`、删 `-SkipCertificateCheck`、手动 PSCustomObject→Hashtable、mutex→PID+文件锁）
+- 去掉 `-Wait`，改非阻塞统一 watch 循环
+- `/healthz` 加 HEAD 支持
+- guardian 启动自检——3 项 smoke test 在进主循环前跑，契约不对立刻 `=> False`
+- kill-bridge 加 guardian powershell 清理 + `guardian.pid` 清除
+
+**kill-zombies 加固**：
+- 30s age 宽限保护新生儿 MCP
+- taskkill 后验证进程真死了才 `$killed++`
+- `$pid`→`$targetPid` 避自动变量覆盖
+- 删 `$allProtected` 死代码
+
+**改动文件**：`scripts/start-guardian.ps1`、`scripts/kill-zombies.ps1`、`scripts/kill-bridge.ps1`、`src/adapters/channel/direct/ws-server.js`
+
+**教训**：三次同型 bug（`-Wait` 死代码、`Test-CloudflaredHealthy` 没调、HEAD 404）根因是"两端没对齐的契约"——发送方和接收方各做各的，中间没人验证。启动自检是这模式的根治。
+
 ## 2026-06-23 · 聊天记录存档导入 + 记忆库统一 MemoryItem 架构 + 信件区
 
 ### 聊天记录存档解析器
