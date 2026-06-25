@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const ARCHIVE_BASE = "C:\\Users\\youzi\\Desktop\\女友酱相关\\聊天记录存档";
+const ARCHIVE_BASE = process.env.CYBERBOSS_CHAT_ARCHIVE_DIR || "C:\\Users\\youzi\\Desktop\\女友酱相关\\聊天记录存档";
 
 // ── Stable ID ──
 function shortHash(str) {

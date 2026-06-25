@@ -519,6 +519,42 @@
     return d.innerHTML.replace(/"/g, "&quot;");
   }
 
+  // ── Chat archive import ──
+
+  window.triggerChatImport = function () {
+    const input = document.getElementById("conv-import-input");
+    if (input) input.click();
+  };
+
+  window.handleChatImport = async function (files) {
+    if (!files || !files.length) return;
+    const grid = document.getElementById("conv-list-grid");
+    if (grid) grid.innerHTML = '<div class="empty-state">导入中…</div>';
+
+    let imported = 0;
+    for (const file of files) {
+      try {
+        const content = await file.text();
+        // Derive folder from filename: "YYYY-MM-DD topic.md" → "topic"
+        let folder = file.name.replace(/\.md$/i, "").replace(/^\d{4}-\d{2}-\d{2}\s*/, "").trim();
+        if (!folder) folder = "导入";
+        const res = await fetch("/api/conversations/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder, filename: file.name, content }),
+        });
+        if (res.ok) imported++;
+      } catch (err) {
+        console.error("Import failed for", file.name, err);
+      }
+    }
+
+    // Refresh list
+    window.showMemoryItems();
+    // Also refresh server cache
+    try { await fetch("/api/conversations/refresh", { method: "POST" }); } catch {}
+  };
+
   // Init scroll detection on first detail open
   window.initConvScroll();
 })();

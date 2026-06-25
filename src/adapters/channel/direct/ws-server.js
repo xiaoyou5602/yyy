@@ -26,6 +26,18 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
   const archiveCachePath = path.join(stateDir, "chat-archives-parsed.json");
   let archiveParsed = parseArchive(ARCHIVE_BASE, archiveCachePath);
 
+  function importChatFile(folder, filename, content) {
+    const dir = path.join(ARCHIVE_BASE, folder);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // Sanitize filename
+    const safe = filename.replace(/[<>:"/\\|?*]/g, "_");
+    const filePath = path.join(dir, safe);
+    fs.writeFileSync(filePath, content, "utf8");
+    // Invalidate cache so next parse picks it up
+    try { fs.unlinkSync(archiveCachePath); } catch {}
+    archiveParsed = parseArchive(ARCHIVE_BASE, archiveCachePath);
+  }
+
   const serverInstance = http.createServer((req, res) => {
     const urlPath = decodeURIComponent(req.url.split("?")[0]);
     const query = parseQuery(req.url);
@@ -135,6 +147,63 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
         archiveParsed = parseArchive(ARCHIVE_BASE, archiveCachePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true, conversations: combineConversations(archiveParsed).length }));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/conversations/import — 导入 .md 文件
+    if (urlPath === "/api/conversations/import" && req.method === "POST") {
+      try {
+        const contentType = req.headers["content-type"] || "";
+        if (contentType.includes("application/json")) {
+          // JSON body: { folder, filename, content }
+          const chunks = [];
+          req.on("data", chunk => chunks.push(chunk));
+          req.on("end", () => {
+            try {
+              const { folder, filename, content } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+              if (!folder || !filename || !content) { res.writeHead(400); res.end(JSON.stringify({ error: "folder, filename, content required" })); return; }
+              importChatFile(folder, filename, content);
+              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: true, imported: filename }));
+            } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+          });
+        } else if (contentType.includes("multipart/form-data")) {
+          // Multipart: folder field + file(s)
+          const chunks = [];
+          req.on("data", chunk => chunks.push(chunk));
+          req.on("end", () => {
+            try {
+              const buf = Buffer.concat(chunks);
+              const boundary = extractBoundary(contentType);
+              if (!boundary) { res.writeHead(400); res.end(JSON.stringify({ error: "Missing boundary" })); return; }
+              const parts = parseMultipart(buf, boundary);
+              const folder = parts.fields && parts.fields.folder ? parts.fields.folder.trim() : "";
+              if (!folder) { res.writeHead(400); res.end(JSON.stringify({ error: "folder field required" })); return; }
+              const imported = [];
+              // Handle single file
+              if (parts.file) {
+                importChatFile(folder, parts.file.filename || "imported.md", parts.file.data ? parts.file.data.toString("utf8") : "");
+                imported.push(parts.file.filename);
+              }
+              // Handle multiple files (if parseMultipart supports it)
+              if (parts.files) {
+                for (const f of parts.files) {
+                  importChatFile(folder, f.filename || "imported.md", f.data ? f.data.toString("utf8") : "");
+                  imported.push(f.filename);
+                }
+              }
+              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify({ ok: true, imported }));
+            } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+          });
+        } else {
+          res.writeHead(415);
+          res.end(JSON.stringify({ error: "Use JSON or multipart/form-data" }));
+        }
       } catch (err) {
         res.writeHead(500);
         res.end(JSON.stringify({ error: err.message }));

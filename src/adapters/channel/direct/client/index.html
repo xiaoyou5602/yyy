@@ -633,7 +633,9 @@
     <h1>记忆库</h1>
     <div style="flex:1"></div>
     <button class="conv-add-btn" onclick="window.openLetterEditor()" title="新建信件">+</button>
+    <button class="conv-add-btn" onclick="window.triggerChatImport()" title="导入聊天记录" style="margin-left:4px">📤</button>
   </header>
+  <input type="file" id="conv-import-input" accept=".md" multiple style="display:none" onchange="window.handleChatImport(this.files)">
   <div class="conv-list-search-wrap">
     <input type="text" class="conv-list-search-input" placeholder="搜索会话…" oninput="window.filterConvList(this.value)">
   </div>
