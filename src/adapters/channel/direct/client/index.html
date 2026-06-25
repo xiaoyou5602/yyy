@@ -1107,9 +1107,9 @@ function selectSidebarModel(el) {
 function switchModelHistory() {
   const msgs = document.getElementById("messages");
   msgs.innerHTML = "";
-  history = [];
   let localMsgs = [];
   try { localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]"); } catch {}
+  history = localMsgs.slice();  // fill history before render so syncHistoryFromServer can dedup
   for (const m of localMsgs) renderMsg(m, false);
   scrollBottom();
 }
@@ -1771,13 +1771,13 @@ async function initHistory() {
     localStorage.setItem("bm-server-v1", "1");
   }
 
-  // Merge: server messages take priority, dedup by globalId or timestamp+text
+  // Merge: server messages take priority, dedup via all candidate keys
   const seen = new Set();
   const merged = [];
   for (const m of [...serverMsgs, ...localMsgs]) {
-    const key = m.globalId || m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
-    if (seen.has(key)) continue;
-    seen.add(key);
+    var keys = msgDedupKeys(m);
+    if (keys.some(function(k) { return seen.has(k); })) continue;
+    keys.forEach(function(k) { seen.add(k); });
     merged.push(m);
   }
   merged.sort(cmpMsg);
@@ -1787,6 +1787,18 @@ async function initHistory() {
   scrollBottom();
   loadCachedThinking();
   // Don't persist server-fetched messages to model-specific key
+}
+
+function msgDedupKeys(m) {
+  // Return ALL candidate keys for this message.
+  // Different sources (localStorage vs server) assign different ids/globalIds
+  // for the same logical message. The timestamp|text fallback bridges them.
+  var keys = [];
+  if (m.globalId) keys.push(m.globalId);
+  if (m.id) keys.push(m.id);
+  // Always include the content fingerprint as cross-source bridge
+  keys.push((m.timestamp || "") + "|" + (m.text || "").slice(0, 60));
+  return keys;
 }
 
 async function syncHistoryFromServer() {
@@ -1800,18 +1812,25 @@ async function syncHistoryFromServer() {
     return;
   }
   if (!Array.isArray(serverMsgs) || !serverMsgs.length) return;
-  const seen = new Set(history.map((m) => m.id || (m.timestamp || "") + (m.text || "").slice(0, 40)));
+  // Build seen-set from history AND DOM for all candidate keys
+  const seen = new Set();
+  for (const m of history) {
+    msgDedupKeys(m).forEach(function(k) { seen.add(k); });
+  }
+  document.querySelectorAll(".msg[data-msg-id]").forEach(function(el) {
+    var id = el.getAttribute("data-msg-id");
+    if (id) seen.add(id);
+  });
   const missing = [];
   for (const m of serverMsgs) {
-    const key = m.id || (m.timestamp || "") + (m.text || "").slice(0, 40);
-    if (seen.has(key)) continue;
-    seen.add(key);
+    var keys = msgDedupKeys(m);
+    if (keys.some(function(k) { return seen.has(k); })) continue;
+    keys.forEach(function(k) { seen.add(k); });
     missing.push(m);
   }
   missing.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
   for (const m of missing) {
-    renderMsg(m, false);
-    history.push(m);
+    renderMsg(m, true);
   }
   if (missing.some((m) => m.from === "ke")) {
     hideTyping();
@@ -1861,10 +1880,17 @@ function esc(s) { const d = document.createElement("div"); d.textContent = s; re
 function escAttr(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
 function cmpMsg(a, b) {
-  if (a.globalId && b.globalId) {
-    return a.globalId < b.globalId ? -1 : a.globalId > b.globalId ? 1 : 0;
-  }
-  return (a.timestamp || a.time || "").localeCompare(b.timestamp || b.time || "");
+  // timestamp (ISO) is the most reliable sort key
+  var ta = a.timestamp || "";
+  var tb = b.timestamp || "";
+  if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
+  // fallback: time (HH:MM) for same-day messages
+  ta = a.time || "";
+  tb = b.time || "";
+  if (ta !== tb) return ta < tb ? -1 : 1;
+  // last resort: globalId lexicographic for stable tiebreak
+  if (a.globalId && b.globalId) return a.globalId < b.globalId ? -1 : 1;
+  return 0;
 }
 function scrollBottom() { requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }); }
 

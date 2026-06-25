@@ -30,9 +30,13 @@ function createDirectChannelAdapter(config) {
   };
   let wsServer = null;
   let globalMsgSeq = 0;
-  const GLOBAL_EPOCH = Date.now();
   function nextGlobalId() {
-    return String(GLOBAL_EPOCH) + ":" + String(++globalMsgSeq).padStart(9, "0");
+    // timestamp prefix (base-36) for cross-node rough sortability
+    // + random bytes for uniqueness across nodes
+    // + sequence for within-process tiebreak
+    const ts = Date.now().toString(36);
+    const rand = crypto.randomBytes(3).toString("hex");
+    return ts + "-" + rand + "-" + String(++globalMsgSeq).padStart(4, "0");
   }
   const messageStore = createMessageStore(stateDir);
 
