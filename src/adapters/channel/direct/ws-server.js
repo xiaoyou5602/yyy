@@ -988,7 +988,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
           createdAt: Date.now(),
         });
       }
-      console.log("[ws-server] broadcast type=" + (payload?.type || "?") + " textLen=" + (payload?.text?.length || 0));
+      console.log("[ws-server] broadcast type=" + (payload?.type || "?") + " model=" + (payload?.model || "(none)") + " textLen=" + (payload?.text?.length || 0));
       const data = JSON.stringify(payload);
       const snapshot = [...clients];
       let sent = 0;

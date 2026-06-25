@@ -813,10 +813,14 @@ function getStorageKey() {
 }
 function msgMatchesModel(msg) {
   const msgModel = String(msg.model || "").trim();
-  if (!msgModel) return false; // fail-closed: unknown model = don't render
   const curModel = (settings.model || "").trim();
-  if (!curModel) return false;
-  return msgModel === curModel;
+  if (!msgModel || !curModel) {
+    if (window.__DEBUG_MODEL_MATCH) console.warn("[msgMatch] dropped (empty side)", { msgModel, curModel, msgType: msg?.type });
+    return false;
+  }
+  const ok = msgModel === curModel;
+  if (!ok && window.__DEBUG_MODEL_MATCH) console.warn("[msgMatch] mismatch", { msgModel, curModel });
+  return ok;
 }
 function getStorageKeyForModel(model) {
   const m = (model || "").trim();
