@@ -920,7 +920,7 @@ function showPage(page) {
   }
   conversationListPage.classList.toggle("show", page === "conversation-list");
   if (page === "conversation-list") {
-    if (typeof window.showMemoryItems === "function") window.showConversationList();
+    if (typeof window.showMemoryItems === "function") window.showMemoryItems();
   }
   conversationDetailPage.classList.toggle("show", page === "conversation-detail");
   letterDetailPage.classList.toggle("show", page === "letter-detail");
