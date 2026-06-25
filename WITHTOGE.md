@@ -21,20 +21,19 @@
 > **2026-06-25 起生产环境已搬到 VPS（东京 `103.85.25.226`），systemd 守护。本地 Windows 不再作为服务端。**
 > ~~以下 PowerShell 命令仅供本地调试参考，生产环境不要用。~~
 
-**VPS 运维**：
+**VPS 运维**（systemd = Linux 自带的进程守护，不需要手写 PowerShell）：
 ```bash
 systemctl status cloudflared cyberboss  # 看状态
 systemctl restart cyberboss              # 更新代码后重启
 journalctl -u cyberboss -f              # 看日志
 ```
+systemd 做的事 = 我们的 `start-guardian.ps1` 做的所有事（开机自启、崩了自动拉、看日志），但它是操作系统原生的，不需要一行自己的代码。
 
-**本地（仅调试，不要生产跑）**：
+**本地 Windows（代码调试用，生产环境在 VPS）**：
 ```
 npm start       # 普通启动
-npm run safe    # 守护启动（过时，用 systemd 替代）
+npm run safe    # 守护启动（脚本在 scripts/，代码保留但不用于生产）
 ```
-
-~~已知坑全部解决：Windows spawn 引号、休眠断线 → VPS 不再受影响~~
 
 ### 常见问题排查
 
