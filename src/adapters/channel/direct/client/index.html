@@ -2426,34 +2426,33 @@ function connect() {
         if (msg.done) {
           hideTyping();
           finalizeAllThinking();
-          if (streamingMsgEl) {
-            streamingText += msg.text;
-            ensureBubbleInStreaming(streamingText);
+        }
+        // 多气泡模式：每个 chunk 独立气泡
+        {
+          const isFirst = (!msg.chunkIndex || msg.chunkIndex === 0);
+          if (isFirst && streamingMsgEl && !streamingMsgEl.querySelector(".msg-bubble")) {
+            // 复用 thinking placeholder 的容器，只补气泡
+            ensureBubbleInStreaming(msg.text);
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
-            if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
-            history.push({ from:"ke", text:streamingText, time: now() });
-            saveHistory(history);
-            notify(streamingText);
+            if (bubble) bubble.innerHTML = esc(msg.text) + '<div class="time">' + now() + '</div>';
+            if (msg.done) {
+              history.push({ from:"ke", text:msg.text, time: now() });
+              saveHistory(history);
+            }
+          } else {
+            var div = renderMsg({ from:"ke", text:msg.text, time: now() }, msg.done);
+            if (isFirst && div) {
+              streamingMsgEl = div;
+              attachThinkingToMessage(div, msg.turnId || "");
+            }
+          }
+          if (msg.done) {
+            notify(msg.text);
             streamingMsgEl = null;
             streamingText = "";
-          } else {
-            const div = renderMsg({ from:"ke", text:msg.text, time: now() });
-            if (div) { notify(msg.text); attachThinkingToMessage(div, ""); }
           }
-        } else {
-          if (!streamingMsgEl) {
-            hideTyping();
-            streamingMsgEl = renderMsg({ from:"ke", text:msg.text, time: now() }, false);
-            streamingText = msg.text;
-            attachThinkingToMessage(streamingMsgEl, msg.turnId || "");
-          } else {
-            streamingText += msg.text;
-            ensureBubbleInStreaming(streamingText);
-            const bubble = streamingMsgEl.querySelector(".msg-bubble");
-            if (bubble) bubble.innerHTML = esc(streamingText) + '<div class="time">' + now() + '</div>';
-          }
-          scrollBottom();
         }
+        scrollBottom();
         break;
       case "typing":
         if (msgMatchesModel(msg)) msg.status === 1 ? showTyping() : hideTyping();
@@ -2500,7 +2499,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=35").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=36").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
