@@ -877,6 +877,7 @@ let reconnectDelay = 1000;
 let pendingFiles = [];
 let streamingMsgEl = null;
 let streamingText = "";
+let currentChunkGroupId = null;
 
 /* ── Page switching ── */
 let currentPage = "chat";
@@ -1712,6 +1713,7 @@ messagesEl.addEventListener("drop", (e) => {
 
 /* ── history ── */
 let history = [];
+let initHistoryDone = false;
 
 async function initHistory() {
   // Load from server API first, then fall back to localStorage
@@ -1783,11 +1785,24 @@ async function initHistory() {
     merged.push(m);
   }
   merged.sort(cmpMsg);
+  // Remove server full-text messages superseded by persisted chunks
+  const chunkGlobalIds = new Set();
+  for (var ci = 0; ci < merged.length; ci++) {
+    if (merged[ci].chunkGroupId && merged[ci].globalId) chunkGlobalIds.add(merged[ci].globalId);
+  }
+  if (chunkGlobalIds.size > 0) {
+    merged = merged.filter(function(m) {
+      if (m.globalId && chunkGlobalIds.has(m.globalId) && !m.chunkGroupId) return false;
+      return true;
+    });
+  }
   const cur = (settings.model || "").trim();
   history = merged.filter(m => !m.model || m.model === cur);
   for (const m of history) renderMsg(m, false);
   scrollBottom();
   loadCachedThinking();
+  initHistoryDone = true;
+  syncHistoryFromServer();
   // Don't persist server-fetched messages to model-specific key
 }
 
@@ -2443,7 +2458,7 @@ function cleanupAllThinking() {
 function connect() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   try { ws = new WebSocket(WS_URL); } catch (_) { scheduleReconnect(); return; }
-  ws.onopen = () => { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } syncHistoryFromServer(); };
+  ws.onopen = () => { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } if (initHistoryDone) syncHistoryFromServer(); };
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
@@ -2455,20 +2470,23 @@ function connect() {
           hideTyping();
           finalizeAllThinking();
         }
-        // 多气泡模式：每个 chunk 独立气泡
+        // 多气泡模式：每个 chunk 独立气泡，全部持久化
         {
           const isFirst = (!msg.chunkIndex || msg.chunkIndex === 0);
+          if (isFirst) {
+            currentChunkGroupId = 'cg-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+          }
           if (isFirst && streamingMsgEl && !streamingMsgEl.querySelector(".msg-bubble")) {
             // 复用 thinking placeholder 的容器，只补气泡
             ensureBubbleInStreaming(msg.text);
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
             if (bubble) bubble.innerHTML = esc(msg.text) + '<div class="time">' + now() + '</div>';
-            if (msg.done) {
-              history.push({ from:"ke", text:msg.text, time: now() });
-              saveHistory(history);
-            }
+            history.push({ from:"ke", text:msg.text, time: now(), chunkGroupId: currentChunkGroupId, chunkIndex: msg.chunkIndex || 0 });
+            saveHistory(history);
           } else {
-            var div = renderMsg({ from:"ke", text:msg.text, time: now() }, msg.done);
+            var chunkData = { from:"ke", text:msg.text, time: now(), chunkGroupId: currentChunkGroupId, chunkIndex: msg.chunkIndex || 0 };
+            if (msg.done && msg.globalId) chunkData.globalId = msg.globalId;
+            var div = renderMsg(chunkData, true);
             if (isFirst && div) {
               streamingMsgEl = div;
               attachThinkingToMessage(div, msg.turnId || "");
@@ -2478,6 +2496,7 @@ function connect() {
             notify(msg.text);
             streamingMsgEl = null;
             streamingText = "";
+            currentChunkGroupId = null;
           }
         }
         scrollBottom();
