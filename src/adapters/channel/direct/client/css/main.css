@@ -2999,11 +2999,9 @@ body.selecting .msg.you::before { display: none; }
 /* ── Approval Dialog ── */
 .approval-overlay {
   position: fixed; inset: 0; z-index: 3000;
-  background: rgba(45,45,45,0.35);
+  background: rgba(45,45,45,0.55);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   animation: approval-fade-in 0.2s ease;
 }
 @keyframes approval-fade-in {
