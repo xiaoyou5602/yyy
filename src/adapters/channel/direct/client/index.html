@@ -1756,7 +1756,8 @@ async function initHistory() {
   }
 
   // One-time localStorage cleanup: dedup + backfill timestamps for old messages
-  if (!localStorage.getItem("cyberboss-chat-cleaned-v3")) {
+  (function() {
+    if (localStorage.getItem("cyberboss-chat-cleaned-v3")) return;
     var cleanKeys = [];
     for (var ck = 0; ck < localStorage.length; ck++) {
       var lk = localStorage.key(ck);
@@ -1794,7 +1795,7 @@ async function initHistory() {
       } catch (e) {}
     }
     localStorage.setItem("cyberboss-chat-cleaned-v3", "1");
-  }
+  })();
 
   // One-time: push local bookmarks to server
   if (!localStorage.getItem("bm-server-v1")) {
