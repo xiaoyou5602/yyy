@@ -28,9 +28,10 @@ function createClaudeCodeRuntimeAdapter(config) {
     const normalized = normalizeText(model);
     // Resolve short keys like "opus" → "claude-opus-4-6"
     if (MODEL_KEY_TO_NAME.hasOwnProperty(normalized)) {
-      return MODEL_KEY_TO_NAME[normalized] || configuredModel || normalized;
+      return MODEL_KEY_TO_NAME[normalized] || normalized;
     }
-    return configuredModel || normalized;
+    // Unknown model — let resolveModelEnv fail-closed, don't silently fall back
+    return normalized;
   }
 
   function toModelKey(model) {
@@ -76,11 +77,7 @@ function createClaudeCodeRuntimeAdapter(config) {
       modelName: "claude-opus-4-6",
       apiModelName: "[A-按量]claude-opus-4-6",
     },
-    ds: {
-      baseUrl: "https://api.deepseek.com/anthropic",
-      apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
-      modelName: "deepseek-v4-pro",
-    },
+    // "ds" → MODEL_KEY_TO_NAME maps to "deepseek-v4-pro" below
     "deepseek-v4-pro": {
       baseUrl: "https://api.deepseek.com/anthropic",
       apiKey: process.env.CYBERBOSS_DEEPSEEK_KEY || "",
