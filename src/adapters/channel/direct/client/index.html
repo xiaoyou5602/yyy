@@ -1738,7 +1738,7 @@ async function initHistory() {
 
   // One-time cleanup v3: dedup + backfill timestamps (must run BEFORE loading localMsgs)
   (function() {
-    if (localStorage.getItem("cyberboss-chat-cleaned-v3")) return;
+    if (localStorage.getItem("cyberboss-chat-cleaned-v4")) return;
     var cleanKeys = [];
     for (var ck = 0; ck < localStorage.length; ck++) {
       var lk = localStorage.key(ck);
@@ -1772,7 +1772,7 @@ async function initHistory() {
         }
       } catch (e) {}
     }
-    localStorage.setItem("cyberboss-chat-cleaned-v3", "1");
+    localStorage.setItem("cyberboss-chat-cleaned-v4", "1");
   })();
 
   // Only load current model's localStorage (not cross-model) — now cleaned

@@ -55,6 +55,9 @@ public class MainActivity extends Activity {
 
         webView.addJavascriptInterface(new KeJsBridge(), "Android");
 
+        // Clear WebView cache so we always get fresh code
+        webView.clearCache(true);
+
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
