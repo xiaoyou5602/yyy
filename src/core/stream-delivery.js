@@ -167,10 +167,10 @@ class StreamDelivery {
         // tool_event 也是广播，target 可能尚未就绪
         if (typeof this.channelAdapter.sendToolEvent === "function") {
           await this.channelAdapter.sendToolEvent({
-            userId: state.target.userId,
+            userId: state.replyTarget?.userId || "",
             turnId: turnId || "",
             toolName: event.payload.toolName || "",
-            model: state.target.model || "",
+            model: state.replyTarget?.model || "",
           });
         }
         return;
