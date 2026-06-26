@@ -1391,7 +1391,8 @@ async function fetchPendingApprovals() {
     if (!res.ok) return;
     const data = await res.json();
     for (const a of (data.approvals || [])) {
-      if (!shownApprovalIds.has(a.requestId) && msgMatchesModel(a)) {
+      // 轮询是安全兜底，不受 model 过滤——审批必须到达用户
+      if (!shownApprovalIds.has(a.requestId)) {
         showApprovalDialog(a);
       }
     }
@@ -1847,8 +1848,10 @@ async function syncHistoryFromServer() {
   }
   missing.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
   for (const m of missing) {
-    renderMsg(m, true);
+    history.push(m);
+    renderMsg(m, false);
   }
+  if (missing.length) saveHistory(history);
   if (missing.some((m) => m.from === "ke")) {
     hideTyping();
   }
@@ -1862,7 +1865,7 @@ let _msgIdx = 0;
 function renderMsg(msg, save = true) {
   const div = document.createElement("div");
   div.className = `msg ${msg.from === "you" ? "you" : "ke"}`;
-  const msgId = msg.id || `msg-${Date.now()}-${_msgIdx++}-${Math.random().toString(36).slice(2,6)}`;
+  const msgId = msg.globalId || msg.id || `msg-${Date.now()}-${_msgIdx++}-${Math.random().toString(36).slice(2,6)}`;
   div.setAttribute("data-msg-id", msgId);
   if (!msg.id) msg.id = msgId;
   if (msg.from === "ke") {
@@ -1950,7 +1953,8 @@ function send() {
   const text = inputEl.value.trim();
   const hasContent = pendingFiles.length > 0;
   if ((!text && !hasContent) || !ws || ws.readyState !== WebSocket.OPEN) return;
-  const payload = { type: "message", messageId: `m-${Date.now()}-${Math.random().toString(36).slice(2,8)}` };
+  const messageId = `m-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const payload = { type: "message", messageId };
   if (text) payload.text = text;
   const images = pendingFiles.filter((f) => f.kind === "image");
   const files = pendingFiles.filter((f) => f.kind === "file");
@@ -1973,6 +1977,10 @@ function send() {
       contentType: img.contentType,
     })),
     time: now(),
+    timestamp: new Date().toISOString(),
+    globalId: messageId,
+    id: messageId,
+    model: settings.model || "",
   });
   pendingFiles = [];
   renderPreviews();

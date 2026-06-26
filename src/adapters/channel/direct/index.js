@@ -75,8 +75,8 @@ function createDirectChannelAdapter(config) {
     }
 
     const label = msg.text || (savedImages.length ? "[图片]" : "") || (savedFiles.length ? "[文件]" : "");
-    // Assign globalId once before save — same object used for broadcast later
-    msg.globalId = msg.globalId || nextGlobalId();
+    // Assign globalId once before save — use client messageId if provided
+    msg.globalId = msg.globalId || msg.messageId || nextGlobalId();
     if (label) {
       const m = String(msg.model || "").trim();
       messageStore.save({
