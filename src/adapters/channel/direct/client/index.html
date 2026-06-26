@@ -1726,7 +1726,7 @@ async function initHistory() {
     if (res.ok) serverMsgs = await res.json();
   } catch {}
 
-  // One-time cleanup: clear model-specific keys contaminated by old initHistory
+  // One-time cleanup v2: clear model-specific keys contaminated by old initHistory
   if (!localStorage.getItem("cyberboss-chat-v2")) {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("withtoge-chat-history-") && key !== STORAGE_KEY) {
@@ -1736,7 +1736,46 @@ async function initHistory() {
     localStorage.setItem("cyberboss-chat-v2", "1");
   }
 
-  // Only load current model's localStorage (not cross-model)
+  // One-time cleanup v3: dedup + backfill timestamps (must run BEFORE loading localMsgs)
+  (function() {
+    if (localStorage.getItem("cyberboss-chat-cleaned-v3")) return;
+    var cleanKeys = [];
+    for (var ck = 0; ck < localStorage.length; ck++) {
+      var lk = localStorage.key(ck);
+      if (lk && lk.startsWith("withtoge-chat-history-")) cleanKeys.push(lk);
+    }
+    for (var ci = 0; ci < cleanKeys.length; ci++) {
+      try {
+        var raw = JSON.parse(localStorage.getItem(cleanKeys[ci]) || "[]");
+        if (!Array.isArray(raw) || !raw.length) continue;
+        var seen = new Set();
+        var cleaned = [];
+        for (var ri = 0; ri < raw.length; ri++) {
+          var m = raw[ri];
+          if (!m.timestamp && m.id && m.id.startsWith("msg-")) {
+            var parts = m.id.split("-");
+            if (parts.length >= 2) {
+              var ts = parseInt(parts[1], 10);
+              if (ts > 1000000000000) m.timestamp = new Date(ts).toISOString();
+            }
+          }
+          var keys = [];
+          if (m.globalId) keys.push(m.globalId);
+          if (m.id) keys.push(m.id);
+          keys.push((m.timestamp || "") + "|" + (m.text || "").slice(0, 60));
+          if (keys.some(function(k) { return seen.has(k); })) continue;
+          keys.forEach(function(k) { seen.add(k); });
+          cleaned.push(m);
+        }
+        if (cleaned.length < raw.length) {
+          localStorage.setItem(cleanKeys[ci], JSON.stringify(cleaned.slice(-500)));
+        }
+      } catch (e) {}
+    }
+    localStorage.setItem("cyberboss-chat-cleaned-v3", "1");
+  })();
+
+  // Only load current model's localStorage (not cross-model) — now cleaned
   let localMsgs = [];
   try {
     localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
@@ -1754,48 +1793,6 @@ async function initHistory() {
     }
     localStorage.setItem("cyberboss-chat-migrated", "1");
   }
-
-  // One-time localStorage cleanup: dedup + backfill timestamps for old messages
-  (function() {
-    if (localStorage.getItem("cyberboss-chat-cleaned-v3")) return;
-    var cleanKeys = [];
-    for (var ck = 0; ck < localStorage.length; ck++) {
-      var lk = localStorage.key(ck);
-      if (lk && lk.startsWith("withtoge-chat-history-")) cleanKeys.push(lk);
-    }
-    for (var ci = 0; ci < cleanKeys.length; ci++) {
-      try {
-        var raw = JSON.parse(localStorage.getItem(cleanKeys[ci]) || "[]");
-        if (!Array.isArray(raw) || !raw.length) continue;
-        var seen = new Set();
-        var cleaned = [];
-        for (var ri = 0; ri < raw.length; ri++) {
-          var m = raw[ri];
-          // Backfill timestamp from id (old format: msg-{Date.now()}-{seq}-{random})
-          if (!m.timestamp && m.id && m.id.startsWith("msg-")) {
-            var parts = m.id.split("-");
-            if (parts.length >= 2) {
-              var ts = parseInt(parts[1], 10);
-              if (ts > 1000000000000) m.timestamp = new Date(ts).toISOString();
-            }
-          }
-          // Dedup using shared key logic
-          var keys = [];
-          if (m.globalId) keys.push(m.globalId);
-          if (m.id) keys.push(m.id);
-          keys.push((m.timestamp || "") + "|" + (m.text || "").slice(0, 60));
-          var isDup = keys.some(function(k) { return seen.has(k); });
-          if (isDup) continue;
-          keys.forEach(function(k) { seen.add(k); });
-          cleaned.push(m);
-        }
-        if (cleaned.length < raw.length) {
-          localStorage.setItem(cleanKeys[ci], JSON.stringify(cleaned.slice(-500)));
-        }
-      } catch (e) {}
-    }
-    localStorage.setItem("cyberboss-chat-cleaned-v3", "1");
-  })();
 
   // One-time: push local bookmarks to server
   if (!localStorage.getItem("bm-server-v1")) {
