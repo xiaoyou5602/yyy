@@ -100,6 +100,19 @@
   --model-input-focus-ring: rgba(255,107,157,0.2);
 }
 
+.model-openclaw {
+  --model-accent: #9B59B6;
+  --model-accent-hover: #7D3C98;
+  --model-accent-soft: #F3EEF8;
+  --model-bubble-you: #9B59B6;
+  --model-bubble-you-text: #FFFFFF;
+  --model-header-bg: #F3EEF8;
+  --model-header-border: rgba(155,89,182,0.12);
+  --model-status-color: #9B59B6;
+  --model-input-focus: #9B59B6;
+  --model-input-focus-ring: rgba(155,89,182,0.2);
+}
+
 .model-glm {
   --model-accent: #4A90D9;
   --model-accent-hover: #357ABD;
