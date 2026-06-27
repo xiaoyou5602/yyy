@@ -3002,7 +3002,6 @@ body.selecting .msg.you::before { display: none; }
   background: rgba(45,45,45,0.55);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  animation: approval-fade-in 0.2s ease;
 }
 @keyframes approval-fade-in {
   0% { opacity: 0; }
