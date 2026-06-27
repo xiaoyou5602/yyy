@@ -2119,7 +2119,7 @@ function online(v) {
   if (v) {
     statusDot.className = "on"; statusText.textContent = "在线"; sendBtn.disabled = false;
     applyModelTheme(settings.model || "");
-    inputEl.focus();
+    try { inputEl?.focus(); } catch {}
     fetchPendingApprovals();
     if (window.Android && window.Android.setOnlineStatus) window.Android.setOnlineStatus("在线");
   } else {

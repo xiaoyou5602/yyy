@@ -89,7 +89,7 @@ if (footerEl) {
 
 // ── Typing reaction ──
 let petTypingTimer = null;
-inputEl.addEventListener("input", () => {
+if (inputEl) inputEl.addEventListener("input", () => {
   if (currentPetState !== "typing") petSet("typing");
   clearTimeout(petTypingTimer);
   petTypingTimer = setTimeout(() => petSet("idle"), 2000);
