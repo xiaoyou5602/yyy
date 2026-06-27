@@ -666,6 +666,7 @@ class CyberbossApp {
         text: chunk,
         contextToken: prepared.contextToken,
         model: sessionModel,
+        preserveBlock: true,
       }).catch(() => {});
     };
 
