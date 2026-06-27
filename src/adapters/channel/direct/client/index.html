@@ -978,14 +978,22 @@ function activateZone(key) {
   // Exit select mode if active
   if (selecting) exitSelectMode();
 }
+function getSavedZoneKey() {
+  try {
+    const saved = localStorage.getItem(ZONE_STORAGE_KEY);
+    if (saved && ZONE_KEYS.includes(saved)) return saved;
+  } catch {}
+  return "ds";
+}
 initZones();
+activateZone(getSavedZoneKey());
 
-let ws = null;
-let reconnectTimer = null;
-let reconnectDelay = 1000;
-let streamingMsgEl = null;
-let streamingText = "";
-let currentChunkGroupId = null;
+var ws = null;
+var reconnectTimer = null;
+var reconnectDelay = 1000;
+var streamingMsgEl = null;
+var streamingText = "";
+var currentChunkGroupId = null;
 
 /* ── Page switching ── */
 let currentPage = "chat";
@@ -1352,7 +1360,7 @@ function sidebarNavigate(target) {
 
 /* ── Selection & Bookmark ── */
 const BM_KEY = "withtoge_bookmarks";
-let selecting = false;
+var selecting = false;
 let selectedMsgs = new Set();
 const shownApprovalIds = new Set();
 
@@ -1775,25 +1783,29 @@ document.getElementById("mcp-cam-btn").addEventListener("click", () => showPage(
 // settings-tweak-link handled in tweak.js (loaded after this script)
 
 /* ── image handling ── */
-for (const k of ZONE_KEYS) zones[k].imageBtn.addEventListener("click", async () => {
-  if (window.showOpenFilePicker) {
-    try {
-      const handles = await window.showOpenFilePicker({ multiple: true });
-      for (const handle of handles) {
-        const file = await handle.getFile();
-        addPendingFile(file);
-      }
-      return;
-    } catch (err) {
-      if (err.name === "AbortError") return;
-    }
-  }
-  fileInput.click();
-});
 for (const k of ZONE_KEYS) {
-  zones[k].fileInput.addEventListener("change", () => {
-    for (const file of zones[k].fileInput.files) addPendingFile(file);
-    zones[k].fileInput.value = "";
+  const z = zones[k];
+  if (!z || !z.imageBtn || !z.fileInput) continue;
+  z.imageBtn.addEventListener("click", async () => {
+    if (activeZoneKey !== k) activateZone(k);
+    if (window.showOpenFilePicker) {
+      try {
+        const handles = await window.showOpenFilePicker({ multiple: true });
+        for (const handle of handles) {
+          const file = await handle.getFile();
+          addPendingFile(file);
+        }
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+    z.fileInput.click();
+  });
+  z.fileInput.addEventListener("change", () => {
+    if (activeZoneKey !== k) activateZone(k);
+    for (const file of z.fileInput.files) addPendingFile(file);
+    z.fileInput.value = "";
   });
 }
 
@@ -1857,13 +1869,18 @@ document.addEventListener("paste", (e) => {
 });
 
 /* ── drag & drop ── */
-messagesEl.addEventListener("dragover", (e) => { e.preventDefault(); messagesEl.classList.add("drag-over"); });
-messagesEl.addEventListener("dragleave", () => { messagesEl.classList.remove("drag-over"); });
-messagesEl.addEventListener("drop", (e) => {
-  e.preventDefault();
-  messagesEl.classList.remove("drag-over");
-  for (const file of e.dataTransfer.files) addPendingFile(file);
-});
+for (const k of ZONE_KEYS) {
+  const zoneMessagesEl = zones[k].messagesEl;
+  if (!zoneMessagesEl) continue;
+  zoneMessagesEl.addEventListener("dragover", (e) => { e.preventDefault(); zoneMessagesEl.classList.add("drag-over"); });
+  zoneMessagesEl.addEventListener("dragleave", () => { zoneMessagesEl.classList.remove("drag-over"); });
+  zoneMessagesEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (activeZoneKey !== k) activateZone(k);
+    zoneMessagesEl.classList.remove("drag-over");
+    for (const file of e.dataTransfer.files) addPendingFile(file);
+  });
+}
 
 /* ── history ── */
 let initHistoryDone = false;

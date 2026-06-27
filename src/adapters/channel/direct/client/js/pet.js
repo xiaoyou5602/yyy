@@ -32,7 +32,7 @@ petObj.style.width = "100%";
 petObj.style.height = "100%";
 petObj.style.pointerEvents = "none";
 petObj.style.display = "block";
-petBody.appendChild(petObj);
+if (petBody) petBody.appendChild(petObj);
 
 let currentPetState = "enter";
 let petStateCls = null;
@@ -47,6 +47,7 @@ function petSet(assetKey, cls) {
   petStateCls = cls || (assetKey === "typing" ? "typing" : null);
   const svgKey = PET_SVG_MAP[assetKey] || assetKey;
   petObj.data = CLAWD_ASSETS[svgKey] || CLAWD_ASSETS.idle;
+  if (!petEl) return;
   petEl.classList.remove("hop", "wiggle", "pinch", "typing", "flip");
   if (petStateCls) petEl.classList.add(petStateCls);
 }
@@ -98,18 +99,20 @@ if (inputEl) inputEl.addEventListener("input", () => {
 // ── Send reaction ──
 const origSend = send;
 send = function() {
-  const text = inputEl.value.trim();
+  const text = inputEl ? inputEl.value.trim() : "";
   const hasContent = pendingFiles.length > 0;
   if ((!text && !hasContent) || !ws || ws.readyState !== WebSocket.OPEN) return;
   petSet("happy");
   setTimeout(() => { petSet("idle"); }, 1500);
   origSend();
 };
-sendBtn.removeEventListener("click", origSend);
-sendBtn.addEventListener("click", send);
+if (sendBtn) {
+  sendBtn.removeEventListener("click", origSend);
+  sendBtn.addEventListener("click", send);
+}
 
 // ── Click reaction ──
-petEl.addEventListener("click", () => {
+if (petEl) petEl.addEventListener("click", () => {
   petSet("peek", "pinch");
   setTimeout(() => { petEl.classList.remove("pinch"); petSet("idle"); }, 600);
 });

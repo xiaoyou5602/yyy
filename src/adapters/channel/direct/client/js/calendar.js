@@ -240,21 +240,24 @@ function formatDateStr(year, month, day) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-document.getElementById("cal-prev").addEventListener("click", () => {
+const calPrevBtn = document.getElementById("cal-prev");
+const calNextBtn = document.getElementById("cal-next");
+const calTodayBtn = document.getElementById("cal-today");
+if (calPrevBtn) calPrevBtn.addEventListener("click", () => {
   calState.month--;
   if (calState.month < 0) { calState.month = 11; calState.year--; }
   calState.selectedDate = null;
   renderCalendar();
   showPlanEmpty();
 });
-document.getElementById("cal-next").addEventListener("click", () => {
+if (calNextBtn) calNextBtn.addEventListener("click", () => {
   calState.month++;
   if (calState.month > 11) { calState.month = 0; calState.year++; }
   calState.selectedDate = null;
   renderCalendar();
   showPlanEmpty();
 });
-document.getElementById("cal-today").addEventListener("click", () => {
+if (calTodayBtn) calTodayBtn.addEventListener("click", () => {
   const now = new Date();
   calState.year = now.getFullYear();
   calState.month = now.getMonth();
@@ -369,14 +372,16 @@ function togglePlan(dateStr, planId) {
   selectDate(dateStr); renderCalendar();
 }
 
-document.getElementById("cal-add-plan").addEventListener("click", () => {
+const calAddPlanBtn = document.getElementById("cal-add-plan");
+const planFabBtn = document.getElementById("plan-fab");
+if (calAddPlanBtn) calAddPlanBtn.addEventListener("click", () => {
   if (!calState.selectedDate) {
     const now = new Date();
     calState.selectedDate = formatDateStr(now.getFullYear(), now.getMonth(), now.getDate());
   }
   openPlanModal(calState.selectedDate);
 });
-document.getElementById("plan-fab").addEventListener("click", () => {
+if (planFabBtn) planFabBtn.addEventListener("click", () => {
   if (!calState.selectedDate) {
     const now = new Date();
     calState.selectedDate = formatDateStr(now.getFullYear(), now.getMonth(), now.getDate());
