@@ -321,6 +321,10 @@ function createDirectChannelAdapter(config) {
       return minChunk;
     },
 
+    getRecentMessages({ days = 3, model = "" } = {}) {
+      return messageStore.load(days, model || undefined);
+    },
+
     // Called by app.js after construction to start the server
     async startServer() {
       wsServer = createDirectWebSocketServer({

@@ -675,12 +675,34 @@ class CyberbossApp {
       model: sessionModel,
     };
 
+    // 从 messageStore 取最近对话，按字符数切窗口（max 40k chars）
+    let conversationHistory = [];
+    try {
+      if (typeof this.channelAdapter.getRecentMessages === "function") {
+        const raw = this.channelAdapter.getRecentMessages({ days: 3, model: sessionModel });
+        let charCount = 0;
+        const MAX_CHARS = 40000;
+        for (let i = raw.length - 1; i >= 0; i--) {
+          const m = raw[i];
+          const role = m.from === "you" ? "user" : "assistant";
+          const text = (m.text || "").trim();
+          if (!text) continue;
+          if (role === "assistant" && (text.startsWith("{") || text.startsWith("❌"))) continue;
+          if (charCount + text.length > MAX_CHARS) break;
+          conversationHistory.unshift({ role, content: text });
+          charCount += text.length;
+        }
+      }
+    } catch (e) {
+      console.warn("[api-turn] failed to load history:", e.message);
+    }
+
     try {
       await sendApiTurn({
         modelConfig: cfg,
         text: prepared.text || prepared.originalText || "",
         system: systemPrompt,
-        messages: [], // TODO: 后续从 session store 取多轮历史
+        messages: conversationHistory,
         onThinking: (chunk) => {
           fullThinking += chunk;
           this.channelAdapter.sendThinking({
