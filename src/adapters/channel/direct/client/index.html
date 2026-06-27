@@ -1776,10 +1776,12 @@ for (const k of ZONE_KEYS) zones[k].imageBtn.addEventListener("click", async () 
   }
   fileInput.click();
 });
-fileInput.addEventListener("change", () => {
-  for (const file of fileInput.files) addPendingFile(file);
-  fileInput.value = "";
-});
+for (const k of ZONE_KEYS) {
+  zones[k].fileInput.addEventListener("change", () => {
+    for (const file of zones[k].fileInput.files) addPendingFile(file);
+    zones[k].fileInput.value = "";
+  });
+}
 
 async function addPendingFile(file) {
   if (file.type.startsWith("image/")) {
