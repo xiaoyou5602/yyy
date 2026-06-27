@@ -1256,8 +1256,10 @@ const MODEL_COLORS = {
 async function loadModels() {
   try {
     const res = await fetch("/api/models?_=" + Date.now());
+    console.log("[loadModels] fetch ok=" + res.ok);
     if (!res.ok) return;
     const list = await res.json();
+    console.log("[loadModels] list=" + JSON.stringify(list.map(m => m.key)));
     // 更新元数据表
     for (const m of list) MODEL_META[m.modelName] = m;
     window._modelList = list;
@@ -1309,7 +1311,7 @@ async function loadModels() {
       settings.model = list[0].modelName;
       saveSettings(settings);
     }
-  } catch {}
+  } catch (e) { console.error("[loadModels] error:", e.message); }
 }
 
 function applyModelTheme(model) {
