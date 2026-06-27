@@ -14,6 +14,7 @@ const MAX_MIN_CHUNK_CHARS = 3800;
 const { persistIncomingWeixinAttachments } = require("../adapters/channel/weixin/media-receive");
 const { createCodexRuntimeAdapter } = require("../adapters/runtime/codex");
 const { createClaudeCodeRuntimeAdapter } = require("../adapters/runtime/claudecode");
+const { createExternalCliRuntimeAdapter } = require("../adapters/runtime/external-cli");
 const { findModelByQuery } = require("../adapters/runtime/codex/model-catalog");
 const { createTimelineIntegration } = require("../integrations/timeline");
 const {
@@ -60,6 +61,9 @@ const INBOUND_IMAGE_BATCH_IDLE_MS = 1_500;
 function createRuntimeAdapter(config) {
   if (config.runtime === "claudecode") {
     return createClaudeCodeRuntimeAdapter(config);
+  }
+  if (config.runtime === "external-cli") {
+    return createExternalCliRuntimeAdapter(config);
   }
   return createCodexRuntimeAdapter(config);
 }
