@@ -875,21 +875,88 @@ const conversationDetailPage = document.getElementById("conversation-detail-page
 const letterDetailPage = document.getElementById("letter-detail-page");
 const letterEditorPage = document.getElementById("letter-editor-page");
 var phoneHomeTimer = null;
-const messagesEl = document.getElementById("messages");
-const typingEl = document.getElementById("typing-indicator");
-const inputEl = document.getElementById("input");
-const sendBtn = document.getElementById("send-btn");
-const imageBtn = document.getElementById("image-btn");
-const fileInput = document.getElementById("file-input");
-const imagePreview = document.getElementById("image-preview");
 const statusDot = document.getElementById("status-dot");
 const statusText = document.getElementById("status-text");
 const headerTitle = document.getElementById("header-title");
 
+/* ── Multi-zone chat ── */
+const ZONE_KEYS = ["ds", "opus", "haiku"];
+const ZONE_STORAGE_KEY = "withtoge-active-zone";
+const ZONE_WALLPAPER_KEY = "withtoge-zone-wallpapers";
+const zones = {};
+let messagesEl, typingEl, inputEl, sendBtn, imageBtn, fileInput, imagePreview, scrollBottomBtn;
+let history = [];
+let pendingFiles = [];
+let activeZoneKey = null;
+
+function initZones() {
+  for (const key of ZONE_KEYS) {
+    zones[key] = {
+      messagesEl:   document.getElementById(`messages-${key}`),
+      typingEl:     document.getElementById(`typing-indicator-${key}`),
+      inputEl:      document.getElementById(`input-${key}`),
+      sendBtn:      document.getElementById(`send-btn-${key}`),
+      imageBtn:     document.getElementById(`image-btn-${key}`),
+      fileInput:    document.getElementById(`file-input-${key}`),
+      imagePreview: document.getElementById(`image-preview-${key}`),
+      scrollBottomBtn: document.getElementById(`scroll-bottom-btn-${key}`),
+      deskPet:      document.getElementById(`desk-pet-${key}`),
+      history:      [],
+      pendingFiles: [],
+      scrollTop:    0,
+      inputText:    "",
+      historyLoaded: false,
+    };
+  }
+}
+
+function activateZone(key) {
+  if (!zones[key]) return;
+  // Save current zone state
+  if (activeZoneKey && zones[activeZoneKey]) {
+    const old = zones[activeZoneKey];
+    old.history = history;
+    old.pendingFiles = pendingFiles;
+    if (messagesEl) old.scrollTop = messagesEl.scrollTop;
+    if (inputEl) old.inputText = inputEl.value;
+  }
+  // Hide all zones
+  for (const k of ZONE_KEYS) {
+    const el = document.getElementById(`chat-zone-${k}`);
+    if (el) el.style.display = "none";
+  }
+  // Show target zone
+  const zoneEl = document.getElementById(`chat-zone-${key}`);
+  if (zoneEl) zoneEl.style.display = "";
+  // Swap refs
+  const z = zones[key];
+  messagesEl     = z.messagesEl;
+  typingEl       = z.typingEl;
+  inputEl        = z.inputEl;
+  sendBtn        = z.sendBtn;
+  imageBtn       = z.imageBtn;
+  fileInput      = z.fileInput;
+  imagePreview   = z.imagePreview;
+  scrollBottomBtn = z.scrollBottomBtn;
+  // Restore state
+  history      = z.history;
+  pendingFiles  = z.pendingFiles;
+  inputEl.value = z.inputText || "";
+  if (z.scrollTop) messagesEl.scrollTop = z.scrollTop;
+  renderPreviews();
+  updateScrollToBottomBtn();
+  activeZoneKey = key;
+  try { localStorage.setItem(ZONE_STORAGE_KEY, key); } catch {}
+  // Reset streaming state
+  streamingMsgEl = null; streamingText = ""; currentChunkGroupId = null;
+  // Exit select mode if active
+  if (selecting) exitSelectMode();
+}
+initZones();
+
 let ws = null;
 let reconnectTimer = null;
 let reconnectDelay = 1000;
-let pendingFiles = [];
 let streamingMsgEl = null;
 let streamingText = "";
 let currentChunkGroupId = null;
@@ -1045,15 +1112,39 @@ function updateWallpaperPreview(src) {
 }
 async function applySettings(s) {
   settings = s;
-  if (s.wallpaper) {
-    document.body.style.backgroundImage = cssImageUrl(s.wallpaper);
-    document.body.classList.add("has-wallpaper");
-  } else {
-    document.body.style.backgroundImage = "";
-    document.body.classList.remove("has-wallpaper");
-  }
+  // Per-zone wallpaper: support both old string format and new per-key object
+  applyZoneWallpapers(s.wallpaper);
   applyModelTheme(s.model || "");
   syncHeaderFromWorldbook(s.model || "");
+}
+
+function normalizeWallpaper(wp) {
+  // Migrate old single-string wallpaper to per-key object
+  if (!wp || typeof wp === "string") {
+    const oldUrl = (typeof wp === "string" && wp.trim()) ? wp.trim() : "";
+    return { ds: oldUrl, opus: "", haiku: "" };
+  }
+  return { ds: wp.ds || "", opus: wp.opus || "", haiku: wp.haiku || "" };
+}
+
+function applyZoneWallpapers(wp) {
+  const wps = normalizeWallpaper(wp);
+  for (const key of ZONE_KEYS) {
+    const zoneEl = document.getElementById(`chat-zone-${key}`);
+    if (!zoneEl) continue;
+    const url = wps[key] || "";
+    if (url) {
+      zoneEl.style.backgroundImage = cssImageUrl(url);
+      zoneEl.classList.add("has-wallpaper");
+    } else {
+      zoneEl.style.backgroundImage = "";
+      zoneEl.classList.remove("has-wallpaper");
+    }
+  }
+  // Keep body.has-wallpaper for header/footer z-index (shared elements still need z-index context)
+  const anyWallpaper = ZONE_KEYS.some(k => wps[k]);
+  if (anyWallpaper) document.body.classList.add("has-wallpaper");
+  else document.body.classList.remove("has-wallpaper");
 }
 
 async function syncHeaderFromWorldbook(model) {
@@ -1112,10 +1203,22 @@ function selectSidebarModel(el) {
   settings.model = model;
   saveSettings(settings);
   document.getElementById("setting-model").value = model;
+
+  // Determine zone key and activate
+  const meta = MODEL_META[model];
+  const key = meta?.key || "ds";
+  activateZone(key);
   applyModelTheme(model);
   syncHeaderFromWorldbook(model);
-  switchModelHistory();
-  setTimeout(() => syncHistoryFromServer(), 300);
+
+  // Load history for this zone if first time
+  if (!zones[key].historyLoaded) {
+    switchModelHistory();
+    setTimeout(() => syncHistoryFromServer(), 300);
+  } else {
+    setTimeout(() => syncHistoryFromServer(), 300);
+  }
+
   // Reload worldbook if settings page worldbook tab is open
   if (window._wbLoaded && typeof initWorldbook === "function") {
     window._wbDirty = false;
@@ -1123,13 +1226,13 @@ function selectSidebarModel(el) {
   }
 }
 function switchModelHistory() {
-  const msgs = document.getElementById("messages");
-  msgs.innerHTML = "";
+  messagesEl.innerHTML = "";
   let localMsgs = [];
   try { localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]"); } catch {}
-  history = localMsgs.slice();  // fill history before render so syncHistoryFromServer can dedup
+  history = localMsgs.slice();
   for (const m of localMsgs) renderMsg(m, false);
   scrollBottom();
+  if (activeZoneKey) zones[activeZoneKey].historyLoaded = true;
 }
 const MODEL_META = {}; // { modelName: { key, type, displayName } } 从 API 加载
 
@@ -1415,7 +1518,7 @@ async function fetchPendingApprovals() {
 }
 
 // 双击进入/退出多选（手机和电脑都用双击）
-messagesEl.addEventListener("dblclick", (e) => {
+for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("dblclick", (e) => {
   const msg = e.target.closest(".msg");
   if (!msg) return;
   const msgId = msg.getAttribute("data-msg-id");
@@ -1425,7 +1528,7 @@ messagesEl.addEventListener("dblclick", (e) => {
 });
 
 // Click to toggle in select mode, click empty space to exit
-messagesEl.addEventListener("click", (e) => {
+for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", (e) => {
   if (!selecting) return;
   const msg = e.target.closest(".msg");
   if (!msg) { exitSelectMode(); return; }
@@ -1439,7 +1542,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // Thinking inline 点击：事件委托，永不失效
-messagesEl.addEventListener("click", function(e) {
+for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", function(e) {
   var header = e.target.closest(".thinking-inline-header");
   if (!header) return;
   var inline = header.closest(".thinking-inline");
@@ -1562,8 +1665,6 @@ function jumpToConversation() {
 document.getElementById("bm-back-btn").addEventListener("click", () => showPage("chat"));
 
 /* ── Scroll-to-bottom ── */
-var scrollBottomBtn = document.getElementById("scroll-bottom-btn");
-// messagesEl already declared as const above — reuse it
 
 function updateScrollToBottomBtn() {
   var atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
@@ -1574,7 +1675,7 @@ function scrollToBottom() {
   messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
 }
 
-messagesEl.addEventListener("scroll", updateScrollToBottomBtn);
+for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("scroll", updateScrollToBottomBtn);
 
 // Check on page switch too (for when "跳转对话" is used)
 window.addEventListener("page-changed", function(e) {
@@ -1587,9 +1688,11 @@ window.addEventListener("page-changed", function(e) {
 
 
 document.getElementById("settings-btn").addEventListener("click", () => {
-  document.getElementById("setting-wallpaper").value = settings.wallpaper || "";
+  const wps_norm = normalizeWallpaper(settings.wallpaper);
+  const curKey = MODEL_META[settings.model]?.key || "ds";
+  document.getElementById("setting-wallpaper").value = wps_norm[curKey] || "";
   document.getElementById("setting-model").value = settings.model || "";
-  updateWallpaperPreview(settings.wallpaper || "");
+  updateWallpaperPreview(wps_norm[curKey] || "");
   document.getElementById("settings-overlay").classList.add("show");
   document.getElementById("setting-wallpaper").focus();
 });
@@ -1616,8 +1719,11 @@ document.getElementById("settings-cancel").addEventListener("click", () => {
   document.getElementById("settings-overlay").classList.remove("show");
 });
 document.getElementById("settings-save").addEventListener("click", () => {
+  const wps = normalizeWallpaper(settings.wallpaper);
+  const curKey2 = MODEL_META[settings.model]?.key || "ds";
+  wps[curKey2] = document.getElementById("setting-wallpaper").value.trim();
   const ns = {
-    wallpaper: document.getElementById("setting-wallpaper").value.trim(),
+    wallpaper: wps,
     model: document.getElementById("setting-model").value.trim(),
   };
   saveSettings(ns); applySettings(ns);
@@ -1639,7 +1745,7 @@ document.getElementById("mcp-cam-btn").addEventListener("click", () => showPage(
 // settings-tweak-link handled in tweak.js (loaded after this script)
 
 /* ── image handling ── */
-imageBtn.addEventListener("click", async () => {
+for (const k of ZONE_KEYS) zones[k].imageBtn.addEventListener("click", async () => {
   if (window.showOpenFilePicker) {
     try {
       const handles = await window.showOpenFilePicker({ multiple: true });
@@ -1728,10 +1834,20 @@ messagesEl.addEventListener("drop", (e) => {
 });
 
 /* ── history ── */
-let history = [];
 let initHistoryDone = false;
 
 async function initHistory() {
+  // Activate initial zone based on current model
+  const initModel = settings.model || "";
+  const initMeta = MODEL_META[initModel];
+  const initKey = initMeta?.key || "ds";
+  // Restore last active zone if saved
+  let startKey = initKey;
+  try {
+    const saved = localStorage.getItem(ZONE_STORAGE_KEY);
+    if (saved && ZONE_KEYS.includes(saved)) startKey = saved;
+  } catch {}
+  activateZone(startKey);
   // Load from server API first, then fall back to localStorage
   let serverMsgs = [];
   try {
@@ -2054,9 +2170,12 @@ function send() {
   showTyping();
 }
 
-inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-inputEl.addEventListener("input", () => { inputEl.style.height = "auto"; inputEl.style.height = Math.min(inputEl.scrollHeight, 130) + "px"; });
-sendBtn.addEventListener("click", send);
+for (const k of ZONE_KEYS) {
+    const inp = zones[k].inputEl;
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+    inp.addEventListener("input", () => { inp.style.height = "auto"; inp.style.height = Math.min(inp.scrollHeight, 130) + "px"; });
+    zones[k].sendBtn.addEventListener("click", send);
+  }
 
 /* ── Sticker ── */
 var stickerPanel = document.getElementById("sticker-panel");

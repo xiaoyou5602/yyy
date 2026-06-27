@@ -11,9 +11,19 @@ const CLAWD_ASSETS = {
   crabwalk: "/clawd-assets/clawd-mini-crabwalk.svg",
 };
 
-const petEl = document.getElementById("desk-pet");
-const petBody = document.getElementById("desk-pet-body");
-const petShadow = petEl.querySelector(".desk-pet-shadow");
+// Use active zone's pet elements (multi-zone support)
+function getActivePet() {
+  const key = (typeof activeZoneKey !== "undefined") ? activeZoneKey : "ds";
+  const z = (typeof zones !== "undefined" && zones[key]) ? zones[key] : null;
+  if (z && z.deskPet) return { el: z.deskPet, body: z.deskPet.querySelector(".desk-pet-body"), shadow: z.deskPet.querySelector(".desk-pet-shadow") };
+  // Fallback for pre-zone initialization
+  const el = document.querySelector(".chat-zone:not([style*=\"display: none\"]) .desk-pet") || document.getElementById("desk-pet-ds");
+  return { el, body: el ? el.querySelector(".desk-pet-body") : null, shadow: el ? el.querySelector(".desk-pet-shadow") : null };
+}
+let _pet = getActivePet();
+let petEl = _pet.el;
+let petBody = _pet.body;
+let petShadow = _pet.shadow;
 
 // Use <object> — enables eye tracking via contentDocument
 const petObj = document.createElement("object");
