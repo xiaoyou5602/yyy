@@ -1416,3 +1416,54 @@ Claude Code CLI (stream-json)
 - `b8903eb` 修 text 无 turnId
 - `37cf2e7` 修单条 done + timer 两个边界 bug
 - `73064ff` thinking 到达即显头像 + 思考图标
+
+## 2026-06-26 · 审批弹窗移动端六轮排查 + 切 VPS
+
+### 背景
+
+从微信通道切 direct 通道后，审批弹窗只能在桌面浏览器弹出，手机端一直收不到。经过六轮排查修复，最终发现根因是**华为 WebView 的 CSS GPU 合成层死锁**：`backdrop-filter: blur()` 和 `animation: opacity` 都会在华为较老 Chromium WebView 上触发合成器崩溃，导致页面卡死。
+
+### 排查过程（六轮）
+
+| 轮次 | 怀疑 | 修复 | 结果 |
+|------|------|------|------|
+| 1 | 手机 WebSocket 断连错过广播 | 加 pendingApprovals Map + 10s 轮询 | 不够 |
+| 2 | direct 通道只发弹窗不发文本（微信时代发文本） | `sendApprovalPrompt` 双发弹窗+文本 | 还不够 |
+| 3 | turn-gate 死锁不恢复 | 加 4 分钟 turn 看门狗 | 无关 |
+| 4 | 审批消息 model 为空，被 msgMatchesModel fail-closed 过滤 | 加 `resolveCurrentModel`，审批带 model 发送 | 还不够 |
+| 5 | 通知栏能看到审批文字 → model 过滤排除了，问题在前端渲染 | 去 `backdrop-filter: blur()` | 还不够 |
+| 6 | 同上，`animation: fade-in` 也触发 GPU 合成层 | 去 `animation` | ✅ 通了 |
+
+### 为什么微信时代没这问题
+
+微信时代审批就是一条文本消息（`buildApprovalPromptText`），WeChat 服务器负责推送到所有设备。不涉及任何 WebView 弹窗、CSS 动画、GPU 合成层。切 direct 通道后自己画弹窗 UI，才踩了华为 WebView 的 CSS 坑。
+
+### VPS 切主节点
+
+排查过程中发现手机走本地 Tunnel → 本地电脑时，电脑休眠就断连。将服务切到东京 VPS（`systemctl restart cyberboss`），关掉本地 cloudflared，手机从此 24h 在线。
+
+### 架构教训
+
+- **CSS 动画/模糊在 Android WebView 上不可靠**：华为 EMUI WebView 基于较老 Chromium，`backdrop-filter` 和 `opacity` animation 都会触发合成层死锁。审批弹窗这类安全关键 UI 应保持纯静态 CSS。
+- **fail-closed 过滤需要 dev-mode 日志**：`msgMatchesModel` 加了 `window.__DEBUG_MODEL_MATCH` 开关，静默丢弃变可观测。
+- **轮询兜底不应被 model 过滤**：`fetchPendingApprovals` 去掉了 `msgMatchesModel` 检查，审批是安全关键 UI，必须到达用户。
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `src/adapters/channel/direct/ws-server.js` | pendingApprovals Map、GET/POST API、broadcast 存储/清理、超时自动清除 |
+| `src/adapters/channel/direct/client/index.html` | shownApprovalIds、10s 轮询、重连补拉、HTTP fallback、msgMatchesModel dev 日志、轮询去 model 过滤 |
+| `src/adapters/channel/direct/client/css/main.css` | 去 backdrop-filter、去 animation |
+| `src/core/app.js` | resolveCurrentModel 辅助方法、sendApprovalPrompt 双发+model、turn 看门狗 |
+
+### 关键 commit
+
+- `cd9340d` 加审批弹窗轮询兜底
+- `00fe295` direct 通道双发弹窗+文本消息
+- `4a1f41a` 加 turn 看门狗
+- `26a0614` 加 resolveCurrentModel、审批传 model
+- `1c8a656` msgMatchesModel dev-mode 警告
+- `6562ceb` 轮询兜底去 model 过滤
+- `7215e77` 去 backdrop-filter
+- `08d2e45` 去 animation（最终修复）
