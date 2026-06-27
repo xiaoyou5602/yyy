@@ -31,6 +31,15 @@ const MODELS = {
     apiModel: "glm-4",
     modelName: "glm-5.2",
   },
+  openclaw: {
+    type: "api",
+    apiFormat: "openai",
+    displayName: "米米子（OpenClaw）",
+    baseUrl: process.env.CYBERBOSS_OPENCLAW_ENDPOINT || "http://127.0.0.1:18789/v1",
+    apiKey: process.env.CYBERBOSS_OPENCLAW_TOKEN || "",
+    apiModel: "openclaw/default",
+    modelName: "openclaw",
+  },
   // 以后加新模型：复制上面一段，改 type/apiFormat/baseUrl/apiKey/apiModel/modelName/displayName
 };
 
