@@ -1255,7 +1255,7 @@ const MODEL_COLORS = {
 
 async function loadModels() {
   try {
-    const res = await fetch("/api/models");
+    const res = await fetch("/api/models?_=" + Date.now());
     if (!res.ok) return;
     const list = await res.json();
     // 更新元数据表
