@@ -3,6 +3,36 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-27~28 · 代码审查扫雷 + 米米子接入 + VPS 稳定运行
+
+### 别人审出 17 个 bug——修了致命的
+
+另一个端口审了 `claudecode/index.js`、`app.js`、`ws-server.js`，报 17 个问题：
+
+- **致命（3 个）**：ws-server.js 被 linter 自动修复破坏——`resolveModelKey` → `WebaodelKey` typo、`createMessageStore` 和 `WebSocketServer` import 丢失。原因是你 VS Code 装的 linter 自动格式化改坏了 import 头。**git checkout 回滚**
+- **严重（2 个）**：`resolveModel` 末尾 `configuredModel` fallback 绕过 fail-closed → **已删**；`MODEL_ROUTES.ds` 死代码（`resolveModel` 已把 ds 翻译成 deepseek-v4-pro，永远不会用 ds 键查路由）→ **已删**
+- 其余（haiku 路由缺失、ws 无鉴权、path traversal 等）记着，非紧急
+
+### stream-delivery tool event 崩溃
+
+VPS 日志报 `Cannot read properties of undefined (reading 'userId')`，每次克调工具就 TypeError。根因是 `sendToolEvent` 读了 `state.target.userId`，但代码只设过 `state.replyTarget`。`state.target` 永远是 undefined。**已修**（加 `?.` ）。
+
+### 米米子（OpenClaw）接入
+
+toge 部署了 OpenClaw，取名「米米子」——自带 agent + 记忆文件（MEMORY.md）。接入方式选 A（API 模式）：
+- `model-routes.js` 加 `openclaw` 条目，`apiFormat: openai`，`baseUrl: 127.0.0.1:18789/v1`
+- `.env` 加 `CYBERBOSS_OPENCLAW_TOKEN`
+- 记忆独立于克——克有日记/记忆碎片，米米子有自己的 MD 文件。后续可以桥接共享日记
+
+### external-cli 适配器
+
+写了 `src/adapters/runtime/external-cli/index.js`——通用外部 CLI runtime，可按模型配置 command+env。`app.js` 加 `external-cli` 分支。等米米子需要 CLI 模式时直接用。
+
+### 教训
+
+- **linter 自动修复会破坏 import**：关掉 VS Code 保存时自动格式化
+- **`state.target` ≠ `state.replyTarget`**：同文件里属性名不一致，前几轮改动留下的坑
+
 ## 2026-06-25 · VPS 部署——告别 Windows guardian
 
 ### 背景
