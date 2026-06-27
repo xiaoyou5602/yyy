@@ -27,38 +27,45 @@ async function sendApiTurn({
   onDone = () => {},
   onError = () => {},
 }) {
-  const { baseUrl, apiKey, apiModel } = modelConfig;
+  const { baseUrl, apiKey, apiModel, apiFormat } = modelConfig;
+  const format = apiFormat || "anthropic";
   if (!baseUrl || !apiKey || !apiModel) {
     onError(new Error("modelConfig 缺少 baseUrl/apiKey/apiModel"));
     return;
   }
 
+  const isOpenAI = format === "openai";
+  const apiPath = isOpenAI ? "/v1/chat/completions" : "/v1/messages";
+  const bodyMessages = [...messages, { role: "user", content: text }];
+  if (system) {
+    if (isOpenAI) bodyMessages.unshift({ role: "system", content: system });
+  }
   const body = {
     model: apiModel,
     max_tokens: 4096,
-    messages: [
-      ...messages,
-      { role: "user", content: text },
-    ],
+    messages: bodyMessages,
     stream: true,
   };
-  if (system) body.system = system;
+  if (system && !isOpenAI) body.system = system;
 
-  const url = new URL(baseUrl + "/v1/messages");
+  const url = new URL(baseUrl + apiPath);
   const transport = url.protocol === "https:" ? https : http;
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`,
+  };
+  if (!isOpenAI) {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  }
 
   const req = transport.request({
     hostname: url.hostname,
     port: url.port,
     path: url.pathname + url.search,
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    // 不走系统代理（防止 TUN/VPN 劫持出网请求）
+    headers,
     agent: false,
     rejectUnauthorized: false,
   }, (res) => {
@@ -87,19 +94,37 @@ async function sendApiTurn({
         const lines = part.split("\n");
         for (const line of lines) {
           if (line.startsWith("data: ")) {
+            const raw = line.slice(6);
+            if (raw === "[DONE]") {
+              onDone({ text: fullText, thinking: fullThinking });
+              continue;
+            }
             try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === "content_block_delta") {
-                const delta = data.delta;
-                if (delta?.type === "text_delta") {
-                  fullText += delta.text;
-                  onText(delta.text);
-                } else if (delta?.type === "thinking_delta") {
-                  fullThinking += delta.thinking;
-                  onThinking(delta.thinking);
+              const data = JSON.parse(raw);
+              if (isOpenAI) {
+                // OpenAI: choices[0].delta.content
+                const choice = data.choices?.[0];
+                if (choice?.delta?.content) {
+                  fullText += choice.delta.content;
+                  onText(choice.delta.content);
                 }
-              } else if (data.type === "message_stop") {
-                onDone({ text: fullText, thinking: fullThinking });
+                if (choice?.finish_reason) {
+                  onDone({ text: fullText, thinking: fullThinking });
+                }
+              } else {
+                // Anthropic: content_block_delta / thinking_delta / message_stop
+                if (data.type === "content_block_delta") {
+                  const delta = data.delta;
+                  if (delta?.type === "text_delta") {
+                    fullText += delta.text;
+                    onText(delta.text);
+                  } else if (delta?.type === "thinking_delta") {
+                    fullThinking += delta.thinking;
+                    onThinking(delta.thinking);
+                  }
+                } else if (data.type === "message_stop") {
+                  onDone({ text: fullText, thinking: fullThinking });
+                }
               }
             } catch (e) {
               // 忽略解析失败的行

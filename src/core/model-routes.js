@@ -15,13 +15,23 @@ const MODELS = {
   },
   opus: {
     type: "api",
+    apiFormat: "anthropic",
     displayName: "Claude Opus 4.6（55api）",
     baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
     apiKey: process.env.CYBERBOSS_55API_KEY || "",
     apiModel: "[A8-按量]claude-opus-4-6",
     modelName: "claude-opus-4-6",
   },
-  // 以后加新模型：复制上面一段，改 type/baseUrl/apiKey/apiModel/modelName/displayName
+  glm: {
+    type: "api",
+    apiFormat: "openai",
+    displayName: "智谱 GLM-5.2",
+    baseUrl: "https://ws-p3tug6w6xf8x006o.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    apiKey: process.env.CYBERBOSS_GLM52_KEY || "",
+    apiModel: "glm-4",
+    modelName: "glm-5.2",
+  },
+  // 以后加新模型：复制上面一段，改 type/apiFormat/baseUrl/apiKey/apiModel/modelName/displayName
 };
 
 function getModelConfig(modelKey) {
