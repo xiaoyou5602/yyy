@@ -1759,6 +1759,15 @@ async function initHistory() {
               if (ts > 1000000000000) m.timestamp = new Date(ts).toISOString();
             }
           }
+          // Fallback: if still no timestamp, derive from time field or use epoch
+          if (!m.timestamp) {
+            var tm = (m.time || "").split(":");
+            if (tm.length >= 2) {
+              m.timestamp = "2000-01-01T" + (m.time || "00:00") + ":00.000Z";
+            } else {
+              m.timestamp = "1970-01-01T00:00:00.000Z";
+            }
+          }
           var keys = [];
           if (m.globalId) keys.push(m.globalId);
           if (m.id) keys.push(m.id);
@@ -1947,9 +1956,9 @@ function cmpMsg(a, b) {
   ta = a.time || "";
   tb = b.time || "";
   if (ta !== tb) return ta < tb ? -1 : 1;
-  // same time: prefer messages with timestamp (server) over ones without (old localStorage)
-  if (a.timestamp && !b.timestamp) return 1;
-  if (!a.timestamp && b.timestamp) return -1;
+  // same time: messages with timestamp (server/trusted) sort BEFORE ones without
+  if (a.timestamp && !b.timestamp) return -1;
+  if (!a.timestamp && b.timestamp) return 1;
   // last resort: globalId lexicographic for stable tiebreak
   if (a.globalId && b.globalId) return a.globalId < b.globalId ? -1 : 1;
   return 0;
