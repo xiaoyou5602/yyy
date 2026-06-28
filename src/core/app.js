@@ -660,8 +660,9 @@ class CyberbossApp {
     let fullText = "";
     let fullThinking = "";
     let textBuffer = "";
+    let thinkingBuffer = "";
 
-    const flushBuffer = () => {
+    const flushText = () => {
       if (!textBuffer) return;
       const chunk = textBuffer;
       textBuffer = "";
@@ -671,6 +672,17 @@ class CyberbossApp {
         contextToken: prepared.contextToken,
         model: sessionModel,
         preserveBlock: true,
+      }).catch(() => {});
+    };
+
+    const flushThinking = () => {
+      if (!thinkingBuffer) return;
+      const chunk = thinkingBuffer;
+      thinkingBuffer = "";
+      this.channelAdapter.sendThinking({
+        userId: prepared.senderId,
+        text: chunk,
+        model: sessionModel,
       }).catch(() => {});
     };
 
@@ -710,22 +722,26 @@ class CyberbossApp {
         messages: conversationHistory,
         onThinking: (chunk) => {
           fullThinking += chunk;
-          this.channelAdapter.sendThinking({
-            userId: prepared.senderId,
-            text: chunk,
-            model: sessionModel,
-          }).catch(() => {});
+          thinkingBuffer += chunk;
+          // thinking 也缓冲，每 200 字或遇到段落边界才发送
+          if (thinkingBuffer.length > 200 || /\n\n/.test(thinkingBuffer)) {
+            flushThinking();
+          }
         },
         onText: (chunk) => {
           fullText += chunk;
           textBuffer += chunk;
-          // 遇到句号、换行、问号、感叹号，或累积超过 80 字时发送
-          if (/[。\n？！!?.]/.test(chunk) || textBuffer.length > 80) {
-            flushBuffer();
+          // 只在句子结束（。！？）或段落边界（双换行）或超 500 字时 flush
+          const sentenceEnd = /[。！？\n]/.test(chunk);
+          const paragraphBreak = /\n\n/.test(textBuffer);
+          const longEnough = textBuffer.length > 500;
+          if (paragraphBreak || (sentenceEnd && textBuffer.length > 20) || longEnough) {
+            flushText();
           }
         },
         onDone: () => {
-          flushBuffer(); // 发送剩余缓冲
+          flushThinking();
+          flushText();
           this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
         },
         onError: async (err) => {
