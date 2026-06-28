@@ -1620,11 +1620,11 @@ document.addEventListener("keydown", (e) => {
 for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", function(e) {
   var header = e.target.closest(".thinking-trigger");
   if (!header) return;
-  var inline = header.closest(".thinking-wrapper");
-  if (!inline) return;
-  var body = inline.querySelector(".thinking-content");
-  if (!body) return;
-  var collapsed = inline.classList.toggle("collapsed");
+  var wrapper = header.closest(".thinking-wrapper");
+  if (!wrapper) return;
+  var comp = wrapper.querySelector(".thinking-component");
+  if (!comp) return;
+  var collapsed = comp.classList.toggle("collapsed");
   var arrow = header.querySelector(".thinking-arrow");
   if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
 });
