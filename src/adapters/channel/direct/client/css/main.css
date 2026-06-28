@@ -3111,7 +3111,7 @@ body.selecting .msg.you::before { display: none; }
 
 /* ── Thinking ── */
 .thinking-inline {
-  margin: 4px 0 2px 0;
+  margin: -2px 0 10px 0;
 }
 
 /* Row: avatar + label side by side */

@@ -2571,7 +2571,7 @@ function buildInlineThinking(turnId) {
   var header = document.createElement("div");
   header.className = "thinking-inline-header";
   var labelText = store.phase === "tooling" ? "正在调用工具..." : (store.phase === "final" ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-inline-arrow">▶</span> <span class="thinking-inline-label">' + labelText + '</span>';
+  header.innerHTML = '<span class="thinking-inline-arrow">▼</span> <span class="thinking-inline-label">' + labelText + '</span>';
 
   row.appendChild(avatar);
   row.appendChild(header);
@@ -2579,7 +2579,7 @@ function buildInlineThinking(turnId) {
 
   // COT body (blue left border only on this part)
   var body = document.createElement("div");
-  body.className = "thinking-inline-body thinking-collapsed";
+  body.className = "thinking-inline-body";
   body.textContent = store.text;
 
   inline.appendChild(body);
