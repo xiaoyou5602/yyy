@@ -389,9 +389,9 @@ footer {
 .chat-input:focus { outline: none; }
 
 .image-btn {
-  position: absolute; right: 10px; bottom: 50%; transform: translateY(50%);
+  position: absolute; right: 10px; bottom: 6px;
   width: 16px; height: 16px; border: none; border-radius: 0;
-  background: transparent; color: rgba(45,45,45,0.25); cursor: pointer;
+  background: transparent; color: rgba(89,137,185,0.35); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   transition: opacity 0.2s;
@@ -3110,8 +3110,8 @@ body.selecting .msg.you::before { display: none; }
 
 /* ── Thinking (Gemini heart avatar + left border + grid collapse) ── */
 .thinking-wrapper {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-top: 6px; margin-bottom: -4px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  margin-top: 6px; margin-bottom: 2px;
   width: 100%;
 }
 
@@ -3127,8 +3127,7 @@ body.selecting .msg.you::before { display: none; }
 
 .thinking-component {
   flex: 1;
-  border-left: 2px solid rgba(89,137,185,0.15);
-  padding-left: 12px;
+  padding-left: 0;
 }
 .thinking-wrapper.thinking-tool-active .thinking-component {
   border-left-color: rgba(204,123,92,0.3);
