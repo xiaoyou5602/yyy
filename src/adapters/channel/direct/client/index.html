@@ -1618,14 +1618,14 @@ document.addEventListener("keydown", (e) => {
 
 // Thinking inline 点击：事件委托，永不失效
 for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", function(e) {
-  var header = e.target.closest(".thinking-inline-header");
+  var header = e.target.closest(".thinking-trigger");
   if (!header) return;
-  var inline = header.closest(".thinking-inline");
+  var inline = header.closest(".thinking-wrapper");
   if (!inline) return;
-  var body = inline.querySelector(".thinking-inline-body");
+  var body = inline.querySelector(".thinking-content");
   if (!body) return;
-  var collapsed = body.classList.toggle("thinking-collapsed");
-  var arrow = header.querySelector(".thinking-inline-arrow");
+  var collapsed = inline.classList.toggle("collapsed");
+  var arrow = header.querySelector(".thinking-arrow");
   if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
 });
 
@@ -2529,7 +2529,7 @@ function flushOneTurn(turnId) {
     // 取关联消息的文本指纹用于恢复时精确匹配
     var fp = "";
     try {
-      var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+      var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
       if (inline) {
         var msgEl = inline.closest(".msg");
         if (msgEl) {
@@ -2568,7 +2568,7 @@ function loadCachedThinking() {
       var keMsgs = messagesEl.querySelectorAll(".msg.ke");
       keMsgs.forEach(function(msgEl) {
         if (matched) return;
-        if (msgEl.querySelector(".thinking-inline")) return;
+        if (msgEl.querySelector(".thinking-wrapper")) return;
         var bubble = msgEl.querySelector(".msg-bubble");
         if (!bubble) return;
         var bubbleFp = (bubble.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
@@ -2589,25 +2589,37 @@ function buildInlineThinking(turnId) {
   var store = thinkingStore.turns[turnId];
   if (!store || !store.text) return null;
 
-  var inline = document.createElement("div");
-  inline.className = "thinking-inline";
-  inline.dataset.turnId = turnId;
-  if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
+  var wrapper = document.createElement("div");
+  wrapper.className = "thinking-wrapper";
+  wrapper.dataset.turnId = turnId;
+  if (store.phase === "tooling") wrapper.classList.add("thinking-tool-active");
 
-  var header = document.createElement("div");
-  header.className = "thinking-inline-header";
-  var labelText = store.phase === "tooling" ? "正在调用工具..." : (store.phase === "final" ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-inline-arrow">▶</span> <span class="thinking-inline-label">' + labelText + '</span>';
+  // Heart avatar
+  var avatar = document.createElement("div");
+  avatar.className = "thinking-avatar";
+  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
 
-  var body = document.createElement("div");
-  body.className = "thinking-inline-body thinking-collapsed";
-  body.textContent = store.text;
+  var comp = document.createElement("div");
+  comp.className = "thinking-component";
 
-  // 不再绑 click——由 messagesEl 事件委托统一处理
+  var trigger = document.createElement("div");
+  trigger.className = "thinking-trigger";
+  var labelText = store.phase === "tooling" ? "正在调用工具…" : (store.phase === "final" ? "thinking：已思考完毕" : "thinking：思考中…");
+  trigger.innerHTML = '<span class="thinking-arrow">▶</span><span>' + labelText + '</span>';
 
-  inline.appendChild(header);
-  inline.appendChild(body);
-  return inline;
+  var content = document.createElement("div");
+  content.className = "thinking-content";
+
+  var inner = document.createElement("div");
+  inner.className = "thinking-inner";
+  inner.textContent = store.text;
+  content.appendChild(inner);
+
+  comp.appendChild(trigger);
+  comp.appendChild(content);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(comp);
+  return wrapper;
 }
 
 function findActiveThinkingTurnId() {
@@ -2627,7 +2639,7 @@ function attachThinkingToMessage(msgEl, turnId) {
   if (!msgEl) return;
   turnId = turnId || findActiveThinkingTurnId();
   if (!turnId) return;
-  var existing = msgEl.querySelector(".thinking-inline");
+  var existing = msgEl.querySelector(".thinking-wrapper");
   if (existing) return; // 已有 thinking，不重复附加
 
   var inline = buildInlineThinking(turnId);
@@ -2643,9 +2655,9 @@ function attachThinkingToMessage(msgEl, turnId) {
 
 function updateInlineThinkingLabel(turnId, labelText) {
   if (!messagesEl) return;
-  var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+  var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (!inline) return;
-  var label = inline.querySelector(".thinking-inline-label");
+  var label = inline.querySelector(".thinking-label");
   if (label) label.textContent = labelText;
 }
 
@@ -2685,11 +2697,11 @@ function updateThinkingForStreaming(msg) {
   if (!thinkingStore.appendText(turnId, msg.text || "")) return;
 
   if (streamingMsgEl) {
-    var inline = streamingMsgEl.querySelector(".thinking-inline");
+    var inline = streamingMsgEl.querySelector(".thinking-wrapper");
     if (!inline) {
       attachThinkingToMessage(streamingMsgEl, turnId);
     } else {
-      var body = inline.querySelector(".thinking-inline-body");
+      var body = inline.querySelector(".thinking-content");
       if (body) body.textContent = store.text;
       if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
       else inline.classList.remove("thinking-tool-active");
@@ -2709,7 +2721,7 @@ function handleToolEvent(msg) {
   thinkingStore.setPhase(turnId, "tooling");
 
   if (!messagesEl) return;
-  var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
+  var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
   if (inline) {
     inline.classList.add("thinking-tool-active");
     updateInlineThinkingLabel(turnId, "正在调用工具...");

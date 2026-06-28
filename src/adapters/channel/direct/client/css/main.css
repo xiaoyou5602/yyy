@@ -3136,46 +3136,75 @@ body.selecting .msg.you::before { display: none; }
   .approval-command { font-size: 11px; }
 }
 
-/* ── Thinking Inline（嵌入消息气泡内、头像侧）── */
-.thinking-inline {
-  margin: 0 0 3px 0;
+/* ── Thinking (Gemini heart avatar + left border + grid collapse) ── */
+.thinking-wrapper {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-top: 6px; margin-bottom: -4px;
+  width: 100%;
 }
 
-.thinking-inline.thinking-tool-active {
-  /* 预留工具态区分 */
+.thinking-avatar {
+  width: 28px; height: 28px;
+  background: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  flex-shrink: 0;
+  border: 1px solid rgba(45,45,45,0.04);
+}
+.thinking-avatar svg { width: 14px; height: 14px; color: var(--model-accent, #5989b9); }
+
+.thinking-component {
+  flex: 1;
+  border-left: 2px solid rgba(89,137,185,0.15);
+  padding-left: 12px;
+}
+.thinking-wrapper.thinking-tool-active .thinking-component {
+  border-left-color: rgba(204,123,92,0.3);
 }
 
-.thinking-inline-header {
-  font-size: 11px;
-  color: #a0a0a0;
-  cursor: pointer;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.thinking-trigger {
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+  color: var(--model-accent, #5989b9);
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
+}
+.thinking-trigger:hover { opacity: 0.8; }
+
+.thinking-arrow {
+  font-size: 8px; min-width: 8px;
+  transition: transform 0.3s cubic-bezier(0.43,0.15,0.02,1.05);
+  display: inline-block;
+}
+.thinking-component.collapsed .thinking-arrow { transform: rotate(-90deg); }
+
+.thinking-content {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.43,0.15,0.02,1.05), opacity 0.3s;
+  opacity: 1;
+  overflow: hidden;
+}
+.thinking-component.collapsed .thinking-content {
+  grid-template-rows: 0fr;
+  opacity: 0;
 }
 
-.thinking-inline-header:hover { color: #666; }
-
-.thinking-inline-arrow {
-  font-size: 8px;
-  color: #bbb;
-  min-width: 8px;
+.thinking-inner {
+  min-height: 0; overflow: hidden;
+  padding-top: 5px;
+  color: rgba(45,45,45,0.45);
+  font-size: 12.5px; line-height: 1.55;
 }
 
-.thinking-inline-body {
-  font-size: 12px;
-  color: #8e8e93;
-  line-height: 1.3;
-  white-space: pre-wrap;
-  word-break: break-word;
-  padding: 3px 0 0 0;
-  opacity: 0.85;
-  max-height: 200px;
-  overflow-y: auto;
-}
 
-.thinking-inline-body.thinking-collapsed { display: none; }
+
+
+
+
+
+
+
+
 
 /* ═══ Conversation Memory (phone-home) ═══ */
 
