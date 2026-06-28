@@ -2560,16 +2560,28 @@ function buildInlineThinking(turnId) {
   inline.dataset.turnId = turnId;
   if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
 
+  // Row: avatar + header side by side
+  var row = document.createElement("div");
+  row.className = "thinking-row";
+
+  var avatar = document.createElement("div");
+  avatar.className = "thinking-avatar";
+  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
+
   var header = document.createElement("div");
   header.className = "thinking-inline-header";
   var labelText = store.phase === "tooling" ? "正在调用工具..." : (store.phase === "final" ? "已思考完毕" : "思考中...");
   header.innerHTML = '<span class="thinking-inline-arrow">▶</span> <span class="thinking-inline-label">' + labelText + '</span>';
 
+  row.appendChild(avatar);
+  row.appendChild(header);
+  inline.appendChild(row);
+
+  // COT body (blue left border only on this part)
   var body = document.createElement("div");
   body.className = "thinking-inline-body thinking-collapsed";
   body.textContent = store.text;
 
-  inline.appendChild(header);
   inline.appendChild(body);
   return inline;
 }
@@ -2616,15 +2628,10 @@ function createThinkingPlaceholder(turnId) {
   var msgId = "msg-" + Date.now() + "-" + (_msgIdx++) + "-" + Math.random().toString(36).slice(2,6);
   div.setAttribute("data-msg-id", msgId);
 
-  // Heart avatar (independent, above thinking)
-  var avatar = document.createElement("div");
-  avatar.className = "thinking-avatar";
-  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
-  div.appendChild(avatar);
-
   var inline = buildInlineThinking(turnId);
-  div.innerHTML += '<div class="msg-inner"></div>';
-  var inner = div.querySelector(".msg-inner");
+  var inner = document.createElement("div");
+  inner.className = "msg-inner";
+  div.appendChild(inner);
   if (inline) div.insertBefore(inline, inner);
 
   messagesEl.appendChild(div);

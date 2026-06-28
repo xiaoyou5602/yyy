@@ -387,6 +387,7 @@ footer {
   overflow-y: auto; white-space: pre-wrap; word-break: break-all;
 }
 .chat-input:focus { outline: none; }
+.chat-input::placeholder { color: rgba(89,137,185,0.70); }
 
 .image-btn {
   position: absolute; right: 10px; bottom: 6px;
@@ -3111,13 +3112,25 @@ body.selecting .msg.you::before { display: none; }
 /* ── Thinking ── */
 .thinking-inline {
   margin: 4px 0 2px 0;
-  padding-left: 12px;
-  border-left: 2px solid rgba(89,137,185,0.15);
-}
-.thinking-inline.thinking-tool-active {
-  border-left-color: rgba(89,137,185,0.35);
 }
 
+/* Row: avatar + label side by side */
+.thinking-row {
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* Heart avatar */
+.thinking-avatar {
+  width: 28px; height: 28px;
+  background: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  flex-shrink: 0;
+  border: 1px solid rgba(45,45,45,0.04);
+}
+.thinking-avatar svg { width: 14px; height: 14px; color: #5989b9; }
+
+/* Header: arrow + label */
 .thinking-inline-header {
   display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer; user-select: none;
@@ -3132,29 +3145,24 @@ body.selecting .msg.you::before { display: none; }
   display: inline-block;
 }
 
+/* COT body: blue left border aligned with avatar center, only on content */
 .thinking-inline-body {
   font-size: 12.5px;
   color: rgba(45,45,45,0.45);
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  padding-top: 5px;
+  padding: 5px 0 0 12px;
+  margin-left: 14px;
+  border-left: 2px solid rgba(89,137,185,0.15);
   max-height: 200px;
   overflow-y: auto;
   opacity: 1;
 }
-.thinking-inline-body.thinking-collapsed { display: none; }
-
-/* Heart avatar (independent, above thinking) */
-.thinking-avatar {
-  width: 28px; height: 28px;
-  background: #fff; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-  border: 1px solid rgba(45,45,45,0.04);
-  margin-bottom: 6px;
+.thinking-inline.thinking-tool-active .thinking-inline-body {
+  border-left-color: rgba(89,137,185,0.35);
 }
-.thinking-avatar svg { width: 14px; height: 14px; color: #5989b9; }
+.thinking-inline-body.thinking-collapsed { display: none; }
 
 
 
