@@ -35,7 +35,7 @@ const MODELS = {
     type: "api",
     apiFormat: "openai",
     displayName: "米米子（OpenClaw）",
-    baseUrl: process.env.CYBERBOSS_OPENCLAW_ENDPOINT || "http://127.0.0.1:18789/v1",
+    baseUrl: process.env.CYBERBOSS_OPENCLAW_ENDPOINT || "http://127.0.0.1:18789",
     apiKey: process.env.CYBERBOSS_OPENCLAW_TOKEN || "",
     apiModel: "openclaw/default",
     modelName: "openclaw",
