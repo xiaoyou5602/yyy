@@ -12,7 +12,7 @@
   --accent-soft: rgba(89,137,185,0.06);
   --accent-cool: #a4c2e6;
   --accent-cool-soft: rgba(164,194,230,0.12);
-  --bubble-you: rgba(89,137,185,0.06);
+  --bubble-you: rgba(89,137,185,0.04);
   --bubble-you-text: #2d2d2d;
   --bubble-ke: #fafaf7;
   --bubble-ke-text: #2d2d2d;
@@ -22,6 +22,7 @@
   --shadow-sm: 0 4px 12px rgba(0,0,0,0.005);
   --shadow-md: 0 4px 10px rgba(89,137,185,0.12);
   --shadow-lg: 0 8px 40px rgba(0,0,0,0.06);
+  --color-plus-btn: rgba(204,194,221,0.87);
   --radius-xs: 4px;
   --radius-sm: 12px;
   --radius: 16px;
@@ -66,7 +67,7 @@
   --model-accent: #5989b9;
   --model-accent-hover: #467099;
   --model-accent-soft: rgba(89,137,185,0.06);
-  --model-bubble-you: rgba(89,137,185,0.06);
+  --model-bubble-you: rgba(89,137,185,0.04);
   --model-bubble-you-text: #2d2d2d;
   --model-header-bg: #fafaf7;
   --model-header-border: rgba(45,45,45,0.04);
@@ -235,7 +236,7 @@ header {
 /* Override: our JS uses #status-dot and #status-text IDs */
 #status-dot, .status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
 #status-dot.on { background: #46a07b; box-shadow: 0 0 6px rgba(70,160,123,0.2); animation: none; }
-#status-text, .status-text { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+#status-text, .status-text { font-size: 11px; color: rgba(45,45,45,0.45); font-weight: 500; }
 
 /* Hide old per-message avatar — Gemini design has avatars only in header */
 .avatar-sm { display: none; }
@@ -300,7 +301,7 @@ header {
 }
 .avatar-sm img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(1.15) saturate(1.4); }
 .avatar-sm svg { width: 14px; height: 14px; display: block; }
-.msg.ke .msg-inner { display: flex; gap: 0; align-items: flex-start; }
+.msg.ke .msg-inner { align-items: flex-start; }
 .msg.ke .msg-bubble {
   width: fit-content; max-width: 100%;
   background: var(--bubble-ke); color: var(--bubble-ke-text);
@@ -308,6 +309,10 @@ header {
   border-bottom-left-radius: 6px;
   box-shadow: var(--shadow-xs);
 }
+
+/* Consecutive AI bubbles in group */
+.msg.ke + .msg.ke .msg-bubble { border-radius: 12px 16px 16px 16px; }
+.msg.you + .msg.you { border-radius: 16px 12px 16px 16px; }
 .msg.ke { background: transparent; box-shadow: none; padding: 0; }
 
 .msg .time {
@@ -398,7 +403,6 @@ footer {
   border-color: var(--model-input-focus, var(--accent));
   box-shadow: 0 0 0 4px var(--model-input-focus-ring, var(--accent-soft));
 }
-.chat-input::placeholder { color: rgba(45,45,45,0.35); }
 
 .image-btn {
   height: 48px; min-width: 48px; border: 1px solid var(--border); border-radius: 50%;
@@ -425,12 +429,13 @@ footer {
 .input-container-inner {
   flex: 1;
   position: relative;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: #f0f0eb;
+  border: 1px solid rgba(45,45,45,0.06);
   border-radius: 20px;
   padding: 8px 45px 8px 14px;
   display: flex;
   align-items: flex-end;
+  overflow: hidden;
 }
 
 /* ── Shared bottom panel ── */
@@ -3165,7 +3170,7 @@ body.selecting .msg.you::before { display: none; }
 .thinking-trigger {
   display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer; user-select: none;
-  color: var(--model-accent, #5989b9);
+  color: #5989b9;
   font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
 }
 .thinking-trigger:hover { opacity: 0.8; }
@@ -3194,6 +3199,7 @@ body.selecting .msg.you::before { display: none; }
   padding-top: 5px;
   color: rgba(45,45,45,0.45);
   font-size: 12.5px; line-height: 1.55;
+  letter-spacing: 0.01em;
 }
 
 
