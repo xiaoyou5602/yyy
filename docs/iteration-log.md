@@ -32,6 +32,14 @@ toge 部署了 OpenClaw，取名「米米子」——自带 agent + 记忆文件
 
 - **linter 自动修复会破坏 import**：关掉 VS Code 保存时自动格式化
 - **`state.target` ≠ `state.replyTarget`**：同文件里属性名不一致，前几轮改动留下的坑
+- **VPS `.env` 搬过去没改 Windows 路径**：`CYBERBOSS_CLAUDE_COMMAND=C:\node\node_global\claude.cmd` 在 Linux 跑不了，应改成 `claude`
+
+### 修复
+
+- OpenClaw（米米子）API 接入：`model-routes.js` 加 `openclaw` 条目 + `.env` token
+- OpenClaw URL 双 `v1` 修复：`baseUrl` 去尾 `/v1`，代码已拼 `/v1/chat/completions`
+- VPS `.env` Windows 路径 → `claude`
+- external-cli runtime 适配器：通用外部 CLI runtime，配 command+env
 
 ## 2026-06-25 · VPS 部署——告别 Windows guardian
 
