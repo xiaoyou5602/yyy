@@ -387,7 +387,7 @@ footer {
   overflow-y: auto; white-space: pre-wrap; word-break: break-all;
 }
 .chat-input:focus { outline: none; }
-.chat-input::placeholder { color: rgba(89,137,185,0.70); }
+.chat-input::placeholder { color: rgba(89,137,185,0.50); }
 
 .image-btn {
   position: absolute; right: 10px; bottom: 6px;
