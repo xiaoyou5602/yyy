@@ -2594,18 +2594,26 @@ function buildInlineThinking(turnId) {
   wrapper.dataset.turnId = turnId;
   if (store.phase === "tooling") wrapper.classList.add("thinking-tool-active");
 
-  // Heart avatar
+  // Row: avatar + dots + label side by side
+  var row = document.createElement("div");
+  row.className = "thinking-row";
+
   var avatar = document.createElement("div");
   avatar.className = "thinking-avatar";
   avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
 
-  var comp = document.createElement("div");
-  comp.className = "thinking-component";
-
   var trigger = document.createElement("div");
   trigger.className = "thinking-trigger";
   var labelText = store.phase === "tooling" ? "正在调用工具…" : (store.phase === "final" ? "thinking：已思考完毕" : "thinking：思考中…");
-  trigger.innerHTML = '<span class="thinking-arrow">▶</span><span>' + labelText + '</span>';
+  trigger.innerHTML = '<span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span> <span class="thinking-label">' + labelText + '</span>';
+
+  row.appendChild(avatar);
+  row.appendChild(trigger);
+  wrapper.appendChild(row);
+
+  // Component: blue left-border only wraps COT content (below avatar+header row)
+  var comp = document.createElement("div");
+  comp.className = "thinking-component";
 
   var content = document.createElement("div");
   content.className = "thinking-content";
@@ -2615,92 +2623,10 @@ function buildInlineThinking(turnId) {
   inner.textContent = store.text;
   content.appendChild(inner);
 
-  comp.appendChild(trigger);
   comp.appendChild(content);
-  wrapper.appendChild(avatar);
   wrapper.appendChild(comp);
   return wrapper;
-}
-
-function findActiveThinkingTurnId() {
-  // 找 thinkStore 中最近的非 final turn
-  var best = null;
-  var bestTime = 0;
-  Object.keys(thinkingStore.turns).forEach(function(turnId) {
-    var t = thinkingStore.turns[turnId];
-    if (!t || t.phase === "final") return;
-    if (!t.text) return;
-    if (t.startTime > bestTime) { bestTime = t.startTime; best = turnId; }
-  });
-  return best;
-}
-
-function attachThinkingToMessage(msgEl, turnId) {
-  if (!msgEl) return;
-  turnId = turnId || findActiveThinkingTurnId();
-  if (!turnId) return;
-  var existing = msgEl.querySelector(".thinking-wrapper");
-  if (existing) return; // 已有 thinking，不重复附加
-
-  var inline = buildInlineThinking(turnId);
-  if (!inline) return;
-
-  // 插入到 msg-inner 之前（COT 独占一行，气泡上方）
-  var inner = msgEl.querySelector(".msg-inner");
-  if (inner) msgEl.insertBefore(inline, inner);
-  // 启动计时器（如果 thinking 还在进行中）
-  var t = thinkingStore.turns[turnId];
-  if (t && t.phase !== "final") thinkingStore.startTick(turnId);
-}
-
-function updateInlineThinkingLabel(turnId, labelText) {
-  if (!messagesEl) return;
-  var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
-  if (!inline) return;
-  var label = inline.querySelector(".thinking-label");
-  if (label) label.textContent = labelText;
-}
-
-function createThinkingPlaceholder(turnId) {
-  var div = document.createElement("div");
-  div.className = "msg ke";
-  var msgId = "msg-" + Date.now() + "-" + (_msgIdx++) + "-" + Math.random().toString(36).slice(2,6);
-  div.setAttribute("data-msg-id", msgId);
-
-  var inline = buildInlineThinking(turnId);
-  div.innerHTML = '<div class="msg-inner"><div class="avatar-sm"><img src="/icon.png" alt="克"></div></div>';
-  var inner = div.querySelector(".msg-inner");
-  if (inner && inline) div.insertBefore(inline, inner);
-
-  messagesEl.appendChild(div);
-  scrollBottom();
-  return div;
-}
-
-function ensureBubbleInStreaming(msgText) {
-  if (!streamingMsgEl) return false;
-  if (streamingMsgEl.querySelector(".msg-bubble")) return true; // 已有
-  var inner = streamingMsgEl.querySelector(".msg-inner");
-  if (!inner) return false;
-  var bubble = document.createElement("div");
-  bubble.className = "msg-bubble";
-  bubble.innerHTML = esc(msgText) + '<div class="time">' + now() + '</div>';
-  inner.appendChild(bubble);
-  return true;
-}
-
-function updateThinkingForStreaming(msg) {
-  var turnId = msg.turnId || msg.sessionId || "unknown";
-  var store = thinkingStore.get(turnId);
-  store.model = msg.model || "";
-
-  if (!thinkingStore.appendText(turnId, msg.text || "")) return;
-
-  if (streamingMsgEl) {
-    var inline = streamingMsgEl.querySelector(".thinking-wrapper");
-    if (!inline) {
-      attachThinkingToMessage(streamingMsgEl, turnId);
-    } else {
+} else {
       var body = inline.querySelector(".thinking-content");
       if (body) body.textContent = store.text;
       if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
