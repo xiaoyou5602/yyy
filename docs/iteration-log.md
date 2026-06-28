@@ -3,6 +3,18 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-28 · 四模型多实例 + zone 恢复 + 直调缓冲优化
+
+- **GLM-5.2 + 米米子 OpenClaw 接入**：OpenAI 兼容格式，`direct-api-client` 分支 Anthropic/OpenAI。模型配置表各加一行。
+- **zone 架构 WS 断连**：`initZones()` 后共享元素引用未同步激活 → event listener 全炸 → `connect()` 未执行。Codex 修复：zone 初始化后立刻同步激活。
+- **直调 API 气泡拆分**：文本 flush 从 80 字强制切 → 句子边界（。！？）+ 段落（\n\n）+ 500 字上限。thinking 缓冲 200 字/段落批量发送。
+- **VPS 时区**：`timedatectl set-timezone Asia/Shanghai`，日记/日志不再 UTC。
+- **VPS 部署硬规则**：每次 commit → `git push vps master` → VPS pull + restart，写入 CLAUDE.md。
+- **Windows/VPS 双隧道冲突**：Windows 移除自动 cloudflared，只留 VPS。
+- **缓存率**：频繁重启 + checkin → 稳定运行后回升。
+
+## 2026-06-17~18 · 多模型混合架构重建
+
 ## 2026-06-27~28 · 代码审查扫雷 + 米米子接入 + VPS 稳定运行
 
 ### 别人审出 17 个 bug——修了致命的
