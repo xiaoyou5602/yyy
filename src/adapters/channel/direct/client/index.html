@@ -2626,20 +2626,6 @@ function buildInlineThinking(turnId) {
   comp.appendChild(content);
   wrapper.appendChild(comp);
   return wrapper;
-} else {
-      var body = inline.querySelector(".thinking-content");
-      if (body) body.textContent = store.text;
-      if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
-      else inline.classList.remove("thinking-tool-active");
-    }
-  } else {
-    // thinking 先于 text 到达 → 先显示头像 + 思考图标
-    hideTyping();
-    streamingMsgEl = createThinkingPlaceholder(turnId);
-    thinkingStore.startTick(turnId);
-  }
-
-  thinkingStore.scheduleFlush(turnId);
 }
 
 function handleToolEvent(msg) {
