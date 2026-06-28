@@ -3109,82 +3109,52 @@ body.selecting .msg.you::before { display: none; }
 }
 
 /* ── Thinking ── */
-.thinking-wrapper {
-  display: flex; flex-direction: column; align-items: flex-start;
-  margin-top: 6px; margin-bottom: 2px;
-  width: 100%;
+.thinking-inline {
+  margin: 4px 0 2px 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(89,137,185,0.15);
+}
+.thinking-inline.thinking-tool-active {
+  border-left-color: rgba(89,137,185,0.35);
 }
 
-/* Row: avatar + dots + label side by side */
-.thinking-row {
-  display: flex; align-items: center; gap: 10px;
+.thinking-inline-header {
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+  color: #5989b9;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
+}
+.thinking-inline-header:hover { opacity: 0.8; }
+
+.thinking-inline-arrow {
+  font-size: 8px; min-width: 8px;
+  transition: transform 0.3s cubic-bezier(0.43,0.15,0.02,1.05);
+  display: inline-block;
 }
 
-/* Heart avatar */
+.thinking-inline-body {
+  font-size: 12.5px;
+  color: rgba(45,45,45,0.45);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-top: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  opacity: 1;
+}
+.thinking-inline-body.thinking-collapsed { display: none; }
+
+/* Heart avatar (independent, above thinking) */
 .thinking-avatar {
   width: 28px; height: 28px;
   background: #fff; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-  flex-shrink: 0;
   border: 1px solid rgba(45,45,45,0.04);
+  margin-bottom: 6px;
 }
 .thinking-avatar svg { width: 14px; height: 14px; color: #5989b9; }
-
-/* Trigger: dots + label */
-.thinking-trigger {
-  display: inline-flex; align-items: center; gap: 6px;
-  color: #5989b9;
-  font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
-}
-
-/* Animated dots (replaces old arrow) */
-.thinking-dot {
-  display: inline-block; width: 4px; height: 4px; border-radius: 50%;
-  background: #5989b9; opacity: 0.3;
-  animation: think-dot 1.4s ease infinite;
-}
-.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes think-dot { 0%,60%,100% { opacity: 0.2; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
-
-/* Blue left-border only on COT content (below avatar+header row) */
-.thinking-component {
-  border-left: 2px solid rgba(89,137,185,0.15);
-  padding-left: 12px;
-  margin-left: 14px;
-  margin-top: 4px;
-}
-.thinking-wrapper.thinking-tool-active .thinking-component {
-  border-left-color: rgba(89,137,185,0.35);
-}
-
-/* Content: grid collapse animation */
-.thinking-content {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 0.3s cubic-bezier(0.43,0.15,0.02,1.05), opacity 0.3s;
-  opacity: 1;
-  overflow: hidden;
-  animation: cot-fade-in 0.3s ease;
-}
-@keyframes cot-fade-in {
-  0% { opacity: 0; transform: translateY(-4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-.thinking-component.collapsed .thinking-content {
-  grid-template-rows: 0fr;
-  opacity: 0;
-}
-
-/* Inner COT text */
-.thinking-inner {
-  min-height: 0; overflow: hidden;
-  padding-top: 5px;
-  color: rgba(45,45,45,0.45);
-  font-size: 12.5px; line-height: 1.55;
-  letter-spacing: 0.01em;
-}
 
 
 
