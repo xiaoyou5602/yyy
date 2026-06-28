@@ -2587,7 +2587,7 @@ function loadCachedThinking() {
 
 function buildInlineThinking(turnId) {
   var store = thinkingStore.turns[turnId];
-  if (!store || !store.text) return null;
+  if (!store) return null;
 
   var wrapper = document.createElement("div");
   wrapper.className = "thinking-wrapper";
@@ -2627,6 +2627,98 @@ function buildInlineThinking(turnId) {
   wrapper.appendChild(comp);
   return wrapper;
 }
+
+function findActiveThinkingTurnId() {
+  var best = null;
+  var bestTime = 0;
+  Object.keys(thinkingStore.turns).forEach(function(turnId) {
+    var t = thinkingStore.turns[turnId];
+    if (!t || t.phase === "final") return;
+    if (!t.text) return;
+    if (t.startTime > bestTime) { bestTime = t.startTime; best = turnId; }
+  });
+  return best;
+}
+
+function updateInlineThinkingLabel(turnId, labelText) {
+  if (!messagesEl) return;
+  var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (!inline) return;
+  var label = inline.querySelector('.thinking-label');
+  if (label) label.textContent = labelText;
+}
+
+function updateThinkingForStreaming(msg) {
+  var turnId = msg.turnId || msg.sessionId || 'unknown';
+  var store = thinkingStore.get(turnId);
+  if (!store) return;
+  if (msg.text !== undefined) thinkingStore.appendText(turnId, msg.text);
+  if (msg.phase) store.phase = msg.phase;
+  if (!messagesEl) return;
+  var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
+  if (inline) {
+    var inner = inline.querySelector('.thinking-inner');
+    if (inner && store.text) inner.textContent = store.text;
+    var label = inline.querySelector('.thinking-label');
+    if (label) {
+      if (store.phase === 'tooling') label.textContent = '正在调用工具…';
+      else if (store.phase === 'final') label.textContent = '已思考完毕';
+      else label.textContent = '思考中…';
+    }
+    if (store.phase === 'tooling') inline.classList.add('thinking-tool-active');
+    thinkingStore.scheduleFlush(turnId);
+  } else {
+    hideTyping();
+    if (!streamingMsgEl) {
+      streamingMsgEl = createThinkingPlaceholder(turnId);
+      thinkingStore.startTick(turnId);
+    }
+  }
+}
+
+function createThinkingPlaceholder(turnId) {
+  var div = document.createElement('div');
+  div.className = 'msg ke';
+  var msgId = 'msg-' + Date.now() + '-' + (_msgIdx++) + '-' + Math.random().toString(36).slice(2,6);
+  div.setAttribute('data-msg-id', msgId);
+  var inline = buildInlineThinking(turnId);
+  var inner = document.createElement('div');
+  inner.className = 'msg-inner';
+  div.appendChild(inner);
+  if (inline) div.insertBefore(inline, inner);
+  messagesEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function attachThinkingToMessage(msgEl, turnId) {
+  if (!msgEl) return;
+  turnId = turnId || findActiveThinkingTurnId();
+  if (!turnId) return;
+  var existing = msgEl.querySelector('.thinking-wrapper');
+  if (existing) return;
+  var inline = buildInlineThinking(turnId);
+  if (!inline) return;
+  var inner = msgEl.querySelector('.msg-inner');
+  if (inner) msgEl.insertBefore(inline, inner);
+  var t = thinkingStore.turns[turnId];
+  if (t && t.phase !== 'final') thinkingStore.startTick(turnId);
+}
+
+function ensureBubbleInStreaming(msgText) {
+  if (!streamingMsgEl) return false;
+  if (streamingMsgEl.querySelector('.msg-bubble')) return true;
+  var inner = streamingMsgEl.querySelector('.msg-inner');
+  if (!inner) return false;
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = msgText || '';
+  inner.appendChild(bubble);
+  return true;
+}
+
+
+
 
 function handleToolEvent(msg) {
   var turnId = msg.turnId || msg.sessionId || "unknown";
