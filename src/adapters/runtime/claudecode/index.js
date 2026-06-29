@@ -447,20 +447,18 @@ function createClaudeCodeRuntimeAdapter(config) {
       const modelKey = toModelKey(model);
       const desiredModel = resolveModel(model);
       const runtimeId = modelRuntimeId(modelKey);
-      const allowSpawn = provider !== "system";
+      const perModel = sessionsByWorkspace.get(workspaceRoot);
+      const existingEntry = perModel?.get(modelKey);
+      const hadExistingSession = !!(existingEntry?.alive && existingEntry.client?.alive);
+      // Always allow spawn — system messages get auto-cleaned up after 5 min idle
+      const allowSpawn = true;
       const reason = provider === "system" ? "system_message" : "user_message";
       console.log(
         `[sendTurn] provider=${provider} frontend_model="${model}" resolved="${desiredModel}" modelKey=${modelKey} allowSpawn=${allowSpawn}`
       );
 
-      if (!allowSpawn) {
-        const perModel = sessionsByWorkspace.get(workspaceRoot);
-        const entry = perModel?.get(modelKey);
-        if (!entry?.alive || !entry.client?.alive) {
-          if (entry) entry.alive = false;
-          console.log("[claudecode-runtime] system message skipped: no active session for model " + modelKey);
-          return { threadId: "", turnId: "", skipped: true };
-        }
+      if (!hadExistingSession && provider === "system") {
+        console.log("[claudecode-runtime] system message: no existing session, will spawn and auto-cleanup");
       }
 
       let threadId = sessionStore.getThreadIdForWorkspace(bindingKey, workspaceRoot, runtimeId);
@@ -514,12 +512,27 @@ function createClaudeCodeRuntimeAdapter(config) {
       }
       sessionStore.setThreadIdForWorkspace(bindingKey, workspaceRoot, returnedThreadId, metadata, runtimeId);
 
-      const perModel = sessionsByWorkspace.get(workspaceRoot);
-      const entry = perModel?.get(modelKey);
+      const perModel2 = sessionsByWorkspace.get(workspaceRoot);
+      const entry = perModel2?.get(modelKey);
       if (entry) {
         entry.threadId = returnedThreadId;
         entry.sessionId = returnedThreadId;
         entry.lastActiveAt = Date.now();
+      }
+
+      // ── Auto-cleanup for system-spawned sessions ──
+      if (!hadExistingSession && provider === "system") {
+        const CLEANUP_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+        const targetWs = workspaceRoot;
+        const targetMk = modelKey;
+        setTimeout(() => {
+          const e = sessionsByWorkspace.get(targetWs)?.get(targetMk);
+          if (e && e.lastActiveAt < Date.now() - CLEANUP_DELAY_MS) {
+            closeWorkspaceClient(targetWs, targetMk);
+            console.log(`[claudecode-runtime] auto-cleaned system-spawned session model=${targetMk} workspace=${targetWs}`);
+          }
+        }, CLEANUP_DELAY_MS);
+        console.log(`[claudecode-runtime] system-spawned session scheduled cleanup in ${CLEANUP_DELAY_MS / 60000}min model=${targetMk}`);
       }
 
       return {

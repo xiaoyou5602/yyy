@@ -664,7 +664,7 @@ class CyberbossApp {
     let textBuffer = "";
     let thinkingBuffer = "";
 
-    const flushText = () => {
+    const flushText = (isFinal = false) => {
       if (!textBuffer) return;
       const chunk = textBuffer;
       textBuffer = "";
@@ -674,6 +674,7 @@ class CyberbossApp {
         contextToken: prepared.contextToken,
         model: sessionModel,
         preserveBlock: true,
+        finalChunk: isFinal,
       }).catch(() => {});
     };
 
@@ -738,12 +739,12 @@ class CyberbossApp {
           const paragraphBreak = /\n\n/.test(textBuffer);
           const longEnough = textBuffer.length > 500;
           if (paragraphBreak || (sentenceEnd && textBuffer.length > 20) || longEnough) {
-            flushText();
+            flushText(false);
           }
         },
         onDone: () => {
           flushThinking();
-          flushText();
+          flushText(true);
           this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
         },
         onError: async (err) => {

@@ -269,7 +269,6 @@
     if (!messages || !messages.length) { console.log("[ds-chat] sync empty"); return; }
     console.log("[ds-chat] sync received count=" + messages.length);
     var seen = {};
-    // Build seen set from existing history (by globalId and text+timestamp)
     history.forEach(function(h) {
       if (h.globalId) seen[h.globalId] = true;
       seen[h.from + "|" + h.text + "|" + h.time] = true;
@@ -280,13 +279,21 @@
       if (m.globalId && seen[m.globalId]) return;
       var key = "ke|" + m.text + "|" + (m.time || "");
       if (seen[key]) return;
+      // Skip partial duplicates: a sync message whose text is a prefix of
+      // an already-rendered message (e.g. partial flush vs final flush)
+      var isPartial = history.some(function(h) {
+        return h.from === "ke" && h.text && h.text.indexOf(m.text) === 0 && h.text.length > m.text.length;
+      });
+      if (isPartial) return;
       seen[key] = true;
       if (m.globalId) seen[m.globalId] = true;
-      // render without auto-save — we batch save at the end
-      renderMsg({ from: "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" }, false);
+      // Push to history BEFORE rendering, so it survives next refresh
+      var entry = { from: "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" };
+      history.push(entry);
+      renderMsg(entry, false);
       added = true;
     });
-    if (added) saveHistory(history);
+    if (added) { saveHistory(history); console.log("[ds-chat] sync saved added=" + added + " historyLen=" + history.length); }
   }
 
   function renderPreviews() {

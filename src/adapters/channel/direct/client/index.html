@@ -1099,6 +1099,7 @@ let currentPage = (function(){ try { var lp = localStorage.getItem("withtoge-las
 function showPage(page) {
   var prevPage = currentPage;
   currentPage = page;
+  try { localStorage.setItem("withtoge-last-page", page); } catch {}
   window.dispatchEvent(new CustomEvent('page-changed', { detail: { page: page } }));
   // Chat visibility: skip during slide transitions (handled below)
   var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home") || (page === "chat-ds" && prevPage === "chat") || (page === "chat" && prevPage === "chat-ds");

@@ -227,7 +227,7 @@ function createDirectChannelAdapter(config) {
 	      };
 	    },
 
-	    async sendText({ userId, text, preserveBlock = false, contextToken = "", model = "" }) {
+	    async sendText({ userId, text, preserveBlock = false, contextToken = "", model = "", finalChunk = true }) {
       if (!wsServer) {
         return;
       }
@@ -236,11 +236,13 @@ function createDirectChannelAdapter(config) {
         return;
       }
       const m = String(model || "").trim();
-      const gid = nextGlobalId();
-      messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m, globalId: gid });
+      const gid = finalChunk ? nextGlobalId() : "";
+      if (finalChunk) {
+        messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m, globalId: gid });
+      }
       const normalized = trimOuterBlankLines(normalizeLineEndings(content));
       if (preserveBlock) {
-        wsServer.broadcast({ type: "text", text: normalized, done: true, model: m, globalId: gid });
+        wsServer.broadcast({ type: "text", text: normalized, done: finalChunk, model: m, globalId: finalChunk ? gid : undefined });
         return;
       }
       const chunks = chunkReplyTextForWeixin(normalized, minChunk);
