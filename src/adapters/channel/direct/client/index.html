@@ -2161,7 +2161,7 @@ function online(v) {
   }
 }
 
-function showTyping() { typingEl.classList.add("show"); scrollBottom(); if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now(); thinkingStore.get(preTurnId); streamingMsgEl = createThinkingPlaceholder(preTurnId); } }
+function showTyping() { if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now(); thinkingStore.get(preTurnId); streamingMsgEl = createThinkingPlaceholder(preTurnId); typingEl.classList.remove("show"); } scrollBottom(); }
 function hideTyping() { typingEl.classList.remove("show"); }
 
 var pageHidden = document.hidden;
