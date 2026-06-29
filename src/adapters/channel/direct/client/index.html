@@ -1369,36 +1369,10 @@ function selectSidebarModel(el) {
   // DS → dedicated Gemini page
   const targetMeta = MODEL_META[model];
   if (targetMeta && targetMeta.key === "ds") {
-    if (currentPage === "chat-ds") { closeSidebar(); return; }  // already on DS, just close
+    if (currentPage === "chat-ds") { closeSidebar(); return; }
+    settings.model = model; saveSettings(settings);
     closeSidebar(); showPage("chat-ds"); return;
   }
-
-  // Coming from DS to another model: switch back to chat first
-  if (currentPage === "chat-ds") { showPage("chat"); }
-
-  if (oldModel === model) return;
-
-  // Check worldbook dirty before switching
-  if (window._wbDirty && window._wbModel !== model) {
-    if (!confirm("世界书有未保存的修改，切换模型会丢失。确定切换吗？")) return;
-  }
-
-  // Save current history to old model's key before switching
-  if (history.length > 0) {
-    const oldKey = getStorageKey();
-    localStorage.setItem(oldKey, JSON.stringify(history.slice(-500)));
-  }
-  document.querySelectorAll(".sidebar-model-card").forEach(c => c.classList.remove("active"));
-  el.classList.add("active");
-  settings.model = model;
-  saveSettings(settings);
-  document.getElementById("setting-model").value = model;
-
-  // Determine zone key and activate
-  const meta = MODEL_META[model];
-  const key = meta?.key || "ds";
-  // DS uses dedicated Gemini page instead of zone
-  if (key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
   activateZone(key);
   applyModelTheme(model);
   syncHeaderFromWorldbook(model);
