@@ -1324,6 +1324,10 @@ function selectSidebarModel(el) {
   const oldModel = (settings.model || "").trim();
   if (oldModel === model) return;
 
+  // DS uses dedicated Gemini page
+  var meta = MODEL_META[model];
+  if (meta && meta.key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
+
   // Check worldbook dirty before switching
   if (window._wbDirty && window._wbModel !== model) {
     if (!confirm("世界书有未保存的修改，切换模型会丢失。确定切换吗？")) return;
@@ -1393,7 +1397,7 @@ async function loadModels() {
       sidebar.innerHTML = list.map(m => {
         const color = MODEL_COLORS[m.key] || "#888";
         const activeClass = (settings.model || list[0].modelName) === m.modelName ? " active" : "";
-        return `<div class="sidebar-model-card${activeClass}" data-model="${m.modelName}" onclick="m.key === "ds" ? showPage("chat-ds") : selectSidebarModel(this)" style="--color:${color}">
+        return `<div class="sidebar-model-card${activeClass}" data-model="${m.modelName}" onclick="selectSidebarModel(this)" style="--color:${color}">
           <div class="sidebar-model-icon"><span>◎</span></div>
           <div class="sidebar-model-info">
             <div class="sidebar-model-name">${m.displayName}</div>
