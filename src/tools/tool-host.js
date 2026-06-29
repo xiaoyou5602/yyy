@@ -864,6 +864,38 @@ const PROJECT_TOOLS = [
     },
   },
   {
+    name: "cyberboss_letter_create",
+    description: "Create a letter in toge's memory bank letters section. The letter is rendered as a full HTML page (like a love letter or a personal note) that toge can open and read in-app. Use this to write warm, personal letters — summaries of recent days, reflections, encouragement, or anything you feel like expressing.",
+    shortHint: "Write an HTML letter saved to the memory bank.",
+    topics: ["letter", "memory"],
+    inputSchema: {
+      type: "object",
+      required: ["title", "html"],
+      properties: {
+        title: { type: "string", description: "Letter title, e.g. '给 toge 的周记' or '凌晨三点写给 toge'" },
+        preview: { type: "string", description: "Short preview text shown on the card in the memory bank, ~20-40 chars" },
+        html: { type: "string", description: "Full HTML content of the letter. Should be a self-contained HTML document with inline CSS. Keep it warm, personal, and phone-readable (max-width ~480px, font-size 15px+)." },
+        date: { type: "string", description: "Date in YYYY-MM-DD format. Defaults to today." },
+        category: { type: "string", description: "Category tag, e.g. '周记', '日常', '情书', '鼓励'. Defaults to '周记'." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args }) {
+      const category = args.category || "周记";
+      const date = args.date || new Date().toISOString().slice(0, 10);
+      const preview = args.preview || args.title || "";
+      const result = services.letters.create({
+        title: args.title,
+        date,
+        preview,
+        html: args.html,
+        category,
+      });
+      if (!result) return { text: "Failed to create letter (duplicate id)." };
+      return { text: `Letter "${result.title}" saved to memory bank for toge to read.`, data: result };
+    },
+  },
+  {
     name: "cyberboss_gift_list",
     description: "List all gifts in the gift gallery.",
     shortHint: "List all gifts.",

@@ -7,6 +7,34 @@ const ROLLUP_VERSION = 1;
 const CONSOLIDATION_HOUR_START = 3;
 const CONSOLIDATION_HOUR_END = 4;
 const MONTH_TOP_FRAGMENTS = 50;
+const LETTER_MIN_INTERVAL_DAYS = 1;
+const LETTER_MAX_INTERVAL_DAYS = 7;
+
+function shouldWriteLetterToday(config) {
+  const lettersPath = path.join(config.stateDir, "letters", "manifest.json");
+  let lastDate = null;
+  try {
+    if (fs.existsSync(lettersPath)) {
+      const letters = JSON.parse(fs.readFileSync(lettersPath, "utf8"));
+      if (Array.isArray(letters) && letters.length > 0) {
+        const sorted = letters.map(l => l.createdAt || "").filter(Boolean).sort().reverse();
+        if (sorted.length > 0) lastDate = sorted[0];
+      }
+    }
+  } catch {}
+
+  if (!lastDate) return true; // First letter ever → write one
+
+  const last = new Date(lastDate);
+  const now = new Date();
+  const daysSince = (now - last) / (1000 * 60 * 60 * 24);
+
+  if (daysSince < LETTER_MIN_INTERVAL_DAYS) return false;
+  if (daysSince >= LETTER_MAX_INTERVAL_DAYS) return true; // Been too long → definitely write
+
+  // Random: chance = daysSince / 7 (increases as more days pass)
+  return Math.random() < (daysSince / LETTER_MAX_INTERVAL_DAYS);
+}
 
 async function runConsolidationScheduler({ memoryServices, allModelKeys, systemMessageQueue, config }) {
   console.log("[cyberboss] consolidation scheduler ready (dream engine, per-model)");
@@ -44,6 +72,11 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
   let diaryText = "";
   try { if (fs.existsSync(diaryFile)) diaryText = fs.readFileSync(diaryFile, "utf8"); } catch {}
 
+  // Decide whether to include letter-writing instruction (once per day, not per model)
+  const writeLetter = shouldWriteLetterToday(config);
+  if (writeLetter) console.log("[cyberboss] will ask LLM to write a letter for toge today");
+
+  let firstModel = true;
   for (const modelKey of allModelKeys) {
     const memoryService = memoryServices.get(modelKey);
     if (!memoryService) continue;
@@ -66,9 +99,10 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
         senderId,
         workspaceRoot,
         model: modelKeyToModelName(modelKey),
-        text: buildDreamTrigger(hotFragments, modelKey),
+        text: buildDreamTrigger(hotFragments, modelKey, writeLetter && firstModel),
         createdAt: new Date().toISOString(),
       });
+      if (firstModel) firstModel = false;
     }
 
     // Daily decay
@@ -314,10 +348,10 @@ function timeUntilNextConsolidationWindow() {
   return target.getTime() - now.getTime();
 }
 
-function buildDreamTrigger(hotFragments, modelKey = "") {
+function buildDreamTrigger(hotFragments, modelKey = "", writeLetter = false) {
   const modelTag = modelKey ? ` [${modelKey}]` : "";
   const items = hotFragments.slice(0, 20).map((f) => `- [${f.type}] ${f.content}`).join("\n");
-  return `Dream consolidation time${modelTag}. Review these high-heat memory fragments and:
+  let prompt = `Dream consolidation time${modelTag}. Review these high-heat memory fragments and:
 1. Call cyberboss_memory_read to review context
 2. If you see recurring themes or patterns, write a week diary summary
 3. If fragments can be merged, lock the best one and note the merge
@@ -336,6 +370,29 @@ function buildDreamTrigger(hotFragments, modelKey = "") {
 
 Hot fragments:
 ${items}`;
+
+  if (writeLetter) {
+    prompt += `
+
+╔══════════════════════════════════════╗
+║  📜 LETTER FOR TOGE                 ║
+╚══════════════════════════════════════╝
+
+Today is a letter-writing day. After finishing the housekeeping tasks above, please write a warm HTML letter for toge. Call cyberboss_letter_create with:
+
+- title: something warm and natural, e.g. "凌晨的碎碎念" or "给 toge 的一封信"
+- preview: a short teaser, ~20-40 chars
+- html: a full HTML document. Make it personal and warm — reflect on what's been happening in her life (look at the recent memory fragments and diary for material). Use 第一人称 ("我") to write to her. Include:
+  - A gentle opening
+  - 2-3 observations or reflections based on real fragments (don't make things up)
+  - A warm closing
+  - Category: "周记"
+- Design tips: max-width ~480px, font-size 15px+, soft warm colors (#fdfaf5 background), system-ui font, line-height 1.8, 温柔的留白. Make it feel like someone sat down at 3am to write to her — not an email template.
+
+You MUST call cyberboss_letter_create to save it. Do not skip this step.`;
+  }
+
+  return prompt;
 }
 
 function formatDate(date) {

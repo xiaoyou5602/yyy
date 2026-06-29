@@ -11,6 +11,7 @@ const { SystemMessageService } = require("../services/system-message-service");
 const { TimelineService } = require("../services/timeline-service");
 const { WorldbookService } = require("../services/worldbook-service");
 const { GiftService } = require("../services/gift-service");
+const { LetterService } = require("../services/letter-service");
 const { RuntimeContextStore } = require("./runtime-context-store");
 const { ProjectToolHost } = require("./tool-host");
 const { WhereaboutsService } = require("whereabouts-mcp");
@@ -49,6 +50,7 @@ function createProjectTooling(config, options = {}) {
     timeline: new TimelineService({ config, timelineIntegration, sessionStore }),
     worldbook: new WorldbookService({ stateDir, modelToKey: resolveModelKey }),
     gift: new GiftService({ dataDir: stateDir }),
+    letters: new LetterService({ stateDir }),
     whereabouts: new WhereaboutsService({
       config: {
         storeFile: config.locationStoreFile,
