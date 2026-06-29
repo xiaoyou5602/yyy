@@ -2494,7 +2494,7 @@ function flushOneTurn(turnId) {
     // 取关联消息的文本指纹用于恢复时精确匹配
     var fp = "";
     try {
-      var inline = messagesEl.querySelector('.thinking-wrapper[data-turn-id="' + CSS.escape(turnId) + '"]');
+      var inline = messagesEl.querySelector('.thinking-inline[data-turn-id="' + CSS.escape(turnId) + '"]');
       if (inline) {
         var msgEl = inline.closest(".msg");
         if (msgEl) {
@@ -2533,7 +2533,7 @@ function loadCachedThinking() {
       var keMsgs = messagesEl.querySelectorAll(".msg.ke");
       keMsgs.forEach(function(msgEl) {
         if (matched) return;
-        if (msgEl.querySelector(".thinking-wrapper")) return;
+        if (msgEl.querySelector(".thinking-inline")) return;
         var bubble = msgEl.querySelector(".msg-bubble");
         if (!bubble) return;
         var bubbleFp = (bubble.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
@@ -2676,6 +2676,10 @@ function updateThinkingForStreaming(msg) {
     if (!inline) {
       attachThinkingToMessage(streamingMsgEl, turnId);
     } else {
+      // Sync real turnId to pre-created placeholder
+      if (inline.dataset.turnId && inline.dataset.turnId !== turnId) {
+        inline.dataset.turnId = turnId;
+      }
       var body = inline.querySelector(".thinking-inline-body");
       if (body) body.textContent = store.text;
       if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
@@ -2743,7 +2747,7 @@ function connect() {
           }
           if (isFirst && streamingMsgEl && !streamingMsgEl.querySelector(".msg-bubble")) {
             // 复用 thinking placeholder 的容器，只补气泡
-            var oldInline2 = streamingMsgEl.querySelector(".thinking-wrapper");
+            var oldInline2 = streamingMsgEl.querySelector(".thinking-inline");
             if (oldInline2 && msg.turnId) oldInline2.dataset.turnId = msg.turnId;
             ensureBubbleInStreaming(msg.text);
             const bubble = streamingMsgEl.querySelector(".msg-bubble");
