@@ -2161,7 +2161,7 @@ function online(v) {
   }
 }
 
-function showTyping() { typingEl.classList.add("show"); scrollBottom(); }
+function showTyping() { typingEl.classList.add("show"); scrollBottom(); if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now(); thinkingStore.get(preTurnId); streamingMsgEl = createThinkingPlaceholder(preTurnId); } }
 function hideTyping() { typingEl.classList.remove("show"); }
 
 var pageHidden = document.hidden;
@@ -2573,7 +2573,7 @@ function buildInlineThinking(turnId) {
   // Arrow hidden during thinking, shown when final (for collapse/expand)
   var isFinal = (store.phase === "final");
   var labelText = store.phase === "tooling" ? "正在调用工具..." : (isFinal ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-inline-arrow"' + (isFinal ? '' : ' style="display:none"') + '>▼</span> <span class="thinking-inline-label">' + labelText + '</span>';
+  header.innerHTML = '<span class="thinking-inline-arrow"' + (isFinal ? '' : ' style="display:none"') + '>▼</span> <span class="thinking-inline-label">' + labelText + '</span>' + (isFinal ? '' : ' <span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>');
 
   row.appendChild(avatar);
   row.appendChild(header);
