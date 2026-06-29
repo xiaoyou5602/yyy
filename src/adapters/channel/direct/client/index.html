@@ -1322,6 +1322,14 @@ function syncSidebarModel() {
 function selectSidebarModel(el) {
   const model = (el.dataset.model || "").trim();
   const oldModel = (settings.model || "").trim();
+
+  // If on DS page, switch back to chat first so zone activation works
+  if (currentPage === "chat-ds") { showPage("chat"); }
+
+  // DS → dedicated Gemini page
+  const targetMeta = MODEL_META[model];
+  if (targetMeta && targetMeta.key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
+
   if (oldModel === model) return;
 
   // Check worldbook dirty before switching
