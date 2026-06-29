@@ -178,8 +178,8 @@
     try { ws = new WebSocket(WS_URL); } catch (_) { scheduleRe// Header buttons
     var menuBtn = document.getElementById("ds-menu-btn");
     var settingsBtn = document.getElementById("ds-settings-btn");
-    if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof showPage === "function") showPage("chat"); });
-    if (settingsBtn) settingsBtn.addEventListener("click", function() { if (typeof showPage === "function") showPage("chat"); });
+    if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
+    if (settingsBtn) settingsBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
 
     connect(); return; }
     ws.onopen = function() { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } };
@@ -237,6 +237,8 @@
 
   /* ── Public API ── */
   window.dsChatInit = function() {
+    if (window._dsInited) return;
+    window._dsInited = true;
     chatFlow = document.getElementById("ds-chat-flow");
     chatInput = document.getElementById("ds-chat-input");
     sendBtn = document.getElementById("ds-send-btn");
@@ -301,6 +303,7 @@
   };
 
   window.dsChatDestroy = function() {
+    window._dsInited = false;
     if (ws) { ws.onclose = null; ws.close(); ws = null; }
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     if (window._dsPingTimer) { clearInterval(window._dsPingTimer); window._dsPingTimer = null; }

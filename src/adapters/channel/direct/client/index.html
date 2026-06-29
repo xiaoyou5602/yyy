@@ -1101,9 +1101,10 @@ function showPage(page) {
   currentPage = page;
   window.dispatchEvent(new CustomEvent('page-changed', { detail: { page: page } }));
   // Chat visibility: skip during slide transitions (handled below)
+  var wasDs = (prevPage === "chat-ds");
   chatDsPage.classList.toggle("show", page === "chat-ds");
-  if (page === "chat-ds") { if (typeof window.dsChatInit === "function") window.dsChatInit(); }
-  else { if (typeof window.dsChatDestroy === "function") window.dsChatDestroy(); }
+  if (page === "chat-ds") { if (!wasDs && typeof window.dsChatInit === "function") window.dsChatInit(); }
+  else if (wasDs) { if (typeof window.dsChatDestroy === "function") window.dsChatDestroy(); }
   var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home");
   if (!isSlide) {
     chatPage.classList.toggle("show", page === "chat");
