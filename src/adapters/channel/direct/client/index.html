@@ -1295,7 +1295,7 @@ async function syncHeaderFromWorldbook(model) {
   } catch {}
 }
 settings = loadSettings();
-loadModels().then(() => applySettings(settings));
+loadModels().then(() => { applySettings(settings); try { var lp = localStorage.getItem("withtoge-last-page"); if (lp === "chat-ds") showPage("chat-ds"); } catch {} });
 
 /* ── Sidebar ── */
 function toggleSidebar() {
@@ -1324,12 +1324,15 @@ function selectSidebarModel(el) {
   const model = (el.dataset.model || "").trim();
   const oldModel = (settings.model || "").trim();
 
-  // If on DS page, switch back to chat first so zone activation works
-  if (currentPage === "chat-ds") { showPage("chat"); }
-
   // DS → dedicated Gemini page
   const targetMeta = MODEL_META[model];
-  if (targetMeta && targetMeta.key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
+  if (targetMeta && targetMeta.key === "ds") {
+    if (currentPage === "chat-ds") { closeSidebar(); return; }  // already on DS, just close
+    closeSidebar(); showPage("chat-ds"); return;
+  }
+
+  // Coming from DS to another model: switch back to chat first
+  if (currentPage === "chat-ds") { showPage("chat"); }
 
   if (oldModel === model) return;
 
