@@ -1328,7 +1328,8 @@ async function loadModels() {
       sidebar.innerHTML = list.map(m => {
         const color = MODEL_COLORS[m.key] || "#888";
         const activeClass = (settings.model || list[0].modelName) === m.modelName ? " active" : "";
-        return `<div class="sidebar-model-card${activeClass}" data-model="${m.modelName}" onclick="selectSidebarModel(this)" style="--color:${color}">
+        const onClick = m.key === "ds" ? "location.href='/chat-ds.html'" : "selectSidebarModel(this)";
+        return `<div class="sidebar-model-card${activeClass}" data-model="${m.modelName}" onclick="${onClick}" style="--color:${color}">
           <div class="sidebar-model-icon"><span>◎</span></div>
           <div class="sidebar-model-info">
             <div class="sidebar-model-name">${m.displayName}</div>
