@@ -305,7 +305,8 @@ header {
 .msg.ke { background: transparent; box-shadow: none; padding: 0; }
 
 .msg .time {
-  font-size: 10.5px; color: rgba(255,255,255,0.6); margin-top: 4px; text-align: right;
+  font-size: 10px; color: rgba(45,45,45,0.35); margin-top: 2px; padding: 0 4px; font-weight: 400;
+  text-align: right;
 }
 .msg.ke .time { color: #b0b0b6; }
 .msg br { line-height: 0.35; }
@@ -3165,8 +3166,8 @@ body.selecting .msg.you::before { display: none; }
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  padding: 5px 0 0 12px;
-  margin-left: 14px;
+  padding: 0 0 0 12px;
+  margin: 4px 0 0 14px;
   border-left: 2px solid rgba(89,137,185,0.15);
   max-height: 200px;
   overflow-y: auto;

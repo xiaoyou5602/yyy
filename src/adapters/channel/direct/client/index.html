@@ -2553,7 +2553,7 @@ function loadCachedThinking() {
 
 function buildInlineThinking(turnId) {
   var store = thinkingStore.turns[turnId];
-  if (!store || !store.text) return null;
+  if (!store) return null;
 
   var inline = document.createElement("div");
   inline.className = "thinking-inline";
@@ -2582,7 +2582,7 @@ function buildInlineThinking(turnId) {
   // COT body
   var body = document.createElement("div");
   body.className = "thinking-inline-body";
-  body.textContent = store.text;
+  body.textContent = store.text || "";
 
   inline.appendChild(body);
   return inline;
