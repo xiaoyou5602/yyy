@@ -175,13 +175,7 @@
 
   function connect() {
     if (ws) { ws.onclose = null; ws.close(); }
-    try { ws = new WebSocket(WS_URL); } catch (_) { scheduleRe// Header buttons
-    var menuBtn = document.getElementById("ds-menu-btn");
-    var settingsBtn = document.getElementById("ds-settings-btn");
-    if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
-    if (settingsBtn) settingsBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
-
-    connect(); return; }
+    try { ws = new WebSocket(WS_URL); } catch (_) { scheduleReconnect(); return; }
     ws.onopen = function() { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } };
     ws.onmessage = function(ev) {
       try {
@@ -283,7 +277,13 @@
     }
     // Thinking click
     if (chatFlow) {
-      chatFlow.addEventListener("click", function(e) {
+      // Header buttons (only once, guarded by _dsInited)
+    var menuBtn = document.getElementById("ds-menu-btn");
+    var settingsBtn = document.getElementById("ds-settings-btn");
+    if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
+    if (settingsBtn) settingsBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
+
+    chatFlow.addEventListener("click", function(e) {
         var hdr = e.target.closest(".ds-thinking-header");
         if (!hdr) return;
         var inline = hdr.closest(".ds-thinking-inline");

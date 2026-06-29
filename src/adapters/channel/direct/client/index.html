@@ -1095,17 +1095,20 @@ var streamingText = "";
 var currentChunkGroupId = null;
 
 /* ── Page switching ── */
-let currentPage = "chat";
+let currentPage = (function(){ try { var lp = localStorage.getItem("withtoge-last-page"); if (lp === "chat-ds") return lp; } catch {} return "chat"; })();
 function showPage(page) {
   var prevPage = currentPage;
   currentPage = page;
   window.dispatchEvent(new CustomEvent('page-changed', { detail: { page: page } }));
   // Chat visibility: skip during slide transitions (handled below)
+  var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home") || (page === "chat-ds" && prevPage === "chat") || (page === "chat" && prevPage === "chat-ds");
   var wasDs = (prevPage === "chat-ds");
   chatDsPage.classList.toggle("show", page === "chat-ds");
-  if (page === "chat-ds") { if (!wasDs && typeof window.dsChatInit === "function") window.dsChatInit(); }
-  else if (wasDs) { if (typeof window.dsChatDestroy === "function") window.dsChatDestroy(); }
-  var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home");
+  // Init/destroy only for non-slide transitions (slide branch handles its own)
+  if (!isSlide) {
+    if (page === "chat-ds") { if (!wasDs && typeof window.dsChatInit === "function") window.dsChatInit(); }
+    else if (wasDs) { if (typeof window.dsChatDestroy === "function") window.dsChatDestroy(); }
+  }
   if (!isSlide) {
     chatPage.classList.toggle("show", page === "chat");
   }
@@ -1197,6 +1200,35 @@ function showPage(page) {
   } else {
     if (typeof window.phDestroy === 'function') window.phDestroy();
     phoneHomePage.classList.remove("show", "slide-in", "slide-out");
+  }
+
+  /* ── DS chat with slide transition ── */
+  if (page === "chat-ds" && prevPage === "chat") {
+    chatPage.classList.remove("slide-in");
+    chatPage.classList.add("slide-out");
+    chatDsPage.classList.add("show", "slide-in");
+    if (!wasDs && typeof window.dsChatInit === "function") window.dsChatInit();
+    var dsTarget = page;
+    phoneHomeTimer = setTimeout(function() {
+      if (currentPage !== dsTarget) return;
+      chatPage.classList.remove("show", "slide-out");
+      chatDsPage.classList.remove("slide-in");
+    }, 360);
+  } else if (page === "chat" && prevPage === "chat-ds") {
+    if (typeof window.dsChatDestroy === "function") window.dsChatDestroy();
+    chatDsPage.classList.remove("slide-in");
+    chatPage.classList.remove("slide-out");
+    chatDsPage.classList.add("slide-out");
+    chatPage.classList.add("show", "slide-in");
+    var dsTarget2 = page;
+    phoneHomeTimer = setTimeout(function() {
+      if (currentPage !== dsTarget2) return;
+      chatDsPage.classList.remove("show", "slide-out");
+      chatPage.classList.remove("slide-in");
+    }, 360);
+  } else if (page !== "chat-ds" && prevPage === "chat-ds") {
+    if (typeof window.dsChatDestroy === "function") window.dsChatDestroy();
+    chatDsPage.classList.remove("show", "slide-in", "slide-out");
   }
 }
 
@@ -1295,7 +1327,7 @@ async function syncHeaderFromWorldbook(model) {
   } catch {}
 }
 settings = loadSettings();
-loadModels().then(() => { applySettings(settings); try { var lp = localStorage.getItem("withtoge-last-page"); if (lp === "chat-ds") showPage("chat-ds"); } catch {} });
+loadModels().then(() => { applySettings(settings);  });
 
 /* ── Sidebar ── */
 function toggleSidebar() {

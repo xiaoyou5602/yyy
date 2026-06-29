@@ -2400,6 +2400,8 @@ footer {
 #phone-home-page.slide-in { animation: ph-slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
 #phone-home-page.slide-out { animation: ph-slideOutRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
 #chat-page.slide-in { animation: ph-slideInLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+#chat-ds-page.slide-in { animation: ph-slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+#chat-ds-page.slide-out { animation: ph-slideOutRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
 
 @media (max-width: 480px) {
   #phone-home-page { padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) 14px; }
