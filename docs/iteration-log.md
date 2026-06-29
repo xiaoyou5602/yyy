@@ -3,6 +3,65 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-29~30 · DS 聊天页面 Gemini 复刻 & 嵌入接入
+
+### 背景
+
+toge 找 Gemini 生成了暖瓷风聊天页面设计稿（`克聊天页面.html`），希望将 DS 模型专属聊天页完整换肤，Opus/Haiku 保持原样不动。
+
+### 过程
+
+**第一阶段：直接改 main.css**（失败）
+- 在原有 index.html + main.css 上逐条替换 CSS 规则，试图将 Gemini 设计映射到现有 class 名
+- 问题：Edit 工具的字符串匹配频发静默失败（缩进/换行符不匹配），CSS 改动大半未实际写入文件
+- 多次 `css.replace()` 返回"OK"但文件未变，排查发现实际文件内容与搜索字符串不一致
+
+**第二阶段：创建独立 chat-ds.html**（部分成功）
+- 从 Gemini 稿提取完整 HTML+CSS+JS，创建独立页面 `chat-ds.html`，可通过 `/chat-ds.html` 直接访问
+- 完整复刻：Header 双人头像+海星 SVG、不对称圆角气泡、thinking 爱心头像+跳动点+竖线、输入框胶囊
+
+**第三阶段：嵌入 index.html（按标准流程）**
+- 参照小手机主页接入模式：CSS 抽成 `chat-ds.css`（变量前缀 `--ds-*`），JS 抽成 `chat-ds.js`（IIFE，暴露 `dsChatInit`/`dsChatDestroy`）
+- `#chat-ds-page` div 放入 index.html，与 `#chat-page` 平级
+- `showPage("chat-ds")` 接入页面切换，侧边栏 DS 卡片动态判断跳转
+- 添加 slide 动画（chat↔chat-ds 滑动过渡）
+- 右滑手势支持（DS 页面向右滑回到 chat）
+
+### 踩坑
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| **CSS 替换静默失败** | `css.replace()` 返回"OK"但文件未变 | 搜索字符串的缩进/换行与文件实际内容不匹配 | 改用 Edit 工具（精确匹配）+ Read 确认 |
+| **sidebar onclick 引用未定义变量** | 侧边栏点 DS 后页面卡死 | `` onclick="m.key==='ds'?..." `` 中 `m` 是模板变量，点击时不存在 | DS 检测移入 `selectSidebarModel` 函数内部 |
+| **connect() 代码被插坏** | DS 页面菜单按钮无响应 | node 脚本字符串替换把按钮监听塞进了 `catch {}` 块，WS 成功时不执行 | 重写 `connect()`，按钮监听移入 `dsChatInit` |
+| **selectSidebarModel 缺 16 行** | 非 DS 模型切换全链路炸（activeZone 用 undefined key） | 多次 Edit 中 `key` 声明 + history 保存 + sidebar 同步代码被误删 | 从 git `660fd11^` 原始版恢复 |
+| **刷新不留在 DS 页** | F5 后回到 chat 页 | `currentPage` 初始化硬编码 `"chat"`，`wasDs` 守卫阻止了 init | `currentPage` 先从 localStorage 读，restore 时绕过 `wasDs` 直调 `dsChatInit` |
+| **DS 页刷新跳到 GLM** | 上次用 DS 但刷新显示 GLM | `initHistory()` 读 `settings.model` 激活 zone，而 DS 切换后未持久化 model | 在 DS 分支加 `settings.model = model; saveSettings(settings)` |
+
+### GPT 审查结论
+
+GPT 指出改动跨度太大（横跨页面结构/切换机制/模型逻辑/WS 生命周期/初始化/Sidebar/CSS），建议以后 UI 大改拆成两个 PR：纯 UI 改动（HTML+CSS）→ 接入逻辑。Gemini 适合出视觉稿，CC 适合拆组件接入，每个组件保持原有 id/class/事件。
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `src/.../client/chat-ds.html` | **新建**：独立 DS 聊天页（备用方案） |
+| `src/.../client/css/chat-ds.css` | **新建**：DS 页面样式，变量前缀 `--ds-*` |
+| `src/.../client/js/chat-ds.js` | **新建**：DS 页面 JS，IIFE |
+| `src/.../client/index.html` | 加 `#chat-ds-page` div + `showPage`/`selectSidebarModel`/slide/swipe |
+| `src/.../client/css/main.css` | DS slide 动画 + 侧边栏 z-index 提升 |
+
+### 效果清单（DS 页面）
+
+- ✅ Header：双人头像 + 海星金粉微闪 + 在线脉冲光
+- ✅ 气泡：Gemini 不对称圆角 + 细描边
+- ✅ Thinking：爱心头像 + 跳动点 + 蓝色竖线 + COT 流式
+- ✅ 输入框：胶囊灰底 + 加号内嵌 + 发送键 + focus 发光
+- ✅ 时间戳
+- ✅ Slide 动画
+- ✅ 右滑回 chat
+
 ## 2026-06-28 · 四模型多实例 + zone 恢复 + 直调缓冲优化
 
 - **GLM-5.2 + 米米子 OpenClaw 接入**：OpenAI 兼容格式，`direct-api-client` 分支 Anthropic/OpenAI。模型配置表各加一行。
