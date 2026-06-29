@@ -1373,6 +1373,24 @@ function selectSidebarModel(el) {
     settings.model = model; saveSettings(settings);
     closeSidebar(); showPage("chat-ds"); return;
   }
+
+  // Non-DS: check dirty + save history + activate zone
+  if (oldModel === model) return;
+  if (window._wbDirty && window._wbModel !== model) {
+    if (!confirm("世界书有未保存的修改，切换模型会丢失。确定切换吗？")) return;
+  }
+  if (history.length > 0) {
+    const oldKey = getStorageKey();
+    localStorage.setItem(oldKey, JSON.stringify(history.slice(-500)));
+  }
+  document.querySelectorAll(".sidebar-model-card").forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+  settings.model = model;
+  saveSettings(settings);
+  document.getElementById("setting-model").value = model;
+
+  const meta = MODEL_META[model];
+  const key = meta?.key || "ds";
   activateZone(key);
   applyModelTheme(model);
   syncHeaderFromWorldbook(model);
