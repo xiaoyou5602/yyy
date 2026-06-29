@@ -1103,10 +1103,11 @@ function showPage(page) {
   // Chat visibility: skip during slide transitions (handled below)
   var isSlide = (page === "phone-home" && prevPage === "chat") || (page === "chat" && prevPage === "phone-home") || (page === "chat-ds" && prevPage === "chat") || (page === "chat" && prevPage === "chat-ds");
   var wasDs = (prevPage === "chat-ds");
+  var samePage = (prevPage === page);
   chatDsPage.classList.toggle("show", page === "chat-ds");
   // Init/destroy only for non-slide transitions (slide branch handles its own)
   if (!isSlide) {
-    if (page === "chat-ds") { if (!wasDs && typeof window.dsChatInit === "function") window.dsChatInit(); }
+    if (page === "chat-ds") { if ((!wasDs || samePage) && typeof window.dsChatInit === "function") window.dsChatInit(); }
     else if (wasDs) { if (typeof window.dsChatDestroy === "function") window.dsChatDestroy(); }
   }
   if (!isSlide) {
