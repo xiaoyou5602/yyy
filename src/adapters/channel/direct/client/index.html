@@ -2621,6 +2621,13 @@ function updateInlineThinkingLabel(turnId, labelText) {
   if (!inline) return;
   var label = inline.querySelector(".thinking-inline-label");
   if (label) label.textContent = labelText;
+  // Hide dots, show arrow when thinking is done
+  if (labelText.indexOf("已思考") === 0) {
+    var dots = inline.querySelectorAll(".thinking-dot");
+    dots.forEach(function(d) { d.style.display = "none"; });
+    var arrow = inline.querySelector(".thinking-inline-arrow");
+    if (arrow) arrow.style.display = "";
+  }
   // Show arrow when thinking is done
   if (labelText.indexOf("已思考") === 0 || labelText.indexOf("已思考完毕") === 0) {
     var arrow = inline.querySelector(".thinking-inline-arrow");
