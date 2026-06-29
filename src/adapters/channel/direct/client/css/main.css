@@ -235,7 +235,11 @@ header {
 
 /* Override: our JS uses #status-dot and #status-text IDs */
 #status-dot, .status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
-#status-dot.on { background: #46a07b; box-shadow: 0 0 6px rgba(70,160,123,0.2); animation: none; }
+#status-dot.on { background: #46a07b; box-shadow: 0 0 0 0 rgba(70,160,123,0.5); animation: status-pulse 2s ease-in-out infinite; }
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(70,160,123,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(70,160,123,0); }
+}
 #status-text, .status-text { font-size: 11px; color: rgba(45,45,45,0.45); font-weight: 500; }
 
 /* Hide old per-message avatar — Gemini design has avatars only in header */
@@ -388,6 +392,7 @@ footer {
   overflow-y: auto; white-space: pre-wrap; word-break: break-all;
 }
 .chat-input:focus { outline: none; }
+.input-container-inner:focus-within { box-shadow: 0 0 0 4px rgba(89,137,185,0.12); border-color: #5989b9; }
 .chat-input::placeholder { color: rgba(89,137,185,0.50); }
 
 .image-btn {
