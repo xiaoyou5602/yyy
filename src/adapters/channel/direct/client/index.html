@@ -1324,10 +1324,6 @@ function selectSidebarModel(el) {
   const oldModel = (settings.model || "").trim();
   if (oldModel === model) return;
 
-  // DS uses dedicated Gemini page
-  var meta = MODEL_META[model];
-  if (meta && meta.key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
-
   // Check worldbook dirty before switching
   if (window._wbDirty && window._wbModel !== model) {
     if (!confirm("世界书有未保存的修改，切换模型会丢失。确定切换吗？")) return;
@@ -1347,6 +1343,8 @@ function selectSidebarModel(el) {
   // Determine zone key and activate
   const meta = MODEL_META[model];
   const key = meta?.key || "ds";
+  // DS uses dedicated Gemini page instead of zone
+  if (key === "ds") { closeSidebar(); showPage("chat-ds"); return; }
   activateZone(key);
   applyModelTheme(model);
   syncHeaderFromWorldbook(model);
