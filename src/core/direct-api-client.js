@@ -81,6 +81,13 @@ async function sendApiTurn({
     let buffer = "";
     let fullText = "";
     let fullThinking = "";
+    let doneCalled = false;
+
+    const callOnDone = (payload) => {
+      if (doneCalled) return;
+      doneCalled = true;
+      onDone(payload);
+    };
 
     res.on("data", (chunk) => {
       buffer += chunk.toString();
@@ -96,7 +103,7 @@ async function sendApiTurn({
           if (line.startsWith("data: ")) {
             const raw = line.slice(6);
             if (raw === "[DONE]") {
-              onDone({ text: fullText, thinking: fullThinking });
+              callOnDone({ text: fullText, thinking: fullThinking });
               continue;
             }
             try {
@@ -109,7 +116,7 @@ async function sendApiTurn({
                   onText(choice.delta.content);
                 }
                 if (choice?.finish_reason) {
-                  onDone({ text: fullText, thinking: fullThinking });
+                  callOnDone({ text: fullText, thinking: fullThinking });
                 }
               } else {
                 // Anthropic: content_block_delta / thinking_delta / message_stop
@@ -123,7 +130,7 @@ async function sendApiTurn({
                     onThinking(delta.thinking);
                   }
                 } else if (data.type === "message_stop") {
-                  onDone({ text: fullText, thinking: fullThinking });
+                  callOnDone({ text: fullText, thinking: fullThinking });
                 }
               }
             } catch (e) {
@@ -135,9 +142,12 @@ async function sendApiTurn({
     });
 
     res.on("error", (e) => onError(e));
-    res.on("end", () => onDone({ text: fullText, thinking: fullThinking }));
+    res.on("end", () => callOnDone({ text: fullText, thinking: fullThinking }));
   });
 
+  req.setTimeout(120_000, () => {
+    req.destroy(new Error("API request timed out after 120s"));
+  });
   req.on("error", (e) => onError(e));
   req.write(JSON.stringify(body));
   req.end();

@@ -973,6 +973,23 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
     clients.add(ws);
     console.log(`[ws-server] client connected count=${clients.size}`);
 
+    // ── Catch-up sync: push recent ke messages so client can fill gaps after reconnect ──
+    if (messageStore) {
+      setTimeout(() => {
+        if (ws.readyState !== 1) return; // client already disconnected
+        try {
+          const recent = messageStore.load(1); // today only
+          const keMessages = recent.filter(m => m.from === "ke").slice(-30);
+          if (keMessages.length > 0) {
+            ws.send(JSON.stringify({ type: "sync", messages: keMessages }));
+            console.log(`[ws-server] sync sent count=${keMessages.length}`);
+          }
+        } catch (err) {
+          console.error("[ws-server] sync error:", err.message);
+        }
+      }, 600); // short delay to let client finish loading localStorage history first
+    }
+
     ws.on("pong", () => {
       ws.isAlive = true;
     });

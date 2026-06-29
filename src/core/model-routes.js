@@ -26,7 +26,7 @@ const MODELS = {
     type: "api",
     apiFormat: "openai",
     displayName: "GLM 5.2",
-    baseUrl: "https://ws-p3tug6w6xf8x006o.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    baseUrl: "https://ws-p3tug6w6xf8x006o.cn-beijing.maas.aliyuncs.com/compatible-mode",
     apiKey: process.env.CYBERBOSS_GLM52_KEY || "",
     apiModel: "glm-4",
     modelName: "glm-5.2",

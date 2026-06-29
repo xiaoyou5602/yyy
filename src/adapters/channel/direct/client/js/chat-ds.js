@@ -12,12 +12,30 @@
   }
   function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
   function scrollBottom() { if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight; }
-  function loadHistory() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } }
-  function saveHistory(h) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(h.slice(-500))); } catch {} }
+  function loadHistory() { try { var h = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); console.log("[ds-chat] loadHistory count=" + h.length); return h; } catch { console.warn("[ds-chat] loadHistory failed"); return []; } }
+  function saveHistory(h) { try { var s = h.slice(-500); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); console.log("[ds-chat] saveHistory count=" + s.length); } catch(e) { console.warn("[ds-chat] saveHistory failed:", e.message); } }
+
+  var HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
 
   function renderMsg(msg, save) {
     if (save === undefined) save = true;
     var wrap = document.createElement("div");
+
+    // ── Thinking entries from history ──
+    if (msg.from === "thinking") {
+      console.log("[ds-chat] render thinking from history len=" + (msg.text || "").length);
+      wrap.className = "ds-msg-group ai";
+      wrap.appendChild(buildStaticThinking(msg.text || ""));
+      var tTime = document.createElement("span");
+      tTime.className = "ds-msg-time";
+      tTime.textContent = msg.time || now();
+      wrap.appendChild(tTime);
+      chatFlow.appendChild(wrap);
+      scrollBottom();
+      if (save) { history.push(msg); saveHistory(history); }
+      return wrap;
+    }
+
     wrap.className = "ds-msg-group " + (msg.from === "you" ? "user" : "ai");
     var bubble = document.createElement("div");
     bubble.className = "ds-msg-bubble";
@@ -83,7 +101,7 @@
     row.className = "ds-thinking-row";
     var avatar = document.createElement("div");
     avatar.className = "ds-thinking-avatar";
-    avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
+    avatar.innerHTML = HEART_SVG;
     var header = document.createElement("div");
     header.className = "ds-thinking-header";
     var isFinal = (store.phase === "final");
@@ -93,6 +111,25 @@
     var body = document.createElement("div");
     body.className = "ds-thinking-body";
     body.textContent = store.text || "";
+    inline.appendChild(body);
+    return inline;
+  }
+
+  function buildStaticThinking(text) {
+    var inline = document.createElement("div");
+    inline.className = "ds-thinking-inline";
+    var row = document.createElement("div");
+    row.className = "ds-thinking-row";
+    var avatar = document.createElement("div");
+    avatar.className = "ds-thinking-avatar";
+    avatar.innerHTML = HEART_SVG;
+    var header = document.createElement("div");
+    header.className = "ds-thinking-header";
+    header.innerHTML = '<span class="ds-thinking-arrow">▼</span> <span class="ds-thinking-label">已思考完毕</span>';
+    row.appendChild(avatar); row.appendChild(header); inline.appendChild(row);
+    var body = document.createElement("div");
+    body.className = "ds-thinking-body";
+    body.textContent = text || "";
     inline.appendChild(body);
     return inline;
   }
@@ -147,6 +184,13 @@
       thinkingStore.finalize(turnId);
       var elapsed = Math.floor((Date.now() - t.startTime) / 1000);
       updateLabel(turnId, "已思考 " + Math.max(0, elapsed) + " 秒");
+      // Persist thinking text to history so it survives page refresh
+      if (t.text && t.text.trim()) {
+        history.push({ from: "thinking", text: t.text.trim(), time: now(), model: t.model || MODEL_NAME });
+        console.log("[ds-chat] thinking saved to history len=" + t.text.trim().length + " turn=" + turnId);
+      } else {
+        console.log("[ds-chat] thinking skipped (empty) turn=" + turnId);
+      }
     });
   }
 
@@ -180,6 +224,11 @@
     ws.onmessage = function(ev) {
       try {
         var msg = JSON.parse(ev.data);
+        // sync messages bypass model filter — they carry their own model per entry
+        if (msg.type === "sync") {
+          handleSync(msg.messages || []);
+          return;
+        }
         if (msg.model && msg.model !== MODEL_NAME) return;
         switch (msg.type) {
           case "thinking": updateStream(msg); break;
@@ -196,7 +245,7 @@
             }
             if (msg.done) {
               streamingMsgEl = null;
-              history.push({ from: "ke", text: msg.text, time: now(), model: msg.model });
+              history.push({ from: "ke", text: msg.text, time: now(), model: msg.model, globalId: msg.globalId || "" });
               saveHistory(history);
             }
             scrollBottom();
@@ -214,6 +263,30 @@
   function scheduleReconnect() {
     if (reconnectTimer) return;
     reconnectTimer = setTimeout(function() { reconnectDelay = Math.min(reconnectDelay * 1.5, 30000); connect(); }, reconnectDelay);
+  }
+
+  function handleSync(messages) {
+    if (!messages || !messages.length) { console.log("[ds-chat] sync empty"); return; }
+    console.log("[ds-chat] sync received count=" + messages.length);
+    var seen = {};
+    // Build seen set from existing history (by globalId and text+timestamp)
+    history.forEach(function(h) {
+      if (h.globalId) seen[h.globalId] = true;
+      seen[h.from + "|" + h.text + "|" + h.time] = true;
+    });
+    var added = false;
+    messages.forEach(function(m) {
+      if (m.from !== "ke") return;
+      if (m.globalId && seen[m.globalId]) return;
+      var key = "ke|" + m.text + "|" + (m.time || "");
+      if (seen[key]) return;
+      seen[key] = true;
+      if (m.globalId) seen[m.globalId] = true;
+      // render without auto-save — we batch save at the end
+      renderMsg({ from: "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" }, false);
+      added = true;
+    });
+    if (added) saveHistory(history);
   }
 
   function renderPreviews() {

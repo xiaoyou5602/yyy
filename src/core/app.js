@@ -456,7 +456,9 @@ class CyberbossApp {
       memSvc.extractFromTurn({
         userText: normalized.text,
         date: new Date().toISOString().slice(0, 10),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn(`[cyberboss] memory extractFromTurn failed: ${err?.message || err}`);
+      });
     }
 
     const workspaceRoot = this.resolveWorkspaceRoot(bindingKey);
