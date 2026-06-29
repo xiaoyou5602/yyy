@@ -1259,6 +1259,15 @@ document.getElementById("games-back-btn").addEventListener("click", () => showPa
     var dy = Math.abs(startY - e.changedTouches[0].clientY);
     if (dx > 60 && dy < dx * 0.6 && currentPage === 'phone-home') showPage('chat');
   });
+  // DS page swipe → back to chat
+  chatDsPage.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  }, {passive: true});
+  chatDsPage.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = Math.abs(startY - e.changedTouches[0].clientY);
+    if (dx > 60 && dy < dx * 0.6 && currentPage === 'chat-ds') showPage('chat');
+  });
 })();
 
 /* ── settings ── */
@@ -1327,6 +1336,7 @@ async function syncHeaderFromWorldbook(model) {
   } catch {}
 }
 settings = loadSettings();
+if (currentPage === "chat-ds") { showPage("chat-ds"); }
 loadModels().then(() => { applySettings(settings);  });
 
 /* ── Sidebar ── */
