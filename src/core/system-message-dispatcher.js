@@ -54,7 +54,7 @@ function buildSystemInboundText(text, createdAt = "") {
     "If you act, end with send_message that briefly and naturally reflects what you did or what changed; use silent only if you do nothing.",
     "Return exactly one JSON object after any tool calls:",
     "{\"action\":\"silent\"}",
-    "{\"action\":\"send_message\",\"message\":\"<one short natural WeChat message>\"}",
+    "{\"action\":\"send_message\",\"message\":\"<one short natural message>\"}",
     "No markdown fences. No reasoning. No text outside the JSON.",
   ];
   if (body) {

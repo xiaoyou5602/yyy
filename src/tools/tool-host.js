@@ -411,7 +411,7 @@ const PROJECT_TOOLS = [
         text: { type: "string", description: "Reminder text to send back later." },
         delayMinutes: { type: "integer", description: "Minutes from now before the reminder fires." },
         dueAt: { type: "string", description: "Absolute time such as 2026-04-07T21:30+08:00." },
-        userId: { type: "string", description: "Optional explicit WeChat user id." },
+        userId: { type: "string", description: "Optional explicit user id." },
       },
       additionalProperties: false,
     },
@@ -448,8 +448,8 @@ const PROJECT_TOOLS = [
   },
   {
     name: "cyberboss_channel_send_file",
-    description: "Send an existing local file back to the current WeChat chat.",
-    shortHint: "Send a local file back to the current WeChat user.",
+    description: "Send an existing local file back to the current chat.",
+    shortHint: "Send a local file back to the current user.",
     topics: ["channel"],
     inputSchema: {
       type: "object",
@@ -588,7 +588,7 @@ const PROJECT_TOOLS = [
             additionalProperties: false,
           },
         },
-        userId: { type: "string", description: "Optional explicit WeChat user id." },
+        userId: { type: "string", description: "Optional explicit user id." },
       },
       additionalProperties: false,
     },
@@ -814,13 +814,13 @@ const PROJECT_TOOLS = [
   },
   {
     name: "cyberboss_timeline_screenshot",
-    description: "Capture a timeline screenshot and send it back to the current WeChat chat.",
+    description: "Capture a timeline screenshot and send it back to the current chat.",
     shortHint: "Capture a timeline screenshot with structured selection fields.",
     topics: ["timeline"],
     inputSchema: {
       type: "object",
       properties: {
-        userId: { type: "string", description: "Optional explicit WeChat user id." },
+        userId: { type: "string", description: "Optional explicit user id." },
         outputFile: { type: "string", description: "Optional absolute output path for the PNG file." },
         selector: { type: "string", description: "main, timeline, analytics, events, or a custom CSS selector." },
         range: { type: "string", description: "Optional range: day, week, or month." },
