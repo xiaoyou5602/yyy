@@ -3,6 +3,93 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)
 
+## 2026-06-30 · 后端全量审查 + DS 页面刷新修复 + 本地关停
+
+### 背景
+
+toge 要求全面审查 withtoge 后端代码，同时 DS 页面存在刷新后对话、CoT、气泡全部消失的问题。审查过程中顺藤摸瓜发现 VPS 系统消息静默失败、本地和域名双节点数据隔离等一连串问题。
+
+### 审查发现的 bug
+
+**🔴 确定 Bug（5 个）**：
+| # | 问题 | 文件 | 根因 |
+|---|------|------|------|
+| 1 | GLM API 请求 URL 多 `/v1` | `model-routes.js` + `direct-api-client.js` | baseUrl 已含 `/compatible-mode/v1`，sendApiTurn 又拼 `/v1/chat/completions` |
+| 2 | Haiku 模型完全不可用 | `model-routes.js` + `config.js` | MODELS 表无 haiku 条目，走 CLI 路径又没登记 → 拒绝启动 |
+| 3 | onDone 被调用两次 | `direct-api-client.js` | SSE `[DONE]` 标记和 `res.on("end")` 各触发一次 |
+| 4 | HTTP 请求无超时 | `direct-api-client.js` | `transport.request()` 没设 timeout |
+| 5 | Opus model ID 不一致 | `model-routes.js` vs `claudecode/index.js` | 一个 `[A8-按量]`，一个 `[A-按量]`（55api 两个都能用，暂不修） |
+
+**🟡 逻辑问题（6 个）**：memory-fragment-store getAll 全量遍历性能、PID 文件竞争窗口、reminder 不去重、shouldWriteLetterToday 用 Math.random、takeImageOnlyBatchMessages 丢失字段、extractFromTurn 静默失败。
+
+### DS 页面刷新丢失——排查与修复
+
+**根因链**：
+1. **消息气泡消失**：WebSocket broadcast 是 fire-and-forget，刷新断开 → 正在流式传输的 chunk 永久丢失。messageStore 有完整文本但客户端从不获取。
+2. **CoT（思考）消失**：thinking 只存内存 thinkingStore，从未落入 localStorage。
+3. **页面回不到 DS**：`withtoge-last-page` 只读不写，刷新后 always 回到 chat 页。
+4. **flushText 多次 done 破坏 UI**：API 直调路径每次句号触发 flush，每次都带 `done: true`，导致新空思考块反复覆盖旧块。
+
+**修复**（6 个文件）：
+| 文件 | 改动 |
+|------|------|
+| `ws-server.js` | WebSocket 连接后 600ms 推送 `type: "sync"`（今日 ke 消息） |
+| `chat-ds.js` | sync 去重 + 持久化；finalizeAll 写入 thinking 到 history；buildStaticThinking 渲染历史思考块；flushText 中间 chunk 跳过 |
+| `index.html` | showPage 写入 `withtoge-last-page` |
+| `app.js` | flushText 加 `isFinal` 参数；extractFromTurn 加 console.warn |
+| `direct-api-client.js` | doneCalled 防抖 + req.setTimeout(120s) |
+| `direct/index.js` | sendText 加 `finalChunk` 选项 |
+
+### VPS 系统消息静默失败
+
+**现象**：本地 `127.0.0.1:9726` 能收到克主动消息（checkin/dream），但域名 `克.withtoge.us` 和 APP 端收不到。
+
+**根因链**：
+1. `claudecode/index.js:450`：`allowSpawn = provider !== "system"` — 系统消息禁止 spawn 新 session
+2. VPS 无人聊天 → 无活跃 CLI session → 所有系统消息被 skip
+3. VPS `.env` 里 `CYBERBOSS_WORKSPACE_ROOT=C:/Users/youzi`（Windows 路径！）— 即使强行 spawn 也会 ENOENT
+
+**修复**：
+- `allowSpawn = true`，系统消息允许 spawn session
+- 系统 spawn 的 session 加 5 分钟自动清理定时器（check if inactive → closeWorkspaceClient）
+- VPS `.env` workspace root 改为 `/root`
+- 复制 `runtime-instructions.md` 到 VPS
+
+### 关停本地节点
+
+- 杀本地 cyberboss 进程（PID 51780）
+- 清 running.pid
+- CLAUDE.md 更新：本地已关停，唯一入口 `克.withtoge.us`，禁止重启本地
+
+### 关于多端数据隔离
+
+本地 `127.0.0.1:9726` 和域名 `克.withtoge.us` 是完全独立的两个 cyberboss 进程，各自的 state 目录（chat-history、diary、memory 等）不共享。浏览器 localStorage 按域名隔离，也不互通。**这不是 bug，是架构设计**——两个节点本来就没有数据同步机制。关停本地后这个问题自然消失。
+
+### 踩坑
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| **VPS ENOENT 风暴** | 1 分钟 1366 次错误，队列 12 条消息反复重试 | workspace 路径是 `C:/Users/youzi`（Windows 路径在 Linux 上不存在） | 改为 `/root` |
+| **system message skipped** | VPS checkin 全部静默丢弃 | `allowSpawn = provider !== "system"` | 允许 spawn + auto-cleanup |
+| **GitHub push 超时** | 本地直推 GitHub 30s timeout | GFW | VPS 中转（VPS 无 SSH key 未成），后本地重试成功 |
+| **runtime-instructions.md 缺失** | VPS Claude CLI 启动失败 | 模板文件未随代码部署 | scp 复制 |
+
+### 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `src/core/app.js` | flushText isFinal + extractFromTurn 日志 |
+| `src/core/direct-api-client.js` | doneCalled 防抖 + req.setTimeout |
+| `src/core/model-routes.js` | GLM baseUrl 去 `/v1` |
+| `src/adapters/runtime/claudecode/index.js` | allowSpawn=true + 5min auto-cleanup |
+| `src/adapters/channel/direct/index.js` | sendText finalChunk 选项 |
+| `src/adapters/channel/direct/ws-server.js` | WS 连接 sync 推送 |
+| `src/adapters/channel/direct/client/js/chat-ds.js` | sync/handleSync/CoT 持久化/buildStaticThinking |
+| `src/adapters/channel/direct/client/index.html` | withtoge-last-page 写入 |
+| `C:\Users\youzi\CLAUDE.md` | 关停本地 + VPS domain-only 记录 |
+| VPS `/opt/withtoge/.env` | WORKSPACE_ROOT → `/root` |
+| VPS `/root/.cyberboss/runtime-instructions.md` | scp 复制 |
+
 ## 2026-06-29~30 · DS 聊天页面 Gemini 复刻 & 嵌入接入
 
 ### 背景
