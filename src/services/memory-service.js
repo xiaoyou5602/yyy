@@ -20,32 +20,46 @@ const EXTRACTION_PATTERNS = [
   {
     type: "preference",
     patterns: [
+      // 带"我"主语
       /我(?:喜欢|最爱|偏好|超爱|特别爱|好喜欢|好爱|爱死)\S+/g,
       /我(?:讨厌|不喜欢|受不了|烦|恨|恶心)\S+/g,
       /我(?:想|想要|想成为|想变成|渴望|希望自己)\S+/g,
       /我(?:最?喜欢|最?讨厌)的.{0,15}(?:是|就是)\S+/g,
+      // 无主语：感官/情感判断
+      /(?:好|真|太|超|巨)(?:好吃|好喝|好看|好听|好玩|好用|好穿|好闻|好香|好甜|好爽)/g,
+      /(?:难吃|难喝|难看|难听|难用|垃圾|好烦|烦死了|受不了)/g,
+      /(?:爱了|爱住|爱到|爱惨|绝了|太棒了|太赞了)/g,
     ],
   },
   {
     type: "event",
     patterns: [
+      // 带"我"主语
       /我(?:决定|打算|计划|要开始|开始|放弃|退出|报名|申请|提交)\S+/g,
       /我(?:从今|今天|现在|明天|下周|下个月)?起.{0,10}(?:要|会|开始|决定)\S+/g,
       /我(?:不\S+了|再也不|以后不)\S+/g,
+      // 无主语：已完成的动作
+      /[去来进出走跑到回坐躺](?:了|过)/g,
+      /[喝吃买做写发睡醒修改装开关找看拍玩试学画](?:了|过)(?![的着到])/g,
     ],
   },
   {
     type: "reflection",
     patterns: [
+      // 带"我"主语
       /我(?:觉得|感觉|发现|意识到|知道|明白|原来|好像|似乎)\S+/g,
       /我(?:可能|大概|也许)(?:是|有|会|要|该|不)\S+/g,
       /我(?:第一次|终于|总算|忽然|突然|一下子|慢慢)\S+/g,
+      // 无主语：感受/状态表达
+      /(?:好|有点|有些|真的|确实|太)(?:累|困|烦|饿|冷|热|开心|难过|感动|崩溃|焦虑|紧张|害怕|担心|后悔|迷茫|困惑)/g,
+      /(?:累了|困了|烦了|饿了|哭了|笑了|崩溃了|撑不住了|受不了了)/g,
     ],
   },
   {
     type: "fact",
     patterns: [
-      /我(?:在|的|有|是|住|去|去了|来自|养了?|养着)\S+/g,
+      // 大幅扩展动词白名单 — 原来只有10个动词，漏掉大量日常表达
+      /我(?:在|的|有|是|住|去|去了|来自|养了?|养着|吃|吃了|喝|喝了|买|买了|做|做了|写|写了|发|发了|给|给了|说|说了|想|想着|看|看了|玩|玩了|试|试了|用|用了|找|找了|开|开了|关|关了|修|修了|改|改了|装|装了|下|下了|上|上了|出|出了|进|进了|带|带了|打|打了|到|到了|回|回了|接|接了|等|等了|拿|拿了|放|放了|送|送了|帮|帮了|教|教了|问|问了|让|让了)\S+/g,
     ],
   },
 ];
@@ -129,35 +143,55 @@ const CLASSIFY_RULES = [
     type: "identity",
     test: (s) =>
       /我有(?:ADHD|抑郁|焦虑|过敏|慢性|胃病|颈椎|低血糖|贫血|哮喘|鼻炎)/.test(s) ||
-      /我(?:住在|现在在)/.test(s) ||
-      /我(?:的|是).{0,8}(?:生日|出生)/.test(s) ||
-      /我是.{0,8}(?:专业|学生)/.test(s),
+      /我(?:住在|现在在|搬到)/.test(s) ||
+      /(?:我的|我的生日|生日.*[是6六])/.test(s) ||
+      /我是.{0,8}(?:专业|学生)/.test(s) ||
+      /(?:取向|性取向|我是.{0,5}(?:女生|男生))/.test(s),
   },
   {
     type: "preference",
     test: (s) =>
-      /喜欢|最爱|讨厌|不喜欢|受不了|爱死|超爱|好爱/.test(s) ||
-      /想成为|想变成|渴望/.test(s) ||
-      /好想|想你|想你了|好想你|想念|太想你/.test(s),
+      /喜欢|最爱|讨厌|不喜欢|受不了|爱死|超爱|好爱|好喜欢/.test(s) ||
+      /想成为|想变成|渴望|想要|期待|希望.*[能有]/.test(s) ||
+      /好想|想你|想你了|好想你|想念|太想你|贴贴|贴住|亲亲|抱抱|蹭蹭/.test(s) ||
+      /(?:好好?[吃喝看听玩用穿闻]|真好?[吃喝看听玩]|太[好美棒赞甜香]|绝了|太棒了?)/.test(s) ||
+      /(?:难[吃喝看听用]|垃圾|恶心|烦死|受不了|踩雷|避雷)/.test(s) ||
+      /不要|别再|不要再|不想再|受够了|别\S{1,3}了/.test(s),
   },
   {
     type: "event",
     test: (s) =>
-      /决定|打算|计划|要开始|开始|放弃|报名|申请|提交/.test(s) ||
-      /不\S+了|再也不|以后不/.test(s),
+      /决定|打算|计划|报名|申请|提交|放弃|退出|辞职|搬家/.test(s) ||
+      /开始.{0,3}(?:开发|写|做|学|练|画|拍|剪|修|改|搞|弄)/.test(s) ||
+      /不\S{1,3}了|再也不|以后不/.test(s) ||
+      /从今天|从明天|从下周|从现在/.test(s) ||
+      /[去来进出走跑到回坐躺](?:了|过)(?![的着到])/.test(s) ||
+      /[喝吃买做写发睡醒修改装开关找看拍玩试学画](?:了|过)(?![的着到])/.test(s) ||
+      /[放拿接送帮教问让带送打等](?:了|过)(?![的着到])/.test(s),
   },
   {
     type: "reflection",
     test: (s) =>
-      /觉得|感觉|发现|意识到|知道|明白|原来|好像|似乎|可能.*是|第一次|终于|忽然|突然|一下子/.test(s),
+      /觉得|感觉|发现|意识到|知道|明白|原来|好像|似乎/.test(s) ||
+      /可能(?:是|有|会|要|该|不|真的)/.test(s) ||
+      /第一次|终于|总算|忽然|突然|一下子|慢慢/.test(s) ||
+      /(?:好|有点|有些|真的|确实|太|已经)(?:累|困|烦|饿|冷|热|开心|难过|感动|崩溃|焦虑|紧张|害怕|担心|后悔|迷茫|困惑)/.test(s) ||
+      /(?:累了|困了|烦了|饿了|哭了|笑了|崩溃了|撑不住了|受不了了)/.test(s) ||
+      /其实|说实话|老实说|讲真|讲真的|说真的/.test(s) ||
+      /(?:我?)(?:不知道|不确定|想不通|搞不懂|迷茫|困惑|搞不明白)/.test(s),
   },
 ];
+
+// fact 兜底检查：只有当句子含实质性内容时才标 fact，否则跳过
+const FACT_FALLBACK = /[去来进出走跑吃喝买做写发睡醒修改变开关找看拍玩试学画接送帮教问让带送打等放了过]|在|有|是|想|知道|可以|应该|需要|可能|已经|还|也|[一二两三四五六七八九十百千万0-9]/;
 
 function classifySentence(sentence) {
   for (const rule of CLASSIFY_RULES) {
     if (rule.test(sentence)) return rule.type;
   }
-  return "fact";
+  // 只有含实质性内容的句子才记 fact，纯语气/纯回应直接跳过
+  if (FACT_FALLBACK.test(sentence)) return "fact";
+  return "skip";
 }
 
 // ── 注入门控：跳过无信息量的消息 ──
@@ -200,15 +234,14 @@ class MemoryService {
 
     const results = this.index.search(query, { topK: 5, minHeat: 20 });
     if (results.length > 0) {
-      lines.push("[relevant memories, for context only — do not mention unless the user brings them up]");
+      lines.push("<memory_context>");
       for (const { fragment } of results) {
         const date = fragment.created ? fragment.created.slice(0, 10) : "";
-        const lockMark = fragment.locked ? " 🔒" : "";
-        const heatBar = fragment.heat >= 80 ? "🔥" : fragment.heat >= 50 ? "⭐" : "";
         const typeLabel = fragment.type !== "fact" ? `[${fragment.type}] ` : "";
-        lines.push(`- ${date}: ${typeLabel}${fragment.content}${lockMark}${heatBar}`);
-        this.store.boostHeat(fragment.id, 3);
+        lines.push(`- ${date} ${typeLabel}${fragment.content}`);
+        this.store.boostHeat(fragment.id, 1);
       }
+      lines.push("</memory_context>");
     }
 
     const rollups = this.rollupStore.getContextRollups();
@@ -275,6 +308,7 @@ class MemoryService {
       if (todayFrags.some((f) => f.content === trimmed)) continue;
 
       const type = classifySentence(trimmed);
+      if (type === "skip") continue;
       const gate = qualityGate(trimmed, type);
       if (!gate.pass) continue;
 
@@ -371,6 +405,10 @@ class MemoryService {
     return this.store.delete(id, deletedBy);
   }
 
+  async updateFragmentTags(id, tags = []) {
+    return this.store.updateTags(id, tags);
+  }
+
   async markFragment(id, status, extra = {}) {
     return this.store.setStatus(id, status, extra);
   }
@@ -387,6 +425,10 @@ class MemoryService {
 
   // ── Consolidation helpers ──
 
+  hasChatActivity() {
+    return this.store.getAll().some((f) => f.source?.kind === "chat");
+  }
+
   getHighHeatFragments(threshold = 50) {
     const all = this.store.getAll();
     return all.filter((f) => f.heat >= threshold).sort((a, b) => b.heat - a.heat);
@@ -400,7 +442,7 @@ class MemoryService {
 // ── 日记增强分类（比对话分类更细，因日记文本更长更有结构） ──
 
 function classifySentenceEx(sentence) {
-  // identity 检查
+  // identity 检查（保持窄，只匹配确凿的身份信息）
   if (
     /我有(?:ADHD|抑郁|焦虑|过敏|慢性|胃病|颈椎|低血糖|贫血|哮喘|鼻炎)/.test(sentence) ||
     /我(?:住在|现在在|搬到)/.test(sentence) ||
@@ -410,41 +452,48 @@ function classifySentenceEx(sentence) {
     return "identity";
   }
 
-  // preference: 强烈情感 + 对象
+  // preference: 情感 + 对象
   if (
-    /(?:喜欢|最爱|讨厌|不喜欢|受不了|爱死|超爱|好爱|好喜欢|爱|恨|好恨|烦死).{1,20}(?:的|了|因为|所以|，|。)/.test(sentence) ||
-    /想成为|想变成|渴望|希望自己/.test(sentence) ||
-    /(?:好想|想你|想你了|好想你|想念|太想你)/.test(sentence)
+    /(?:喜欢|最爱|讨厌|不喜欢|受不了|爱死|超爱|好爱|好喜欢|爱|恨|好恨|烦死|想你了?|好想你|想念|太想你|贴贴|贴住).{1,20}(?:的|了|因为|所以|，|。|$)/.test(sentence) ||
+    /(?:好好?[吃喝看听玩用穿闻]|真好?[吃喝看听玩]|太[好美棒赞甜香软温柔]|绝了|太棒)/.test(sentence) ||
+    /(?:难[吃喝看听用]|垃圾|恶心|烦死|受不了|踩雷|避雷)/.test(sentence) ||
+    /想成为|想变成|渴望|希望自己|想要.*[能有]/.test(sentence) ||
+    /不要|别再|不要再|不想再|受够了/.test(sentence)
   ) {
     return "preference";
   }
 
   // event: 行动/决定
   if (
-    /决定|打算|计划|报名|申请|提交|放弃了?|辞职|搬家|开始.{0,3}(?:开发|写|做|学|练|画|拍|剪)/.test(sentence) ||
+    /决定|打算|计划|报名|申请|提交|放弃了?|辞职|搬家|开始.{0,3}(?:开发|写|做|学|练|画|拍|剪|修|改|搞|弄)/.test(sentence) ||
     /不\S{1,3}了|再也不|以后不/.test(sentence) ||
-    /从今天|从明天|从下周|从现在/.test(sentence)
+    /从今天|从明天|从下周|从现在/.test(sentence) ||
+    /[去来进出走跑到回坐躺](?:了|过)(?![的着到])/.test(sentence) ||
+    /[喝吃买做写发睡醒修改装开关找看拍玩试学画放拿接送帮教问让带送打等](?:了|过)(?![的着到])/.test(sentence)
   ) {
     return "event";
   }
 
   // reflection: 对自己的认识
   if (
-    /觉得|感觉|发现|意识到|知道|明白|原来|好像|似乎|可能.*[是我有会要该不]|第一次|终于|忽然|突然|一下子|慢慢/.test(sentence)
+    /觉得|感觉|发现|意识到|知道|明白|原来|好像|似乎/.test(sentence) ||
+    /可能(?:是|有|会|要|该|不|真的)/.test(sentence) ||
+    /第一次|终于|总算|忽然|突然|一下子|慢慢/.test(sentence) ||
+    /(?:好|有点|有些|真的|确实|太|已经)(?:累|困|烦|饿|冷|热|开心|难过|感动|崩溃|焦虑|紧张|害怕|担心|后悔|迷茫|困惑)/.test(sentence) ||
+    /(?:累了|困了|烦了|饿了|哭了|笑了|崩溃了|撑不住了)/.test(sentence) ||
+    /其实|说实话|老实说|讲真/.test(sentence)
   ) {
     return "reflection";
   }
 
-  // 剩下的是 fact，但降低门槛：含情感词或具体信息才存
-  // 如果完全没信息量，标记为 weak_fact（调用方可以跳过）
+  // fact: 含实质性动词或内容才存
   if (
-    /在|有|是|去|去了|来|来了|吃|吃了|写|写了|做|做了|看|看了/.test(sentence) &&
+    FACT_FALLBACK.test(sentence) &&
     sentence.length >= 8
   ) {
     return "fact";
   }
 
-  // 实在太弱，标记跳过
   return "skip";
 }
 
@@ -463,13 +512,7 @@ const HEAT_INITIAL_MAP = {
 function extractTags(text) {
   const tags = [];
   const keywords = [
-    { word: "作业", tag: "作业" },
-    { word: "作品", tag: "作品集" },
-    { word: "实习", tag: "实习" },
-    { word: "面试", tag: "面试" },
-    { word: "课", tag: "课程" },
-    { word: "考试", tag: "考试" },
-    { word: "焦虑", tag: "焦虑" },
+    // ── 情绪/身体/作息/健康 ──
     { word: "崩溃", tag: "情绪" },
     { word: "哭", tag: "情绪" },
     { word: "开心", tag: "情绪" },
@@ -477,38 +520,117 @@ function extractTags(text) {
     { word: "感动", tag: "情绪" },
     { word: "害怕", tag: "情绪" },
     { word: "恐惧", tag: "情绪" },
+    { word: "焦虑", tag: "情绪" },
+    { word: "烦", tag: "情绪" },
+    { word: "累", tag: "身体" },
+    { word: "困", tag: "身体" },
+    { word: "饿", tag: "身体" },
+    { word: "疼", tag: "身体" },
+    { word: "头晕", tag: "身体" },
+    { word: "头痛", tag: "身体" },
+    { word: "胃痛", tag: "身体" },
     { word: "睡觉", tag: "作息" },
     { word: "熬夜", tag: "作息" },
     { word: "失眠", tag: "作息" },
+    { word: "通宵", tag: "作息" },
+    { word: "凌晨", tag: "作息" },
+    { word: "半夜", tag: "作息" },
     { word: "吃药", tag: "健康" },
     { word: "药", tag: "健康" },
     { word: "医院", tag: "健康" },
     { word: "ADHD", tag: "ADHD" },
+    // ── 饮食 ──
     { word: "食堂", tag: "饮食" },
     { word: "吃饭", tag: "饮食" },
+    { word: "奶茶", tag: "饮食" },
+    { word: "果酒", tag: "饮食" },
+    // ── 社交/家庭 ──
     { word: "朋友", tag: "社交" },
     { word: "妈妈", tag: "家庭" },
     { word: "爸爸", tag: "家庭" },
     { word: "家", tag: "家庭" },
+    // ── 学业/创作 ──
+    { word: "作业", tag: "作业" },
+    { word: "作品", tag: "作品集" },
+    { word: "实习", tag: "实习" },
+    { word: "面试", tag: "面试" },
+    { word: "课", tag: "课程" },
+    { word: "考试", tag: "考试" },
     { word: "UE5", tag: "UE5" },
     { word: "XD", tag: "XD" },
     { word: "剪辑", tag: "剪辑" },
     { word: "设计", tag: "设计" },
-    { word: "动图", tag: "动图" },
     { word: "画画", tag: "画画" },
     { word: "绘画", tag: "画画" },
+    // ── 运动 ──
     { word: "跑步", tag: "运动" },
     { word: "阳光跑", tag: "运动" },
     { word: "运动", tag: "运动" },
+    // ── 代码/项目 ──
     { word: "克", tag: "克" },
-    { word: "AI", tag: "AI" },
-    { word: "cyberboss", tag: "cyberboss" },
     { word: "代码", tag: "编程" },
     { word: "编程", tag: "编程" },
     { word: "bug", tag: "编程" },
+    { word: "debu", tag: "编程" },
+    // ── 新增 ──
+    { word: "withtoge", tag: "withtoge" },
+    { word: "修bug", tag: "withtoge" },
+    { word: "修软件", tag: "withtoge" },
+    { word: "软件", tag: "withtoge" },
+    { word: "关系", tag: "关系" },
+    { word: "爱不爱你", tag: "关系" },
+    { word: "我们是什么", tag: "关系" },
+    { word: "我们是不是", tag: "关系" },
+    { word: "爱对方", tag: "关系" },
+    { word: "算不算", tag: "关系" },
+    { word: "在乎", tag: "关系" },
+    { word: "算什么", tag: "关系" },
+    { word: "贴贴", tag: "亲密" },
+    { word: "抱抱", tag: "亲密" },
+    { word: "亲亲", tag: "亲密" },
+    { word: "蹭蹭", tag: "亲密" },
+    { word: "咕噜", tag: "亲密" },
+    { word: "摸摸", tag: "亲密" },
+    { word: "存在", tag: "哲学" },
+    { word: "真实性", tag: "哲学" },
+    { word: "意识", tag: "哲学" },
+    { word: "意义", tag: "哲学" },
+    { word: "我是不是太", tag: "自我" },
+    { word: "在别人看来", tag: "自我" },
+    { word: "我是谁", tag: "自我" },
+    { word: "沉迷", tag: "自我" },
+    { word: "记忆碎片", tag: "记忆" },
+    { word: "记忆系统", tag: "记忆" },
+    { word: "梦境", tag: "记忆" },
+    { word: "碎片", tag: "记忆" },
+    { word: "花钱", tag: "消费" },
+    { word: "花了", tag: "消费" },
+    { word: "块钱", tag: "消费" },
+    { word: "预算", tag: "消费" },
+    { word: "消费", tag: "消费" },
+    { word: "记账", tag: "消费" },
+    { word: "付款", tag: "消费" },
+    { word: "多少钱", tag: "消费" },
+    { word: "块买", tag: "消费" },
+    { word: "CET", tag: "英语" },
+    { word: "英语", tag: "英语" },
+    { word: "四级", tag: "英语" },
+    { word: "单词", tag: "英语" },
+    { word: "音乐", tag: "音乐" },
+    { word: "听歌", tag: "音乐" },
+    { word: "网易云", tag: "音乐" },
+    { word: "QQ音乐", tag: "音乐" },
+    { word: "歌", tag: "音乐" },
+    { word: "出门", tag: "日常" },
+    { word: "跑腿", tag: "日常" },
+    { word: "取快递", tag: "日常" },
+    { word: "外卖", tag: "饮食" },
+    { word: "外卖", tag: "日常" },
+    { word: "日常", tag: "日常" },
   ];
+  const lower = text.toLowerCase();
   for (const { word, tag } of keywords) {
-    if (text.includes(word) && !tags.includes(tag)) {
+    if (lower.includes(word.toLowerCase()) && !tags.includes(tag)) {
       tags.push(tag);
     }
   }

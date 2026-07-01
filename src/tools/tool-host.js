@@ -205,6 +205,34 @@ const PROJECT_TOOLS = [
     },
   },
   {
+    name: "cyberboss_memory_tag",
+    description: "Update the tags on a memory fragment. Replaces all existing tags with the given list. Use this during dream consolidation to fix untagged or mis-tagged fragments. Pick 1-3 tags from the tag menu.",
+    shortHint: "Update tags on a memory fragment.",
+    topics: ["memory"],
+    inputSchema: {
+      type: "object",
+      required: ["id", "tags"],
+      properties: {
+        id: { type: "string", description: "Memory fragment id (e.g. mem-2026-05-27-001)." },
+        tags: { type: "array", items: { type: "string" }, description: "New tags to set (1-3). Replaces all existing tags." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args, context }) {
+      const memory = services.getMemoryService
+        ? services.getMemoryService(context?.model || args?.model || "")
+        : services.memory;
+      const result = await memory.updateFragmentTags(args.id, args.tags || []);
+      if (!result) {
+        return { text: `Memory fragment not found: ${args.id}` };
+      }
+      return {
+        text: `Tags updated for ${args.id}: [${(result.tags || []).join(", ")}] — "${result.content}"`,
+        data: result,
+      };
+    },
+  },
+  {
     name: "cyberboss_memory_delete",
     description: "Soft-delete a memory fragment by id. Marks as deleted (tombstone) — not physically removed. Fragments created within 48 hours are protected; use cyberboss_memory_review first.",
     shortHint: "Soft-delete a memory fragment by id.",

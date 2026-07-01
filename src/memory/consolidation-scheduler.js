@@ -80,6 +80,13 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
   for (const modelKey of allModelKeys) {
     const memoryService = memoryServices.get(modelKey);
     if (!memoryService) continue;
+
+    // 跳过从未被 toge 实际使用过的模型（没有聊天碎片 = 只有日记提取的幻影碎片）
+    if (!memoryService.hasChatActivity()) {
+      console.log(`[cyberboss] skipping inactive model [${modelKey}] (no chat history)`);
+      continue;
+    }
+
     const rollupStore = new CalendarRollupStore({ memoryDir: memoryService.memoryDir });
 
     // Extract fragments from shared diary
@@ -87,9 +94,12 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
       await memoryService.extractFromDiary({ date: today, diaryText });
     }
 
-    // Solidify: enqueue system message for hot-fragment rollup
+    // Gather today's fragments for quality review
+    const todayFrags = memoryService.readByDate({ date: today });
     const hotFragments = memoryService.getHighHeatFragments(50);
-    if (hotFragments.length > 0) {
+
+    // Solidify: enqueue system message if there's anything to process
+    if (hotFragments.length > 0 || todayFrags.length > 0) {
       const accountId = config.accountId || "direct";
       const senderId = process.env.CYBERBOSS_CHECKIN_USER_ID || "direct-user";
       const workspaceRoot = config.workspaceRoot;
@@ -99,7 +109,7 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
         senderId,
         workspaceRoot,
         model: modelKeyToModelName(modelKey),
-        text: buildDreamTrigger(hotFragments, modelKey, writeLetter && firstModel),
+        text: buildDreamTrigger({ hotFragments, todayFrags, modelKey, writeLetter: writeLetter && firstModel }),
         createdAt: new Date().toISOString(),
       });
       if (firstModel) firstModel = false;
@@ -348,28 +358,103 @@ function timeUntilNextConsolidationWindow() {
   return target.getTime() - now.getTime();
 }
 
-function buildDreamTrigger(hotFragments, modelKey = "", writeLetter = false) {
+function buildDreamTrigger({ hotFragments = [], todayFrags = [], modelKey = "", writeLetter = false }) {
   const modelTag = modelKey ? ` [${modelKey}]` : "";
-  const items = hotFragments.slice(0, 20).map((f) => `- [${f.type}] ${f.content}`).join("\n");
-  let prompt = `Dream consolidation time${modelTag}. Review these high-heat memory fragments and:
-1. Call cyberboss_memory_read to review context
-2. If you see recurring themes or patterns, write a week diary summary
-3. If fragments can be merged, lock the best one and note the merge
-4. HOUSEKEEPING — 2-STAGE PROCESS:
-   STAGE 1 (this cycle): Identify suspicious fragments and call cyberboss_memory_review(id, reason, action). Do NOT directly delete or unlock.
-     - EXACT or near-word-for-word duplicates (same sentence captured twice by bug) → cyberboss_memory_review(action="delete")
-     - Thematic recurrence (same topic re-discussed in different words) → DO NOT touch; this is what heat naturally tracks
-     - Fragments locked without clear reason (one-off jokes, transient chatter) → cyberboss_memory_review(action="unlock")
-     - Obvious noise with zero information value → cyberboss_memory_review(action="delete")
-     - If heat already handled it (low heat, naturally decayed), let it fade — no action needed
-   STAGE 2 (confirm pending reviews): First, call cyberboss_memory_read(includeDeleted=true) to find fragments with status "review". For each reviewed fragment:
-     - If you still believe the action is correct → call cyberboss_memory_review(id, reason, action) again (this executes the action)
-     - If you changed your mind → call cyberboss_memory_lock(id) to revert a review-marked-for-unlock, or simply leave it (reviews auto-expire)
-     - When in doubt, keep it — only confirm if you're sure
-5. Do not fabricate memories — only summarize what's actually there
+  const hotItems = hotFragments.slice(0, 20).map((f) => {
+    const tagStr = (f.tags || []).length > 0 ? ` [${f.tags.join(", ")}]` : " [无标签]";
+    return `- [${f.type}] heat=${f.heat}${tagStr} ${f.content}`;
+  }).join("\n");
+  const todayItems = todayFrags.slice(0, 50).map((f) => {
+    const lockMark = f.locked ? " 🔒" : "";
+    const tagStr = (f.tags || []).length > 0 ? ` [${f.tags.join(", ")}]` : " [无标签]";
+    const shortMark = f.content && f.content.length < 10 ? " ⚠️短" : "";
+    return `- [${f.type}] heat=${f.heat}${lockMark}${tagStr}${shortMark} ${f.content}`;
+  }).join("\n");
 
-Hot fragments:
-${items}`;
+  let prompt = `🌙 Dream consolidation time${modelTag}.
+
+═══════════════════════════════════════
+📋 PHASE 1: QUALITY REVIEW + AUTO-TAGGING
+═══════════════════════════════════════
+
+Review today's memory fragments. Many were auto-classified by simple regex — they WILL have mistakes. Your job is to fix them and fill in what's missing.
+
+── 🏷️ TAG MENU (only use these, do not invent new ones) ──
+  情绪 — anger, sadness, joy, fear, anxiety, emotional states
+  身体 — tired, sleepy, hungry, pain, dizziness
+  作息 — sleep, staying up, insomnia, all-nighter
+  健康 — medication, hospital, health issues
+  ADHD — ADHD-related
+  饮食 — food, meals, cafeteria, milk tea, fruit wine
+  社交 — friends, social interactions
+  家庭 — mom, dad, family
+  作业 — homework
+  作品集 — portfolio work
+  实习 — internship
+  面试 — job interview
+  课程 — classes, courses
+  考试 — exams, tests
+  UE5 — Unreal Engine 5
+  XD — Adobe XD
+  剪辑 — video editing
+  设计 — design work
+  画画 — drawing, painting
+  运动 — running, exercise, 阳光跑
+  克 — about 克 (the AI companion)
+  编程 — general coding
+  withtoge — the withtoge project specifically (not general coding)
+  关系 — discussions about the relationship between toge and 克 ("what are we", definition, doubts)
+  亲密 — physical/emotional intimacy (贴贴, 抱抱, 蹭蹭, not general interactions)
+  哲学 — existence, AI-human relationship, meaning, authenticity, deep late-night questions
+  自我 — toge's reflections about herself ("am I too obsessed", "what would others think")
+  记忆 — about the memory system itself, fragments, dreams, consolidation
+  消费 — spending, budget, financial thoughts
+  英语 — CET-4, English learning
+  音乐 — music, songs toge is listening to
+  日常 — daily life snippets (going out, errands, deliveries)
+
+── 📝 FOR EACH FRAGMENT, CHECK AND FIX ──
+
+  a) TYPE: classification correct?
+     - "好点了，喝了小果酒" → event, not fact
+     - "我是不是太沉迷了" → reflection (or 自我), not identity
+     - "在去银行的路上" → event, not identity
+     - Pure greetings, conversational filler → DELETE (cyberboss_memory_review action="delete")
+  b) TAGS: tag EVERY fragment — especially the ones marked [无标签].
+     - Pick 1-3 tags from the TAG MENU above. Do NOT make up new ones.
+     - If truly no tag fits, leave untagged — but that should be rare.
+     - Call cyberboss_memory_tag(id, tags=["tag1", "tag2"]) to set tags.
+     - Process in batches: read all untagged fragments, then tag them one by one.
+  c) SHORT FRAGMENTS (< 10 chars, marked ⚠️短):
+     - "好，我明白了" → noise, DELETE
+     - "我爱你" → standalone signal, KEEP + tag 亲密
+     - "又不回消息" → could be part of a larger fragment, check if there's a longer version nearby
+     - General rule: if the fragment makes sense WITHOUT surrounding context, keep it. If it's meaningless alone, delete it.
+  d) QUALITY:
+     - UNLOCK fragments locked without good reason (one-off jokes, transient chatter)
+     - LOCK fragments with genuine identity/revelation/relationship content
+     - DELETE obvious noise: filler, markdown artifacts, buggy truncations
+
+Take action. Don't just look — call cyberboss_memory_review / cyberboss_memory_lock / cyberboss_memory_delete.
+
+Today's fragments:
+${todayItems || "(none)"}
+
+═══════════════════════════════════════
+🔥 PHASE 2: HOT FRAGMENT HOUSEKEEPING
+═══════════════════════════════════════
+
+High-heat fragments that may need attention:
+
+${hotItems || "(none)"}
+
+HOUSEKEEPING — 2-STAGE PROCESS:
+   STAGE 1: cyberboss_memory_review(id, reason, action) — mark for review. Do NOT directly delete/unlock.
+     - EXACT/near-word-for-word duplicates → cyberboss_memory_review(action="delete")
+     - Locked without clear reason → cyberboss_memory_review(action="unlock")
+     - Obvious noise → cyberboss_memory_review(action="delete")
+   STAGE 2: cyberboss_memory_read(includeDeleted=true) → find "review" status → confirm or revert.
+     - When in doubt, keep it`;
 
   if (writeLetter) {
     prompt += `

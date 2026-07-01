@@ -59,7 +59,7 @@ class MemoryFragmentStore {
       content: String(fragment.content || "").trim(),
       source: fragment.source || { kind: "manual", date, ref: "" },
       heat: typeof fragment.heat === "number" ? fragment.heat : (HEAT_INITIAL[fragment.type] || 35),
-      locked: fragment.locked !== undefined ? Boolean(fragment.locked) : (fragment.type === "identity"),
+      locked: fragment.locked !== undefined ? Boolean(fragment.locked) : (fragment.type === "identity" && (typeof fragment.heat === "number" ? fragment.heat : (HEAT_INITIAL[fragment.type] || 95)) >= 85),
       status: fragment.status || "active",
       tags: Array.isArray(fragment.tags) ? fragment.tags : [],
       created: fragment.created || formatShanghaiISO(new Date()),
@@ -164,6 +164,14 @@ class MemoryFragmentStore {
       };
     }
     found.fragment.locked = false;
+    this._saveFragment(found.fragment);
+    return found.fragment;
+  }
+
+  updateTags(id, tags = []) {
+    const found = this._findById(id);
+    if (!found || found.fragment.status === "deleted") return null;
+    found.fragment.tags = Array.isArray(tags) ? [...new Set(tags)] : [];
     this._saveFragment(found.fragment);
     return found.fragment;
   }
