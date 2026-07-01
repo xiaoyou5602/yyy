@@ -5,6 +5,23 @@
 
 目录：`C:\Users\youzi\withtoge\`
 
+## ⚠️ 当前状态（换窗口先读这个）
+
+### 已知风险
+- cloudflared 单实例，隧道断了 APP 全挂（无冗余）
+- VPS 时区已设为 `Asia/Shanghai`，重装系统 / 新部署注意别覆盖
+
+### 当前假设
+- DS 走 CLI（agent 模式），Opus / GLM / 米米子走 API（聊天模式）
+- 本地 Windows 节点已关停（2026-06-30），唯一入口 `克.withtoge.us`
+- VPS systemd 守护（cloudflared + cyberboss），崩了自动拉
+
+### 反复出现的陷阱
+- **Edit 工具吞 `}` / 换行符不匹配** → 改完 CSS/JS 跑括号平衡检查 `node -e`
+- **linter 自动格式化破坏 import** → 别开保存时自动格式化
+- **`state.target` ≠ `state.replyTarget`** → 两字段不一致，新增代码注意对齐
+- **CSS inline style 优先级覆盖 class** → 显示/隐藏用 class 控制，别写 `style="display:none"`
+
 ## Git 规范 + GitHub 工作流
 
 > ⚠️ 项目已 git init。**每次写代码必须 commit。** 所有模型/端口都要遵守。
