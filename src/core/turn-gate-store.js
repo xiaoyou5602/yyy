@@ -1,4 +1,14 @@
-const GATE_TIMEOUT_MS = 3 * 60 * 1000; // 3 min — auto-release stuck gates
+// Turn gate: prevents concurrent turns on the same binding+workspace.
+//
+// Gate lifecycle:
+//   begin()  → scope locked, new turns blocked
+//   releaseScope() / releaseThread() → scope unlocked (called by app.js when turn
+//     completes, fails, or is abandoned)
+//
+// There is NO timeout-based auto-release during normal operation. The gate is
+// released ONLY by explicit app.js calls. The cleanup timer is a last-resort
+// safety net (15 min) for truly orphaned scopes from crashed processes.
+const GATE_CLEANUP_TIMEOUT_MS = 15 * 60 * 1000; // 15 min — last-resort safety net
 
 class TurnGateStore {
   constructor() {
@@ -49,18 +59,13 @@ class TurnGateStore {
     }
   }
 
+  // isPending() checks only whether the scope exists — no timeout-based
+  // auto-release. The gate is released explicitly by app.js when the turn
+  // completes, fails, or is abandoned via releaseScope/releaseThread.
   isPending(bindingKey, workspaceRoot) {
     const scopeKey = buildTurnScopeKey(bindingKey, workspaceRoot);
     if (!scopeKey) return false;
-    if (!this.pendingScopeKeys.has(scopeKey)) return false;
-    const startedAt = this.pendingScopeKeys.get(scopeKey);
-    if (typeof startedAt === "number" && Date.now() - startedAt > GATE_TIMEOUT_MS) {
-      console.warn(`[turn-gate] auto-releasing stuck gate scopeKey=${scopeKey} age=${Math.round((Date.now() - startedAt) / 1000)}s`);
-      this.pendingScopeKeys.delete(scopeKey);
-      this._removeScopeFromThreadIndex(scopeKey);
-      return false;
-    }
-    return true;
+    return this.pendingScopeKeys.has(scopeKey);
   }
 
   _removeScopeFromThreadIndex(scopeKey) {
@@ -71,14 +76,18 @@ class TurnGateStore {
     }
   }
 
+  // Last-resort safety net: release scopes that have been orphaned for >15 min.
+  // This should almost never fire in normal operation — it's here for crash
+  // recovery (e.g. process killed mid-turn without cleanup).
   _scheduleCleanup() {
     if (this._timeoutId) return;
     this._timeoutId = setTimeout(() => {
       this._timeoutId = null;
       const now = Date.now();
       for (const [key, startedAt] of this.pendingScopeKeys) {
-        if (now - startedAt > GATE_TIMEOUT_MS) {
-          console.warn(`[turn-gate] cleanup releasing stuck gate scopeKey=${key} age=${Math.round((now - startedAt) / 1000)}s`);
+        const ts = typeof startedAt === "number" ? startedAt : 0;
+        if (now - ts > GATE_CLEANUP_TIMEOUT_MS) {
+          console.warn(`[turn-gate] cleanup releasing orphaned scope scopeKey=${key} age=${Math.round((now - ts) / 1000)}s`);
           this.pendingScopeKeys.delete(key);
           this._removeScopeFromThreadIndex(key);
         }
@@ -86,7 +95,7 @@ class TurnGateStore {
       if (this.pendingScopeKeys.size > 0) {
         this._scheduleCleanup();
       }
-    }, GATE_TIMEOUT_MS + 30_000).unref();
+    }, GATE_CLEANUP_TIMEOUT_MS + 30_000).unref();
   }
 }
 

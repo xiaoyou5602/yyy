@@ -2,6 +2,7 @@ class ThreadStateStore {
   constructor() {
     this.stateByThreadId = new Map();
     this.latestContextByRuntime = new Map();
+    this.lastTurnContextByThreadId = new Map(); // threadId → { lastUserMessage, pendingAction, targetFile }
   }
 
   applyRuntimeEvent(event) {
@@ -126,6 +127,24 @@ class ThreadStateStore {
     }
     const snapshot = this.latestContextByRuntime.get(normalizedRuntimeId);
     return snapshot ? { ...snapshot } : null;
+  }
+
+  setLastTurnContext(threadId, context) {
+    const normalizedThreadId = normalizeThreadId(threadId);
+    if (!normalizedThreadId || !context) return;
+    this.lastTurnContextByThreadId.set(normalizedThreadId, {
+      lastUserMessage: String(context.lastUserMessage || "").slice(0, 200),
+      pendingAction: String(context.pendingAction || ""),
+      targetFile: String(context.targetFile || ""),
+      savedAt: new Date().toISOString(),
+    });
+  }
+
+  getLastTurnContext(threadId) {
+    const normalizedThreadId = normalizeThreadId(threadId);
+    if (!normalizedThreadId) return null;
+    const ctx = this.lastTurnContextByThreadId.get(normalizedThreadId);
+    return ctx ? { ...ctx } : null;
   }
 }
 

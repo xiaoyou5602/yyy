@@ -509,7 +509,7 @@ class CyberbossApp {
     const threadId = this.getActiveThreadId(bindingKey, workspaceRoot);
     const threadState = threadId ? this.threadStateStore.getThreadState(threadId) : null;
     if (threadState?.status === "running") {
-      const THREAD_RUNNING_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — kill stuck Claude via cancelTurn
+      const THREAD_RUNNING_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — kill stuck Claude via cancelTurn
       const updatedAt = threadState.updatedAt ? new Date(threadState.updatedAt).getTime() : 0;
       if (Date.now() - updatedAt > THREAD_RUNNING_TIMEOUT_MS) {
         console.warn(`[turn-dispatch] stuck thread detected threadId=${threadState.threadId} age=${Math.round((Date.now() - updatedAt) / 1000)}s`);
@@ -540,6 +540,26 @@ class CyberbossApp {
     console.warn(`[turn-dispatch] stuck turn abandoned threadId=${threadId}`);
   }
 
+n  // Reset the turn watchdog timer. Called after approval resolution or any
+  // event that indicates the turn is still making progress (not stuck).
+  _resetWatchdog(threadId, workspaceRoot, bindingKey) {
+    const old = this._turnWatchdogs.get(threadId);
+    if (old) { clearTimeout(old); }
+    const state = this.threadStateStore.getThreadState(threadId);
+    // Do not set a watchdog when waiting for approval
+    if (state?.status === "waiting_approval") return;
+    const watchdogMs = 4 * 60 * 1000;
+    const watchdog = setTimeout(() => {
+      this._turnWatchdogs.delete(threadId);
+      const current = this.threadStateStore.getThreadState(threadId);
+      if (current?.status === "running") {
+        console.warn(`[turn-watchdog] turn timed out threadId=${threadId}`);
+        this.abandonStuckTurn(threadId, workspaceRoot, bindingKey).catch(() => {});
+      }
+    }, watchdogMs);
+    watchdog.unref();
+    this._turnWatchdogs.set(threadId, watchdog);
+  }
   async dispatchPreparedTurn({ bindingKey, workspaceRoot, prepared }) {
     const pendingScopeKey = this.turnGateStore.begin(bindingKey, workspaceRoot);
     await this.channelAdapter.sendTyping({
@@ -595,18 +615,12 @@ class CyberbossApp {
         model: contextModel,
       });
       this.turnGateStore.attachThread(pendingScopeKey, turn.threadId);
-      // Proactive watchdog: if turn doesn't complete within 4 min, abandon it
-      const watchdogMs = 4 * 60 * 1000;
-      const watchdog = setTimeout(() => {
-        this._turnWatchdogs.delete(turn.threadId);
-        const state = this.threadStateStore.getThreadState(turn.threadId);
-        if (state?.status === "running") {
-          console.warn(`[turn-watchdog] turn timed out threadId=${turn.threadId}`);
-          this.abandonStuckTurn(turn.threadId, workspaceRoot, bindingKey).catch(() => {});
-        }
-      }, watchdogMs);
-      watchdog.unref();
-      this._turnWatchdogs.set(turn.threadId, watchdog);
+      this.threadStateStore.setLastTurnContext(turn.threadId, {
+        lastUserMessage: prepared.text || prepared.originalText || "",
+        pendingAction: prepared.provider === "system" ? "checkin" : "responding",
+        targetFile: "",
+      });
+      this._resetWatchdog(turn.threadId, workspaceRoot, bindingKey);
       const replyTarget = {
         userId: prepared.senderId,
         contextToken: prepared.contextToken,
@@ -1704,6 +1718,7 @@ class CyberbossApp {
       this.runtimeAdapter.getSessionStore().rememberApprovalPrefixForWorkspace(workspaceRoot, approval.commandTokens);
     }
     this.threadStateStore.resolveApproval(threadId, "running");
+    this._resetWatchdog(threadId, workspaceRoot, bindingKey);
     const text = buildApprovalResponseText(approval, command.name, approvalResponse);
     await this.channelAdapter.sendText({
       userId: normalized.senderId,
@@ -1919,6 +1934,9 @@ class CyberbossApp {
     }
     await this.runtimeAdapter.respondApproval(approvalResponse).catch(() => {});
     this.threadStateStore.resolveApproval(event.payload.threadId, "running");
+    if (linked?.bindingKey && linked?.workspaceRoot) {
+      this._resetWatchdog(event.payload.threadId, linked.workspaceRoot, linked.bindingKey);
+    }
   }
 
   async stopTypingForThread(threadId) {

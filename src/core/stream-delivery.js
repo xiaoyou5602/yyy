@@ -770,6 +770,26 @@ function sanitizeReplyText(plainReplyText) {
   return trimOuterBlankLines(protocolSanitized.text || "");
 }
 
+function extractTrailingJsonAction(text) {
+  var normalized = normalizeLineEndings(String(text || "")).trim();
+  if (!normalized || normalized.startsWith("{")) return null;
+  var searchFrom = normalized.length - 1;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var braceIdx = normalized.lastIndexOf("{", searchFrom);
+    if (braceIdx === -1) break;
+    var candidate = normalized.slice(braceIdx).trim();
+    try {
+      var parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && typeof parsed.action === "string") {
+        return { action: parsed, prefixText: normalized.slice(0, braceIdx).trim() };
+      }
+    } catch (_) {}
+    searchFrom = braceIdx - 1;
+    if (searchFrom < 0) break;
+  }
+  return null;
+}
+
 function resolveSystemReplyDelivery(replyText, policy = createSystemReplyPolicy("")) {
   const normalized = normalizeLineEndings(String(replyText || "")).trim();
   if (!normalized) {
@@ -779,6 +799,17 @@ function resolveSystemReplyDelivery(replyText, policy = createSystemReplyPolicy(
   const source = normalizeSystemReplySource(normalized);
   if (source.requiresStructuredAction || source.text.startsWith("{")) {
     return resolveSystemReplyAction(source.text);
+  }
+
+  // Try extracting a JSON action from the tail of the text.
+  // Handles models (e.g. DeepSeek) that output natural language followed by
+  // a JSON action block at the end.
+  const trailing = extractTrailingJsonAction(source.text);
+  if (trailing) {
+    const actionResult = resolveSystemReplyAction(JSON.stringify(trailing.action));
+    if (actionResult.kind === "send_message" || actionResult.kind === "silent") {
+      return actionResult;
+    }
   }
 
   if (!policy.allowPlainTextSendMessage) {
