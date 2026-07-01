@@ -144,7 +144,7 @@ async function resizeImageForVision(inputPath) {
   if (process.platform === "darwin") {
     return resizeImageMacos(inputPath);
   }
-  return null;
+  return resizeImageLinux(inputPath);
 }
 
 function resizeImageWindows(inputPath) {
@@ -175,6 +175,19 @@ function resizeImageWindows(inputPath) {
   if (result.status !== 0 || !fsSync.existsSync(outputPath)) {
     return null;
   }
+  return { path: outputPath, contentType: "image/jpeg" };
+}
+
+function resizeImageLinux(inputPath) {
+  const tmpDir = fsSync.mkdtempSync(path.join(os.tmpdir(), "cb-vision-"));
+  const outputPath = path.join(tmpDir, "resized.jpg");
+  const result = spawnSync("convert", [
+    inputPath,
+    "-resize", "900x900>",
+    "-quality", "85",
+    outputPath,
+  ], { encoding: "utf8", timeout: 15000 });
+  if (result.status !== 0 || !fsSync.existsSync(outputPath)) return null;
   return { path: outputPath, contentType: "image/jpeg" };
 }
 
