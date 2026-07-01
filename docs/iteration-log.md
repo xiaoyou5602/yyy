@@ -1,3 +1,101 @@
+## 2026-07-02 凌晨 — APP 端三大 Bug 集中会战
+
+**触发**：toge 反馈 APP 端（DeepSeek-v4-pro）调用工具卡死、记录待办时索引混乱、强制刷新后聊天记录丢失。排查确认 4+1 个问题，根因统一：**系统缺少 turn 状态机，gate/watchdog/timeout 不区分"真卡死"、"等审批"、"正常慢执行"。**
+
+---
+
+### Bug 1：Turn 卡死误杀 → Session 替换 → 上下文全丢（最严重）
+
+**时间线复现**（7/1 23:52-23:57）：
+```
+23:52:54 模型发 Read + Bash 审批
+23:53:02 toge 批准 Bash → 模型等 Read 审批，沉默 2.5 分钟
+23:55:30 turn-gate 超时（3min 自释放）
+23:56:29 watchdog 超时（4min）→ abandonStuckTurn 杀 Claude
+23:56:36 toge 发新消息 → spawn 新 Claude → session replaced → 上下文全丢
+```
+
+7 月 1 日全天 3 次 session replaced。根因：gate（3min）、watchdog（4min）、thread timeout（5min）三套超时系统互不感知，全部不区分状态。
+
+**修复**（commit `bdbfe66`）：
+
+1. **`turn-gate-store.js`**：移除 `GATE_TIMEOUT_MS` 自释放逻辑。`isPending()` 只检查 scope 是否存在，不再按时间自动释放。gate 只在 turn 真正结束/abandon 时由 `app.js` 显式释放。cleanup timer 延长到 15min 作最后兜底。
+
+2. **`app.js`**：
+   - 新增 `_resetWatchdog()` 方法替代 inline setTimeout，感知 TURN_STATE
+   - `waiting_approval` 状态下不设 watchdog（等人不超时）
+   - 审批回调后调用 `_resetWatchdog` 重置计时器
+   - `THREAD_RUNNING_TIMEOUT_MS` 从 5min→10min（工具调用多时需要更长时间）
+   - `isTurnDispatchBlocked` 对 `waiting_approval` 状态不触发 abandon
+
+3. **关键设计决策**：采纳 pause/resume 思路而非 extend + 翻倍阈值。等审批期间不计时，审批回来从零开始计。不削弱对真正卡死的检测能力。
+
+---
+
+### Bug 2：System Reply（checkin）发不出去
+
+**现象**：DeepSeek checkin 输出自然语言 + 末尾拼 JSON action，被 `resolveSystemReplyDelivery` 判定为 "plain text system reply is unsafe"，超过 280 字符限制，消息丢弃。
+
+**修复**（commit `bdbfe66`）：`stream-delivery.js` 新增 `extractTrailingJsonAction()`：
+- 从文本末尾向前找最后一个 `{`，尝试 `JSON.parse`
+- 失败则逐步前移（最多 3 次），找到合法 action 对象
+- 解析优先级：code fence → 纯 JSON → **尾部 JSON（新增）** → 纯文本兜底
+- 采纳 GPT review 建议：不用正则而要尾部倒推 parse，避免嵌套 JSON 和误匹配
+
+---
+
+### Bug 3：待办读写流程脆弱
+
+**问题链**：模型更新待办要 find→ls→Read→Edit 四步，每步都弹权限 → turn 超时被杀 → 模型放弃 Edit → 自创新文件（`memory/summer-todo-2026.md`）交差 → 说"改好了"其实没改。
+
+**修复**：
+
+1. **格式改造**：`WITHTOGE.md` 待办从 markdown table 改为 `- [ ]` 列表。Edit `old_string` 匹配一整行，不再依赖中文表格对齐。
+2. **规则强化**：`CLAUDE.md` 加"禁止新建文件记待办"，两个文件路径写死 VPS 绝对路径（`/root/CLAUDE.md`、`/opt/withtoge/WITHTOGE.md`）。
+3. **权限白名单**：VPS `/root/.claude/settings.json` 加 `permissions.allow` + `additionalDirectories`，常用 Read/Edit/Write/Bash/WebSearch 预授权。
+
+---
+
+### Bug 4：强刷新后聊天记录丢失
+
+**根因**：`message-store.js` 使用 `fs.writeFileSync` 非原子写入。今晚 5 次 `systemctl restart`，某次正好撞上写盘，进程被 kill 时文件写了一半，重启后 JSON 解析失败→返回空数组→旧消息被覆盖清空。
+
+**修复**（commit `57b1af1`）：`saveDay` 改为原子写入——先写 `.tmp` 文件，再 `fs.renameSync`（同文件系统上原子操作）。要么完全写入要么完全不写入，不会留半截。
+
+**教训**：频繁重启（今晚 5 次）本身就是风险。以后代码部署优先走 git push + VPS pull，减少 `systemctl restart` 频次。部署前先确认改动已 commit。
+
+---
+
+### 副产物：分类器 Haiku 模型配置修复
+
+**现象**：`git push` 等 bash 命令被安全分类器拦截，报 `deepseek-v4-pro[1m] temporarily unavailable`。关闭 auto mode 后绕过分类器恢复正常。
+
+**临时方案**：本地 `settings.json` 把 `ANTHROPIC_DEFAULT_HAIKU_MODEL` 从 `deepseek-v4-pro[1m]` 改为 `deepseek-v4-flash`（对齐 VPS 配置）。是否根治还需开 auto mode 验证。
+
+---
+
+### 修改文件全览
+
+| 文件 | 改动 |
+|------|------|
+| `src/core/turn-gate-store.js` | 移除自释放，gate 只做并发控制 |
+| `src/core/app.js` | `_resetWatchdog` + TURN_STATE 感知 + lastTurnContext |
+| `src/core/stream-delivery.js` | 尾部 JSON 提取 |
+| `src/core/thread-state-store.js` | `waiting_approval` 状态（已有）+ lastTurnContext 字段 |
+| `src/adapters/channel/shared/message-store.js` | 原子写入 |
+| `WITHTOGE.md` | 待办 table→`- [ ]` 列表 |
+| `CLAUDE.md`（本地+VPS） | 待办分文件硬规则 + 课表改放暑假 |
+| `C:\Users\youzi\.claude\settings.json` | Haiku 改 flash |
+| `/root/.claude/settings.json`（VPS 新建） | 权限白名单 + additionalDirectories |
+
+### 已知残留
+
+- `consolidation error: todayFrags.slice is not a function` — 记忆整合调度器小 bug，不致命，下次修
+- 自动模式分类器是否修复需开 auto mode 重启验证
+
+---
+
+## 🏷️ 速查索引
 # withtoge 迭代记录
 
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策。
