@@ -11,19 +11,23 @@ $repoMd = Join-Path $repo "CLAUDE.md"
 Set-Location $repo
 
 $homeIsLink = (Get-Item $homeMd -ErrorAction SilentlyContinue).LinkType
+$baseFile = Join-Path $repo ".claude-md-last-sync-hash"
 
-# 1. If ~/CLAUDE.md (non-link) differs and is newer, pull it into the repo
+# 1. If ~/CLAUDE.md (non-link) has changes of its own, pull them into the repo.
+#    Baseline hash (recorded at last write-back) tells "home edited" apart from
+#    "home merely behind the repo" - only the former needs collecting.
 if ((Test-Path $homeMd) -and -not $homeIsLink) {
     $hHash = (Get-FileHash $homeMd).Hash
     $rHash = (Get-FileHash $repoMd).Hash
+    $base  = if (Test-Path $baseFile) { Get-Content $baseFile -TotalCount 1 } else { "" }
     if ($hHash -ne $rHash) {
-        $hTime = (Get-Item $homeMd).LastWriteTime
-        $rTime = (Get-Item $repoMd).LastWriteTime
-        if ($hTime -gt $rTime) {
+        if ($hHash -eq $base) {
+            # home untouched since last write-back, repo moved ahead: nothing to collect
+        } elseif ($base -eq "" -or (Get-Item $homeMd).LastWriteTime -gt (Get-Item $repoMd).LastWriteTime) {
             Copy-Item $homeMd $repoMd -Force
-            Write-Output "[sync-md] home CLAUDE.md is newer, copied into repo"
+            Write-Output "[sync-md] home CLAUDE.md edited, copied into repo"
         } else {
-            # both changed and repo is newer: keep a backup, repo wins for now
+            # both sides changed since baseline: keep a backup, repo wins for now
             Copy-Item $homeMd "$homeMd.local-conflict" -Force
             Write-Output "[sync-md] WARN both sides changed; home version saved as CLAUDE.md.local-conflict"
         }
@@ -47,7 +51,11 @@ if ($LASTEXITCODE -ne 0) {
 # 4. Push back to VPS (hook mirrors to GitHub)
 git push vps master
 
-# 5. Write merged result back to ~/CLAUDE.md (skip in symlink mode)
-if (-not $homeIsLink) { Copy-Item $repoMd $homeMd -Force }
+# 5. Write merged result back to ~/CLAUDE.md (skip in symlink mode),
+#    and record the baseline hash for next run's edited-vs-behind check
+if (-not $homeIsLink) {
+    Copy-Item $repoMd $homeMd -Force
+    (Get-FileHash $homeMd).Hash | Set-Content $baseFile -Encoding ascii
+}
 
 Write-Output "[sync-md] done $(Get-Date -Format 'HH:mm:ss')"

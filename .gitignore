@@ -18,3 +18,4 @@ ke-apk/local.properties
 .cyberboss/
 *.log
 spawn-debug.json
+.claude-md-last-sync-hash
