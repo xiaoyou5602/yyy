@@ -1063,10 +1063,10 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
         if (ws.readyState !== 1) return; // client already disconnected
         try {
           const recent = messageStore.load(1); // today only
-          const keMessages = recent.filter(m => m.from === "ke").slice(-30);
-          if (keMessages.length > 0) {
-            ws.send(JSON.stringify({ type: "sync", messages: keMessages }));
-            console.log(`[ws-server] sync sent count=${keMessages.length}`);
+          const aiMessages = recent.filter(m => m.from === "ke" || m.from === "thinking").slice(-50);
+          if (aiMessages.length > 0) {
+            ws.send(JSON.stringify({ type: "sync", messages: aiMessages }));
+            console.log(`[ws-server] sync sent count=${aiMessages.length}`);
           }
         } catch (err) {
           console.error("[ws-server] sync error:", err.message);

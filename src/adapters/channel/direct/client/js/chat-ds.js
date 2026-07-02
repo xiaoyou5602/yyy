@@ -13,7 +13,7 @@
   function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
   function scrollBottom() { if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight; }
   function loadHistory() { try { var h = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); console.log("[ds-chat] loadHistory count=" + h.length); return h; } catch { console.warn("[ds-chat] loadHistory failed"); return []; } }
-  function saveHistory(h) { try { var s = h.slice(-500); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); console.log("[ds-chat] saveHistory count=" + s.length); } catch(e) { console.warn("[ds-chat] saveHistory failed:", e.message); } }
+  function saveHistory(h) { try { var s = h.slice(-500); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); console.log("[ds-chat] saveHistory count=" + s.length); } catch(e) { console.warn("[ds-chat] saveHistory failed:", e.message); try { var trimmed1 = h.slice(-350); localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed1)); history.length = 0; history.push.apply(history, trimmed1); console.log("[ds-chat] saveHistory trimmed to 350"); } catch(e2) { console.warn("[ds-chat] saveHistory trim1 failed:", e2.message); try { var noThinking = h.filter(function(m) { return m.from !== "thinking"; }).slice(-200); localStorage.setItem(STORAGE_KEY, JSON.stringify(noThinking)); history.length = 0; history.push.apply(history, noThinking); console.log("[ds-chat] saveHistory removed thinking entries"); } catch(e3) { console.error("[ds-chat] saveHistory all retries failed:", e3.message); } } } }
 
   var HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
 
@@ -275,7 +275,7 @@
     });
     var added = false;
     messages.forEach(function(m) {
-      if (m.from !== "ke") return;
+      if (m.from !== "ke" && m.from !== "thinking") return;
       if (m.globalId && seen[m.globalId]) return;
       var key = "ke|" + m.text + "|" + (m.time || "");
       if (seen[key]) return;
@@ -288,7 +288,7 @@
       seen[key] = true;
       if (m.globalId) seen[m.globalId] = true;
       // Push to history BEFORE rendering, so it survives next refresh
-      var entry = { from: "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" };
+      var entry = { from: m.from || "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" };
       history.push(entry);
       renderMsg(entry, false);
       added = true;

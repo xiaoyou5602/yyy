@@ -43,7 +43,7 @@ function createMessageStore(stateDir) {
     }
   }
   return {
-    save({ channel, from, text, time, images, model, globalId }) {
+    save({ channel, from, text, time, images, model, globalId, turnId }) {
       const now = new Date();
       const dateStr = formatShanghaiDate(now);
       const messages = loadDay(dateStr);
@@ -57,6 +57,7 @@ function createMessageStore(stateDir) {
         images: Array.isArray(images) ? images.slice(0, 5) : undefined,
         model: typeof model === "string" ? model.trim() : "",
         globalId: globalId || undefined,
+        turnId: turnId || undefined,
       });
       saveDay(dateStr, messages.slice(-500));
     },
