@@ -287,6 +287,18 @@ function createDirectChannelAdapter(config) {
         model: String(model || "").trim(),
       });
     },
+    async saveThinking({ userId, text, turnId = "", model = "" }) {
+      if (!wsServer || !messageStore) return;
+      const gid = nextGlobalId();
+      messageStore.save({
+        channel: "direct",
+        from: "thinking",
+        text: String(text || "").slice(0, 5000),
+        model: String(model || "").trim(),
+        globalId: gid,
+        turnId: turnId || "",
+      });
+    },
 
     async sendToolEvent({ userId, turnId = "", toolName = "", model = "" }) {
       if (!wsServer) return;

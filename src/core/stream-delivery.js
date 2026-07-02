@@ -141,6 +141,14 @@ class StreamDelivery {
         state.turnId = turnId || state.turnId;
         this.captureTurnCompletionText(state, event.payload.text);
         await this.flush(state, { force: true });
+        if (state.thinkingText && typeof this.channelAdapter.saveThinking === "function") {
+          await this.channelAdapter.saveThinking({
+            userId: state.replyTarget?.userId || "",
+            text: state.thinkingText.slice(0, 5000),
+            turnId: state.turnId,
+            model: state.replyTarget?.model || "",
+          });
+        }
         this.disposeRunState(state.runKey);
         return;
       }
@@ -150,6 +158,7 @@ class StreamDelivery {
       case "runtime.thought": {
         const state = this.ensureRunState(threadId, turnId);
         this.attachReplyTarget(state);
+        state.thinkingText = normalizeLineEndings(event.payload.text);
         // thinking 是广播事件不需要 userId 绑定，target 可能尚未就绪
         if (typeof this.channelAdapter.sendThinking === "function") {
           await this.channelAdapter.sendThinking({
@@ -209,6 +218,7 @@ class StreamDelivery {
       flushPromise: null,
       sequence: this.runSequence += 1,
       threadReplyTargetAttached: false,
+      thinkingText: "",
     };
     this.stateByRunKey.set(runKey, created);
     this.attachReplyTarget(created);

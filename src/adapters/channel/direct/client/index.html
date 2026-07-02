@@ -2931,7 +2931,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=36").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=37").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
@@ -2981,7 +2981,7 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
-<script src="/js/chat-ds.js"></script>
+<script src="/js/chat-ds.js?v=37"></script>
 <script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->
