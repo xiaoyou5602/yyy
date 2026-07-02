@@ -1,3 +1,35 @@
+## 2026-07-03 · 新消息滚动改未读角标 + 仓库大扫除 · `#scroll-ux` `#dead-code`
+
+### 背景
+
+toge 报的是"新消息不自动滚到底"，聊开才发现她要的不是修 bug，是换一套标准聊天 UX：停底部才跟随滚动，翻历史时新消息不打断阅读，改成悬浮按钮上的未读角标，点击才跳底部。做完顺手把仓库里堆积的一次性脚本和孤儿文件也理了一遍——toge 直接说"这么一看全是各种混乱的脚本跟文件"，照她的话判断哪些真在用。
+
+### 关键踩坑
+
+| 坑 | 现象 | 根因 | 解 |
+|----|------|------|-----|
+| 改错了文件，测试全过线上却没反应 | 把新逻辑写进 `chat-ds.html`，静态测试全绿，但那是死文件 | `chat-ds.html` 全仓库无任何引用；真正被 `index.html` 用 `<script src="/js/chat-ds.js">` 引入、驱动 `#chat-ds-page` 的是 `js/chat-ds.js`，两份代码结构相似但各自独立 | 用 `grep -r "chat-ds.html"` 全仓库搜索确认零引用后，把逻辑重新在 `js/chat-ds.js` 里实现一遍 |
+| 单条 AI 回复分多个 chunk，未读角标数错 | 如果每个 chunk 都计一次未读，一条回复能刷出好几个未读数 | 流式回复的每个 chunk 都会触发一次"新内容到达"检查 | 只在 `createPlaceholder()`（新一轮回复开始的唯一入口）计未读，chunk 更新走 `followScroll()`（只在已在底部时跟随，不计数） |
+| 手滑碰了真实后端 | 想验证滚动逻辑，随手跑了 `node bin/cyberboss.js start`，真的 spawn 了 claude.cmd 子进程 | 忘了 CLAUDE.md 写死"本地节点已关停，不要再启动本地 cyberboss" | 改用 `python -m http.server` 起纯静态服务器 + Playwright 跑 DOM/滚动逻辑测试，完全不碰后端 |
+
+### 设计决策
+
+- 未读判定复用已有的"回到最新"按钮同一套 `scrollHeight-scrollTop-clientHeight<120` 阈值，没有另起一套判断
+- 流式输出时，是否跟随滚动只看"用户当前在不在底部"，不区分"是不是这条正在看的回复"——自然覆盖了"看着回复往下滚"和"翻历史不被拽走"两种场景，不用额外状态
+
+> 📦 [`c0c7686`](https://github.com/xiaoyou5602/yyy/commit/c0c7686) 改 index.html 5 个模型 zone；[`781f597`](https://github.com/xiaoyou5602/yyy/commit/781f597) 补真正在用的 js/chat-ds.js + 版本号 bump；[`5653450`](https://github.com/xiaoyou5602/yyy/commit/5653450) 删旧 APK + 一次性脚本
+> 关键文件：`index.html`、`js/chat-ds.js`、`css/chat-ds.css`、`css/main.css`、`sw.js`
+
+### 顺带清理
+
+`git grep` 确认零引用后删除：`scripts/` 下 8 个 06-29 那次 Gemini UI 迁移用完的一次性脚本（`apply-gemini-1.js`、`apply-gemini-header.js`、`fix-all-now.js`、`fix-shell-svg.js`、`gemini-merge-v2.js`、`merge-gemini.js`、`tmp-extract-zone.js`、`wire-chat-ds.js`）、孤儿页面 `chat-ds.html`、client 静态目录里的旧 APK 构建产物。留着没动、toge 说先不管：`克给toge的信.html`（个人信件，非代码垃圾）、`todo.db`（来源不明的孤立 SQLite 文件）、本地看门狗脚本一批（本地节点已关停但删不删是更大判断）。
+
+### 顺带 · 另一会话的并发修复
+
+同一天另一个 Claude 会话（Fable 5）并发在改同一仓库，修了"清缓存后聊天记录全空"的竞态 bug（`loadModels` 和 `initHistory` 抢跑，`initHistory` 带空 `model` 拉 `/api/messages` 被服务端过滤成空数组 → 白屏），commit `bfb2ff4`，已推送部署。两边改动历史线性接上，没有冲突。
+
+---
+
 ## 2026-07-02 凌晨 — APP 端三大 Bug 集中会战
 
 **触发**：toge 反馈 APP 端（DeepSeek-v4-pro）调用工具卡死、记录待办时索引混乱、强制刷新后聊天记录丢失。排查确认 4+1 个问题，根因统一：**系统缺少 turn 状态机，gate/watchdog/timeout 不区分"真卡死"、"等审批"、"正常慢执行"。**
@@ -171,6 +203,12 @@
 ### #notification — 通知系统
 - 06-17 通知延迟 + 页内弹出 + 掉线显示在线
 - 06-11 WebSocket 状态显示 bug（`statusText` 忘了更新）
+
+### #scroll-ux — 聊天列表滚动体验
+- 07-03 新消息自动滚到底改成"停底部跟随、翻历史不打扰+未读角标"
+
+### #dead-code — 孤儿文件 / 用完没删的一次性脚本
+- 07-03 `chat-ds.html` 全仓库零引用、8 个 06-29 Gemini 迁移一次性脚本、旧 APK 构建产物
 
 ---
 
