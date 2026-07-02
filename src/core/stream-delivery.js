@@ -140,15 +140,17 @@ class StreamDelivery {
         const state = this.ensureRunState(threadId, turnId);
         state.turnId = turnId || state.turnId;
         this.captureTurnCompletionText(state, event.payload.text);
-        await this.flush(state, { force: true });
+        // Persist thinking BEFORE flush so globalId ordering puts thinking before reply
         if (state.thinkingText && typeof this.channelAdapter.saveThinking === "function") {
+          const thinkingModel = resolveModelForThread(this.sessionStore, threadId) || state.replyTarget?.model || "";
           await this.channelAdapter.saveThinking({
             userId: state.replyTarget?.userId || "",
             text: state.thinkingText.slice(0, 5000),
             turnId: state.turnId,
-            model: state.replyTarget?.model || "",
+            model: thinkingModel,
           });
         }
+        await this.flush(state, { force: true });
         this.disposeRunState(state.runKey);
         return;
       }

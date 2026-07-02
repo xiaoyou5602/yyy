@@ -186,7 +186,7 @@
       updateLabel(turnId, "已思考 " + Math.max(0, elapsed) + " 秒");
       // Persist thinking text to history so it survives page refresh
       if (t.text && t.text.trim()) {
-        history.push({ from: "thinking", text: t.text.trim(), time: now(), model: t.model || MODEL_NAME });
+        history.push({ from: "thinking", text: t.text.trim(), time: now(), model: t.model || MODEL_NAME, turnId: turnId });
         console.log("[ds-chat] thinking saved to history len=" + t.text.trim().length + " turn=" + turnId);
       } else {
         console.log("[ds-chat] thinking skipped (empty) turn=" + turnId);
@@ -271,13 +271,18 @@
     var seen = {};
     history.forEach(function(h) {
       if (h.globalId) seen[h.globalId] = true;
+      if (h.from === "thinking" && h.turnId) {
+        seen["thinking|" + h.turnId] = true;
+      }
       seen[h.from + "|" + h.text + "|" + h.time] = true;
     });
     var added = false;
     messages.forEach(function(m) {
       if (m.from !== "ke" && m.from !== "thinking") return;
       if (m.globalId && seen[m.globalId]) return;
-      var key = "ke|" + m.text + "|" + (m.time || "");
+      var key = m.from === "thinking" && m.turnId
+          ? "thinking|" + m.turnId
+          : (m.from || "ke") + "|" + m.text + "|" + (m.time || "");
       if (seen[key]) return;
       // Skip partial duplicates: a sync message whose text is a prefix of
       // an already-rendered message (e.g. partial flush vs final flush)
@@ -332,7 +337,11 @@
     history = loadHistory();
     if (chatFlow) {
       chatFlow.innerHTML = "";
-      history.forEach(function(m) { renderMsg(m, false); });
+      history.forEach(function(m) {
+        try { renderMsg(m, false); } catch (initErr) {
+          console.error("[ds-chat] init render failed for", m.from, m.turnId || "", initErr.message);
+        }
+      });
       scrollBottom();
     }
 

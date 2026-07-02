@@ -8,6 +8,7 @@ const PRE_CACHE = [
 
 // Pre-cache core assets so the app works offline immediately.
 self.addEventListener("install", (e) => {
+  self.skipWaiting();  // activate immediately, don't wait for tabs to close
   e.waitUntil(
     caches.open(CACHE).then((c) => c.addAll(PRE_CACHE)).catch(() => {})
   );
