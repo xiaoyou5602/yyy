@@ -106,7 +106,14 @@ ssh -p 25790 -i ~/.ssh/id_ed25519 root@103.85.25.226 \
   "cd /opt/withtoge && git pull origin master && systemctl restart cyberboss"
 ```
 
-> ⚠️ **CLAUDE.md 改完记得同步到 VPS**：`scp -P 25790 CLAUDE.md root@103.85.25.226:/root/CLAUDE.md`，否则 APP 端的克读不到更新。
+### md 同步（2026-07-03 git 化，不再 scp）
+
+> **真源 = git 仓库里的 `CLAUDE.md` / `WITHTOGE.md`。** 覆盖式同步已废除，改动靠 git 合并，两端改动都不会丢。
+
+- **VPS 端**：`/root/CLAUDE.md` 是指向 `/opt/withtoge/CLAUDE.md` 的软链接，改它就是改仓库文件。**改完 md 立刻 `git add CLAUDE.md WITHTOGE.md && git commit && git push origin master`**。忘了也有 inotify 兜底（`md-autosync` systemd 服务）+ push hook 的 auto-commit，但别依赖兜底。
+- **本地端**：`~/CLAUDE.md` 是副本，由 `scripts/sync-md.ps1` 对齐（计划任务 `withtoge-md-sync` 每 30 分钟跑）。改完 md 想立即同步就手动跑一次该脚本。
+- **hook 已改**：push 后 VPS 工作副本用 rebase 合并（不再 reset --hard 抹改动）；**纯 md 变动不重启 cyberboss**，不打断 toge 聊天。
+- **冲突**：`pull --rebase` 报冲突时脚本会停下并提示，由克解决后重推。历史都在 git 里，乱了可回退：`git log --oneline CLAUDE.md` → `git checkout <commit> -- CLAUDE.md`。
 
 ---
 
