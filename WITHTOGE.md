@@ -196,6 +196,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 气泡拆分多 bug — **已修待验证**（07-03 commit dbc5665，已部署 VPS）。根因：①`const merged` 重赋值 TypeError 导致整页历史不渲染；②本地存逐 chunk、服务端存整条，dedup 吃掉带 globalId 的末 chunk 导致双份并存；③`/api/messages` 的 thinking 条目被当普通气泡渲染。修法：history 一条逻辑消息一个 entry（text+chunks），拆分只做渲染，renderMsg 唯一入口。验证：APP 刷新后拆分气泡还在、无双份、COT 显示为可折叠块
 - [ ] 通知延迟+页内弹出+掉线显示在线 — 待验证。APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s
 - [ ] APP 加强制刷新键 — 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史
+- [ ] 清缓存后气泡全空 — **根因已定位（07-03）**：`index.html:1285` 清缓存后 `settings.model` 为空串，initHistory/syncHistoryFromServer 带 `?model=` 空参数拉服务端，服务端按空 model 过滤返回几乎空数组 → 页面空白。数据在服务端没丢。修法：settings.model 为空时退回默认模型（model-routes 第一个），或空 model 时不带 model 参数拉全量再按 zone 分发
+- [ ] Opus 页显示思考摘要 — Claude API 的 thinking 支持 `display: "summarized"` 返回思考摘要（原始 COT 任何客户端都拿不到，摘要是上限）。`direct-api-client.js` 请求加 `thinking: {type: "adaptive", display: "summarized"}`，流式收 thinking_delta，接到 APP 已有的思考显示链路（计时器+折叠块）。注意：adaptive thinking 时 temperature/top_p 等采样参数要移除，否则 400
 
 ### 后端 / 服务
 

@@ -1349,7 +1349,9 @@ async function syncHeaderFromWorldbook(model) {
 }
 settings = loadSettings();
 if (currentPage === "chat-ds") { showPage("chat-ds"); if (typeof window.dsChatInit === "function") window.dsChatInit(); }
-loadModels().then(() => { applySettings(settings);  });
+// initHistory 会 await 这个 promise——loadModels 里有「settings.model 为空时退回默认模型」
+// 的兜底,必须先跑完,否则清缓存后 initHistory 拿空 model 去拉服务端,得到空历史(白屏 bug)
+const modelsReady = loadModels().then(() => { applySettings(settings); }).catch(() => {});
 
 /* ── Sidebar ── */
 function toggleSidebar() {
@@ -2058,6 +2060,10 @@ for (const k of ZONE_KEYS) {
 let initHistoryDone = false;
 
 async function initHistory() {
+  // Wait for loadModels: it backfills settings.model when empty (fresh install /
+  // cleared cache). Racing past it means fetching /api/messages?model= (empty)
+  // which the server filters down to nothing — the blank-history bug.
+  await modelsReady;
   // Activate initial zone based on current model
   const initModel = settings.model || "";
   const initMeta = MODEL_META[initModel];
