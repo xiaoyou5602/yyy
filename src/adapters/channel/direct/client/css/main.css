@@ -594,6 +594,17 @@ footer {
 .scroll-bottom-btn.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .scroll-bottom-btn:hover { background: rgba(255,255,255,0.95); color: var(--accent); box-shadow: var(--shadow-md); }
 
+.unread-badge {
+  position: absolute; top: -4px; right: -4px; z-index: 1;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; line-height: 18px; text-align: center;
+  opacity: 0; transform: scale(0.6);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.unread-badge.show { opacity: 1; transform: scale(1); }
+
 @media (max-width: 480px) {
   .scroll-bottom-btn { bottom: 80px; right: 12px; width: 36px; height: 36px; }
 }

@@ -98,6 +98,31 @@ html, body {
 .chat-flow-component::-webkit-scrollbar { width: 4px; }
 .chat-flow-component::-webkit-scrollbar-thumb { background: rgba(45,45,45,0.05); border-radius: 10px; }
 
+/* ── Scroll-to-bottom button ── */
+.scroll-bottom-btn {
+  position: absolute; bottom: 90px; right: 20px; z-index: 50;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--color-border); background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: var(--color-text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s, background 0.15s;
+}
+.scroll-bottom-btn.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.scroll-bottom-btn:hover { background: rgba(255,255,255,0.95); color: var(--color-slate); }
+.unread-badge {
+  position: absolute; top: -4px; right: -4px; z-index: 1;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--color-orange); color: #fff;
+  font-size: 11px; font-weight: 600; line-height: 18px; text-align: center;
+  opacity: 0; transform: scale(0.6);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.unread-badge.show { opacity: 1; transform: scale(1); }
+
 /* ── Thinking ── */
 .thinking-inline {
   margin: 4px 0 2px 0;
@@ -306,6 +331,8 @@ html, body {
   <!-- MESSAGES -->
   <main class="chat-flow-component" id="chatFlow"></main>
 
+  <button class="scroll-bottom-btn" id="scroll-bottom-btn" title="回到最新"><span class="unread-badge" id="unread-badge"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+
   <!-- IMAGE PREVIEW -->
   <div class="image-preview" id="image-preview"></div>
 
@@ -346,6 +373,8 @@ const imagePreview = document.getElementById("image-preview");
 const statusDot = document.getElementById("status-dot");
 const statusText = document.getElementById("status-text");
 const headerTitle = document.getElementById("header-title");
+const scrollBottomBtn = document.getElementById("scroll-bottom-btn");
+const unreadBadgeEl = document.getElementById("unread-badge");
 
 /* ── State ── */
 let ws = null;
@@ -355,11 +384,39 @@ let streamingMsgEl = null;
 let _msgIdx = 0;
 let reconnectTimer = null;
 let reconnectDelay = 1000;
+let unreadCount = 0;
 
 /* ── Utilities ── */
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML.replace(/\n/g, "<br>"); }
 function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
 function scrollBottom() { chatFlow.scrollTop = chatFlow.scrollHeight; }
+
+/* ── Scroll-to-bottom ── */
+function isAtBottom() { return chatFlow.scrollHeight - chatFlow.scrollTop - chatFlow.clientHeight < 120; }
+function updateScrollToBottomBtn() { scrollBottomBtn.classList.toggle("show", !isAtBottom()); }
+function updateUnreadBadge() {
+  unreadBadgeEl.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+  unreadBadgeEl.classList.toggle("show", unreadCount > 0);
+}
+function bumpUnread() { unreadCount++; updateUnreadBadge(); }
+function clearUnread() { unreadCount = 0; updateUnreadBadge(); }
+// 仅在已经停在底部时跟随滚动（流式输出贴底跟随，不打断向上翻阅）
+function followScroll() { if (isAtBottom()) chatFlow.scrollTop = chatFlow.scrollHeight; }
+// 新一条 AI 消息到达：在底部就跟随滚动，不在底部就计入未读角标
+function notifyNewMessage() {
+  if (isAtBottom()) chatFlow.scrollTop = chatFlow.scrollHeight;
+  else bumpUnread();
+  updateScrollToBottomBtn();
+}
+function jumpToBottom() {
+  chatFlow.scrollTo({ top: chatFlow.scrollHeight, behavior: "smooth" });
+  clearUnread();
+}
+chatFlow.addEventListener("scroll", () => {
+  updateScrollToBottomBtn();
+  if (isAtBottom()) clearUnread();
+});
+scrollBottomBtn.addEventListener("click", jumpToBottom);
 
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
@@ -391,7 +448,7 @@ function renderMsg(msg, save) {
   wrap.appendChild(time);
 
   chatFlow.appendChild(wrap);
-  scrollBottom();
+  followScroll();
   if (save) { history.push(msg); saveHistory(history); }
   return wrap;
 }
@@ -474,7 +531,7 @@ function createThinkingPlaceholder(turnId) {
   const inline = buildInlineThinking(turnId);
   if (inline) div.appendChild(inline);
   chatFlow.appendChild(div);
-  scrollBottom();
+  notifyNewMessage();
   return div;
 }
 
@@ -605,12 +662,13 @@ function connect() {
             history.push({ from: "ke", text: msg.text, time: now(), model: msg.model });
             saveHistory(history);
           }
-          scrollBottom();
+          followScroll();
           break;
         case "typing":
           break;
         case "error":
           renderMsg({ from: "ke", text: "[错误] " + (msg.text || "") });
+          notifyNewMessage();
           break;
       }
     } catch {}
@@ -668,6 +726,7 @@ sendBtn.addEventListener("click", send);
 history = loadHistory();
 history.forEach(m => renderMsg(m, false));
 scrollBottom();
+clearUnread();
 connect();
 setInterval(() => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" })); }, 30000);
 

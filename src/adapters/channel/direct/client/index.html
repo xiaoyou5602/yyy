@@ -151,7 +151,7 @@
     <div class="typing-indicator" id="typing-indicator-ds"><span class="typing-dots"><span></span><span></span><span></span></span></div>
     <div class="image-preview" id="image-preview-ds"></div>
     <div class="desk-pet" id="desk-pet-ds"><div class="desk-pet-body" id="desk-pet-body-ds"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-ds" title="回到最新"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="scroll-bottom-btn" id="scroll-bottom-btn-ds" title="回到最新"><span class="unread-badge" id="unread-badge-ds"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <footer>
       <div class="input-container-inner">
         <textarea class="chat-input" id="input-ds" rows="1" placeholder="说点什么…"></textarea>
@@ -166,7 +166,7 @@
     <div class="typing-indicator" id="typing-indicator-opus"><span class="typing-dots"><span></span><span></span><span></span></span></div>
     <div class="image-preview" id="image-preview-opus"></div>
     <div class="desk-pet" id="desk-pet-opus"><div class="desk-pet-body" id="desk-pet-body-opus"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-opus" title="回到最新"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="scroll-bottom-btn" id="scroll-bottom-btn-opus" title="回到最新"><span class="unread-badge" id="unread-badge-opus"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <footer>
       <textarea class="chat-input" id="input-opus" rows="1" placeholder="说点什么…"></textarea>
       <input type="file" class="file-input" id="file-input-opus" multiple hidden>
@@ -179,7 +179,7 @@
     <div class="typing-indicator" id="typing-indicator-haiku"><span class="typing-dots"><span></span><span></span><span></span></span></div>
     <div class="image-preview" id="image-preview-haiku"></div>
     <div class="desk-pet" id="desk-pet-haiku"><div class="desk-pet-body" id="desk-pet-body-haiku"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-haiku" title="回到最新"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="scroll-bottom-btn" id="scroll-bottom-btn-haiku" title="回到最新"><span class="unread-badge" id="unread-badge-haiku"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <footer>
       <textarea class="chat-input" id="input-haiku" rows="1" placeholder="说点什么…"></textarea>
       <input type="file" class="file-input" id="file-input-haiku" multiple hidden>
@@ -192,7 +192,7 @@
     <div class="typing-indicator" id="typing-indicator-glm"><span class="typing-dots"><span></span><span></span><span></span></span></div>
     <div class="image-preview" id="image-preview-glm"></div>
     <div class="desk-pet" id="desk-pet-glm"><div class="desk-pet-body" id="desk-pet-body-glm"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-glm" title="回到最新"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="scroll-bottom-btn" id="scroll-bottom-btn-glm" title="回到最新"><span class="unread-badge" id="unread-badge-glm"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <footer>
       <textarea class="chat-input" id="input-glm" rows="1" placeholder="说点什么…"></textarea>
       <input type="file" class="file-input" id="file-input-glm" multiple hidden>
@@ -205,7 +205,7 @@
     <div class="typing-indicator" id="typing-indicator-openclaw"><span class="typing-dots"><span></span><span></span><span></span></span></div>
     <div class="image-preview" id="image-preview-openclaw"></div>
     <div class="desk-pet" id="desk-pet-openclaw"><div class="desk-pet-body" id="desk-pet-body-openclaw"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-openclaw" title="回到最新"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="scroll-bottom-btn" id="scroll-bottom-btn-openclaw" title="回到最新"><span class="unread-badge" id="unread-badge-openclaw"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <footer>
       <textarea class="chat-input" id="input-openclaw" rows="1" placeholder="说点什么…"></textarea>
       <input type="file" class="file-input" id="file-input-openclaw" multiple hidden>
@@ -1013,7 +1013,7 @@ const ZONE_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
 const ZONE_STORAGE_KEY = "withtoge-active-zone";
 const ZONE_WALLPAPER_KEY = "withtoge-zone-wallpapers";
 const zones = {};
-let messagesEl, typingEl, inputEl, sendBtn, imageBtn, fileInput, imagePreview, scrollBottomBtn;
+let messagesEl, typingEl, inputEl, sendBtn, imageBtn, fileInput, imagePreview, scrollBottomBtn, unreadBadgeEl;
 let history = [];
 let pendingFiles = [];
 let activeZoneKey = null;
@@ -1029,12 +1029,14 @@ function initZones() {
       fileInput:    document.getElementById(`file-input-${key}`),
       imagePreview: document.getElementById(`image-preview-${key}`),
       scrollBottomBtn: document.getElementById(`scroll-bottom-btn-${key}`),
+      unreadBadgeEl: document.getElementById(`unread-badge-${key}`),
       deskPet:      document.getElementById(`desk-pet-${key}`),
       history:      [],
       pendingFiles: [],
       scrollTop:    0,
       inputText:    "",
       historyLoaded: false,
+      unreadCount:  0,
     };
   }
 }
@@ -1067,6 +1069,7 @@ function activateZone(key) {
   fileInput      = z.fileInput;
   imagePreview   = z.imagePreview;
   scrollBottomBtn = z.scrollBottomBtn;
+  unreadBadgeEl  = z.unreadBadgeEl;
   // Restore state
   history      = z.history;
   pendingFiles  = z.pendingFiles;
@@ -1074,6 +1077,7 @@ function activateZone(key) {
   if (z.scrollTop) messagesEl.scrollTop = z.scrollTop;
   renderPreviews();
   updateScrollToBottomBtn();
+  updateUnreadBadge();
   activeZoneKey = key;
   try { localStorage.setItem(ZONE_STORAGE_KEY, key); } catch {}
   // Reset streaming state (chunkBuf is per-model, keep it across zone switches)
@@ -1423,6 +1427,7 @@ function switchModelHistory() {
   history = localMsgs.slice();
   for (const m of localMsgs) renderMsg(m, false);
   scrollBottom();
+  clearUnread();
   if (activeZoneKey) zones[activeZoneKey].historyLoaded = true;
 }
 const MODEL_META = {}; // { modelName: { key, type, displayName } } 从 API 加载
@@ -1826,16 +1831,60 @@ document.getElementById("bm-back-btn").addEventListener("click", () => showPage(
 
 /* ── Scroll-to-bottom ── */
 
+function isAtBottom() {
+  if (!messagesEl) return true;
+  return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
+}
+
 function updateScrollToBottomBtn() {
-  var atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 120;
-  scrollBottomBtn.classList.toggle("show", !atBottom);
+  scrollBottomBtn.classList.toggle("show", !isAtBottom());
+}
+
+function updateUnreadBadge() {
+  if (!unreadBadgeEl) return;
+  const n = (activeZoneKey && zones[activeZoneKey]) ? (zones[activeZoneKey].unreadCount || 0) : 0;
+  unreadBadgeEl.textContent = n > 99 ? "99+" : String(n);
+  unreadBadgeEl.classList.toggle("show", n > 0);
+}
+
+function bumpUnread() {
+  if (!activeZoneKey || !zones[activeZoneKey]) return;
+  zones[activeZoneKey].unreadCount = (zones[activeZoneKey].unreadCount || 0) + 1;
+  updateUnreadBadge();
+}
+
+function clearUnread() {
+  if (activeZoneKey && zones[activeZoneKey]) zones[activeZoneKey].unreadCount = 0;
+  updateUnreadBadge();
+}
+
+// 仅在用户已经停在底部时才跟随滚动（流式输出时贴底跟随）
+function followScroll() {
+  if (isAtBottom()) requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
+}
+
+// 新气泡到达：在底部就跟随滚动，不在底部就计入未读角标，不打断阅读
+function notifyNewMessage() {
+  if (isAtBottom()) {
+    requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
+  } else {
+    bumpUnread();
+  }
+  updateScrollToBottomBtn();
 }
 
 function scrollToBottom() {
   messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+  clearUnread();
 }
 
-for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("scroll", updateScrollToBottomBtn);
+for (const k of ZONE_KEYS) {
+  zones[k].messagesEl.addEventListener("scroll", () => {
+    updateScrollToBottomBtn();
+    if (isAtBottom()) clearUnread();
+  });
+  if (zones[k].scrollBottomBtn) zones[k].scrollBottomBtn.addEventListener("click", scrollToBottom);
+}
 
 // Check on page switch too (for when "跳转对话" is used)
 window.addEventListener("page-changed", function(e) {
@@ -2193,6 +2242,7 @@ async function initHistory() {
   history = merged.filter(m => !m.model || m.model === cur);
   for (const m of history) renderMsg(m, false);
   scrollBottom();
+  clearUnread();
   loadCachedThinking();
   initHistoryDone = true;
   syncHistoryFromServer();
@@ -2277,7 +2327,7 @@ function renderMsg(msg, save = true) {
     inline.appendChild(body);
     div.appendChild(inline);
     messagesEl.appendChild(div);
-    scrollBottom();
+    followScroll();
     if (save) { history.push(msg); saveHistory(history); }
     return div;
   }
@@ -2315,7 +2365,7 @@ function renderMsg(msg, save = true) {
     div.innerHTML = html;
   }
   messagesEl.appendChild(div);
-  scrollBottom();
+  followScroll();
   if (save) { history.push(msg); saveHistory(history); }
   return div;
 }
@@ -2364,7 +2414,7 @@ function online(v) {
   }
 }
 
-function showTyping() { if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now(); thinkingStore.get(preTurnId); streamingMsgEl = createThinkingPlaceholder(preTurnId); typingEl.classList.remove("show"); } scrollBottom(); }
+function showTyping() { if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now(); thinkingStore.get(preTurnId); streamingMsgEl = createThinkingPlaceholder(preTurnId); typingEl.classList.remove("show"); } followScroll(); }
 function hideTyping() { typingEl.classList.remove("show"); }
 
 var pageHidden = document.hidden;
@@ -2618,7 +2668,7 @@ function renderStickerMsg(msg) {
     div.innerHTML = '<img src="' + src + '" alt="' + desc + '" class="sticker-gif"><div class="time">' + (msg.time || now()) + '</div>';
   }
   messagesEl.appendChild(div);
-  scrollBottom();
+  followScroll();
   history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
   saveHistory(history);
 }
@@ -2854,7 +2904,7 @@ function createThinkingPlaceholder(turnId) {
   if (inline) div.insertBefore(inline, inner);
 
   messagesEl.appendChild(div);
-  scrollBottom();
+  followScroll();
   return div;
 }
 
@@ -2982,7 +3032,7 @@ function connect() {
           streamingMsgEl = null;
           streamingText = "";
         }
-        scrollBottom();
+        notifyNewMessage();
         break;
       }
       case "typing":
@@ -2990,15 +3040,16 @@ function connect() {
         break;
       case "file":
         saveMessageToModelStorage(msg);
-        if (msgMatchesModel(msg)) { renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); }
+        if (msgMatchesModel(msg)) { renderMsg({ from:"ke", text:`[文件] ${msg.fileName || msg.filePath}`, time: now() }); notify(`[文件] ${msg.fileName || "新文件"}`); notifyNewMessage(); }
         break;
       case "sticker":
-        if (!msg.model || msgMatchesModel(msg)) renderStickerMsg(msg);
+        if (!msg.model || msgMatchesModel(msg)) { renderStickerMsg(msg); notifyNewMessage(); }
         break;
       case "error":
         saveMessageToModelStorage(msg);
         if (!msg.model || msgMatchesModel(msg)) {
           renderMsg({ from:"ke", text:`[错误] ${msg.text}`, time: now() });
+          notifyNewMessage();
         }
         break;
       case "approval":
