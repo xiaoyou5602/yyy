@@ -6,13 +6,36 @@
 
   let ws, history, pendingFiles, streamingMsgEl, _msgIdx, reconnectTimer, reconnectDelay;
   let dsStreamText = ""; // 积累本轮全部 chunk——服务端分段广播,只显示/保存最后一段会丢内容
-  let thinkingStore, chatFlow, chatInput, sendBtn, imageBtn, fileInput, imagePreview, statusDot, statusText;
+  let thinkingStore, chatFlow, chatInput, sendBtn, imageBtn, fileInput, imagePreview, statusDot, statusText, scrollBottomBtn, unreadBadgeEl;
+  let unreadCount = 0;
 
   function esc(s) {
     const d = document.createElement("div"); d.textContent = s; return d.innerHTML.replace(/\n/g, "<br>");
   }
   function now() { return new Date().toLocaleTimeString("zh-CN", { hour:"2-digit", minute:"2-digit" }); }
   function scrollBottom() { if (chatFlow) chatFlow.scrollTop = chatFlow.scrollHeight; }
+
+  /* ── Scroll-to-bottom ── */
+  function isAtBottom() { return !chatFlow || chatFlow.scrollHeight - chatFlow.scrollTop - chatFlow.clientHeight < 120; }
+  function updateScrollToBottomBtn() { if (scrollBottomBtn) scrollBottomBtn.classList.toggle("show", !isAtBottom()); }
+  function updateUnreadBadge() {
+    if (!unreadBadgeEl) return;
+    unreadBadgeEl.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+    unreadBadgeEl.classList.toggle("show", unreadCount > 0);
+  }
+  function bumpUnread() { unreadCount++; updateUnreadBadge(); }
+  function clearUnread() { unreadCount = 0; updateUnreadBadge(); }
+  // 仅在已经停在底部时跟随滚动（流式输出贴底跟随，不打断向上翻阅）
+  function followScroll() { if (isAtBottom()) scrollBottom(); }
+  // 新一条 AI 消息到达：在底部就跟随滚动，不在底部就计入未读角标
+  function notifyNewMessage() {
+    if (isAtBottom()) scrollBottom(); else bumpUnread();
+    updateScrollToBottomBtn();
+  }
+  function jumpToBottom() {
+    if (chatFlow) chatFlow.scrollTo({ top: chatFlow.scrollHeight, behavior: "smooth" });
+    clearUnread();
+  }
   function loadHistory() { try { var h = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); console.log("[ds-chat] loadHistory count=" + h.length); return h; } catch { console.warn("[ds-chat] loadHistory failed"); return []; } }
   function saveHistory(h) { try { var s = h.slice(-500); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); console.log("[ds-chat] saveHistory count=" + s.length); } catch(e) { console.warn("[ds-chat] saveHistory failed:", e.message); try { var trimmed1 = h.slice(-350); localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed1)); history.length = 0; history.push.apply(history, trimmed1); console.log("[ds-chat] saveHistory trimmed to 350"); } catch(e2) { console.warn("[ds-chat] saveHistory trim1 failed:", e2.message); try { var noThinking = h.filter(function(m) { return m.from !== "thinking"; }).slice(-200); localStorage.setItem(STORAGE_KEY, JSON.stringify(noThinking)); history.length = 0; history.push.apply(history, noThinking); console.log("[ds-chat] saveHistory removed thinking entries"); } catch(e3) { console.error("[ds-chat] saveHistory all retries failed:", e3.message); } } } }
 
@@ -32,7 +55,7 @@
       tTime.textContent = msg.time || now();
       wrap.appendChild(tTime);
       chatFlow.appendChild(wrap);
-      scrollBottom();
+      followScroll();
       if (save) { history.push(msg); saveHistory(history); }
       return wrap;
     }
@@ -53,7 +76,7 @@
     time.textContent = msg.time || now();
     wrap.appendChild(time);
     chatFlow.appendChild(wrap);
-    scrollBottom();
+    followScroll();
     if (save) { history.push(msg); saveHistory(history); }
     return wrap;
   }
@@ -141,7 +164,7 @@
     var inline = buildThinking(turnId);
     if (inline) div.appendChild(inline);
     chatFlow.appendChild(div);
-    scrollBottom();
+    notifyNewMessage();
     return div;
   }
 
@@ -252,10 +275,11 @@
               saveHistory(history);
               dsStreamText = "";
             }
-            scrollBottom();
+            followScroll();
             break;
           case "error":
             renderMsg({ from: "ke", text: "[错误] " + (msg.text || "") });
+            notifyNewMessage();
             break;
         }
       } catch (_) {}
@@ -330,12 +354,15 @@
     imagePreview = document.getElementById("ds-img-preview");
     statusDot = document.getElementById("ds-status-dot");
     statusText = document.getElementById("ds-status-text");
+    scrollBottomBtn = document.getElementById("ds-scroll-bottom-btn");
+    unreadBadgeEl = document.getElementById("ds-unread-badge");
 
     pendingFiles = [];
     streamingMsgEl = null;
     _msgIdx = 0;
     reconnectDelay = 1000;
     reconnectTimer = null;
+    unreadCount = 0;
 
     // Load history
     history = loadHistory();
@@ -347,7 +374,16 @@
         }
       });
       scrollBottom();
+      clearUnread();
     }
+
+    if (chatFlow) {
+      chatFlow.addEventListener("scroll", function() {
+        updateScrollToBottomBtn();
+        if (isAtBottom()) clearUnread();
+      });
+    }
+    if (scrollBottomBtn) scrollBottomBtn.addEventListener("click", jumpToBottom);
 
     // Event listeners
     if (chatInput) {

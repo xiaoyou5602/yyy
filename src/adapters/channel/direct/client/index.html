@@ -9,11 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=30">
+<link rel="stylesheet" href="/css/main.css?v=31">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
-<link rel="stylesheet" href="/css/chat-ds.css?v=1">
+<link rel="stylesheet" href="/css/chat-ds.css?v=2">
 </head>
 <body>
 
@@ -745,6 +745,7 @@
       </div>
     </header>
     <main class="ds-chat-flow" id="ds-chat-flow"></main>
+    <button class="scroll-bottom-btn" id="ds-scroll-bottom-btn" title="回到最新"><span class="unread-badge" id="ds-unread-badge"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <div class="ds-img-preview" id="ds-img-preview"></div>
     <footer class="ds-footer">
       <div class="ds-input-wrap">
@@ -3081,7 +3082,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=38").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=39").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
@@ -3131,7 +3132,7 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
-<script src="/js/chat-ds.js?v=38"></script>
+<script src="/js/chat-ds.js?v=39"></script>
 <script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->

@@ -87,6 +87,14 @@
 .ds-chat-flow::-webkit-scrollbar { width: 4px; }
 .ds-chat-flow::-webkit-scrollbar-thumb { background: rgba(45,45,45,0.05); border-radius: 10px; }
 
+/* ds-container 是 position:relative + 480px 居中，按钮跟着它定位，不用全局 fixed */
+#chat-ds-page .scroll-bottom-btn {
+  position: absolute; bottom: 90px; right: 20px;
+  border-color: var(--ds-border); color: var(--ds-text-muted);
+}
+#chat-ds-page .scroll-bottom-btn:hover { color: var(--ds-slate); }
+#chat-ds-page .unread-badge { background: var(--ds-orange); }
+
 /* ── Thinking ── */
 .ds-thinking-inline { margin: 4px 0 2px 0; }
 .ds-thinking-row { display: flex; align-items: center; gap: 10px; }
