@@ -5,6 +5,7 @@
   const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
   let ws, history, pendingFiles, streamingMsgEl, _msgIdx, reconnectTimer, reconnectDelay;
+  let dsStreamText = ""; // 积累本轮全部 chunk——服务端分段广播,只显示/保存最后一段会丢内容
   let thinkingStore, chatFlow, chatInput, sendBtn, imageBtn, fileInput, imagePreview, statusDot, statusText;
 
   function esc(s) {
@@ -235,9 +236,11 @@
           case "text":
             if (msg.done) finalizeAll();
             if (!streamingMsgEl) streamingMsgEl = createPlaceholder(msg.turnId || "unknown");
+            var isFirstChunk = (!msg.chunkIndex || msg.chunkIndex === 0);
+            dsStreamText = isFirstChunk ? String(msg.text || "") : dsStreamText + String(msg.text || "");
             var bubble = document.createElement("div");
             bubble.className = "ds-msg-bubble";
-            bubble.innerHTML = esc(msg.text) + '<div class="ds-msg-time">' + now() + '</div>';
+            bubble.innerHTML = esc(dsStreamText) + '<div class="ds-msg-time">' + now() + '</div>';
             if (streamingMsgEl) {
               var eb = streamingMsgEl.querySelector(".ds-msg-bubble");
               if (eb) eb.remove();
@@ -245,8 +248,9 @@
             }
             if (msg.done) {
               streamingMsgEl = null;
-              history.push({ from: "ke", text: msg.text, time: now(), model: msg.model, globalId: msg.globalId || "" });
+              history.push({ from: "ke", text: dsStreamText, time: now(), model: msg.model, globalId: msg.globalId || "" });
               saveHistory(history);
+              dsStreamText = "";
             }
             scrollBottom();
             break;

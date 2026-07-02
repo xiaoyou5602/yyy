@@ -967,18 +967,22 @@ function getStorageKeyForModel(model) {
   const m = (model || "").trim();
   return m ? `withtoge-chat-history-${m}` : STORAGE_KEY;
 }
-function saveMessageToModelStorage(msg) {
-  if (!msg || !msg.model) return;
-  const mKey = getStorageKeyForModel(msg.model);
-  const entry = { from: "ke", text: msg.text || "", time: msg.time || now(), model: msg.model };
-  if (msg.globalId) entry.globalId = msg.globalId;
-  if (msg.filePath) { entry.text = "[文件] " + (msg.fileName || msg.filePath); entry.filePath = msg.filePath; }
-  if (msg.type === "error") entry.text = "[错误] " + (msg.text || "");
+function saveEntryToModelStorage(entry) {
+  if (!entry || !entry.model) return;
+  const mKey = getStorageKeyForModel(entry.model);
   try {
     let msgs = JSON.parse(localStorage.getItem(mKey) || "[]");
     msgs.push(entry);
     localStorage.setItem(mKey, JSON.stringify(msgs.slice(-500)));
   } catch {}
+}
+function saveMessageToModelStorage(msg) {
+  if (!msg || !msg.model) return;
+  const entry = { from: "ke", text: msg.text || "", time: msg.time || now(), model: msg.model };
+  if (msg.globalId) entry.globalId = msg.globalId;
+  if (msg.filePath) { entry.text = "[文件] " + (msg.fileName || msg.filePath); entry.filePath = msg.filePath; }
+  if (msg.type === "error") entry.text = "[错误] " + (msg.text || "");
+  saveEntryToModelStorage(entry);
 }
 const SETTINGS_KEY = "withtoge-chat-settings";
 
@@ -1072,8 +1076,8 @@ function activateZone(key) {
   updateScrollToBottomBtn();
   activeZoneKey = key;
   try { localStorage.setItem(ZONE_STORAGE_KEY, key); } catch {}
-  // Reset streaming state
-  streamingMsgEl = null; streamingText = ""; currentChunkGroupId = null;
+  // Reset streaming state (chunkBuf is per-model, keep it across zone switches)
+  streamingMsgEl = null; streamingText = "";
   // Exit select mode if active
   if (selecting) exitSelectMode();
 }
@@ -1092,7 +1096,9 @@ var reconnectTimer = null;
 var reconnectDelay = 1000;
 var streamingMsgEl = null;
 var streamingText = "";
-var currentChunkGroupId = null;
+// 按 model 分桶积累本轮的 chunk 文本；done 时合并成一条 entry 入 history。
+// 分桶是因为多个 model 可能同时在回复（多 zone），共用一个数组会串。
+var chunkBuf = {};
 
 /* ── Page switching ── */
 let currentPage = (function(){ try { var lp = localStorage.getItem("withtoge-last-page"); if (lp === "chat-ds") return lp; } catch {} return "chat"; })();
@@ -2080,6 +2086,51 @@ async function initHistory() {
     localStorage.setItem("cyberboss-chat-cleaned-v4", "1");
   })();
 
+  // One-time cleanup v5: merge legacy per-chunk entries (chunkGroupId/chunkIndex)
+  // into single entries carrying a chunks array — the new storage format
+  (function() {
+    if (localStorage.getItem("cyberboss-chat-cleaned-v5")) return;
+    var keys5 = [];
+    for (var ki = 0; ki < localStorage.length; ki++) {
+      var lk5 = localStorage.key(ki);
+      if (lk5 && lk5.startsWith("withtoge-chat-history")) keys5.push(lk5);
+    }
+    for (var fi = 0; fi < keys5.length; fi++) {
+      try {
+        var raw5 = JSON.parse(localStorage.getItem(keys5[fi]) || "[]");
+        if (!Array.isArray(raw5) || !raw5.length) continue;
+        if (!raw5.some(function(m) { return m && m.chunkGroupId; })) continue;
+        var out5 = [];
+        var groupPos = {}; // chunkGroupId -> slot index in out5
+        for (var mi = 0; mi < raw5.length; mi++) {
+          var m5 = raw5[mi];
+          if (!m5 || !m5.chunkGroupId) { out5.push(m5); continue; }
+          var gpos = groupPos[m5.chunkGroupId];
+          if (gpos === undefined) {
+            groupPos[m5.chunkGroupId] = out5.length;
+            out5.push({ _group: [m5] });
+          } else {
+            out5[gpos]._group.push(m5);
+          }
+        }
+        var final5 = out5.map(function(slot) {
+          if (!slot || !slot._group) return slot;
+          var g = slot._group.slice().sort(function(a, b) { return (a.chunkIndex || 0) - (b.chunkIndex || 0); });
+          var e5 = { from: "ke", text: g.map(function(x) { return x.text || ""; }).join(""), time: g[0].time || "", model: "" };
+          for (var gi = 0; gi < g.length; gi++) {
+            if (!e5.model && g[gi].model) e5.model = g[gi].model;
+            if (!e5.timestamp && g[gi].timestamp) e5.timestamp = g[gi].timestamp;
+            if (g[gi].globalId) e5.globalId = g[gi].globalId;
+          }
+          if (g.length > 1) e5.chunks = g.map(function(x) { return x.text || ""; });
+          return e5;
+        });
+        localStorage.setItem(keys5[fi], JSON.stringify(final5.slice(-500)));
+      } catch (e) {}
+    }
+    localStorage.setItem("cyberboss-chat-cleaned-v5", "1");
+  })();
+
   // Only load current model's localStorage (not cross-model) — now cleaned
   let localMsgs = [];
   try {
@@ -2120,27 +2171,24 @@ async function initHistory() {
     localStorage.setItem("bm-server-v1", "1");
   }
 
+  // A local entry with a chunks array is the richer copy of the server's
+  // merged full-text message (same globalId) — skip the server copy up front,
+  // BEFORE dedup, or the globalId match would eat the local one instead
+  const localChunkGids = new Set();
+  for (const m of localMsgs) {
+    if (m.globalId && Array.isArray(m.chunks) && m.chunks.length) localChunkGids.add(m.globalId);
+  }
   // Merge: server messages take priority, dedup via all candidate keys
   const seen = new Set();
   const merged = [];
   for (const m of [...serverMsgs, ...localMsgs]) {
+    if (m.globalId && localChunkGids.has(m.globalId) && !m.chunks) continue;
     var keys = msgDedupKeys(m);
     if (keys.some(function(k) { return seen.has(k); })) continue;
     keys.forEach(function(k) { seen.add(k); });
     merged.push(m);
   }
   merged.sort(cmpMsg);
-  // Remove server full-text messages superseded by persisted chunks
-  const chunkGlobalIds = new Set();
-  for (var ci = 0; ci < merged.length; ci++) {
-    if (merged[ci].chunkGroupId && merged[ci].globalId) chunkGlobalIds.add(merged[ci].globalId);
-  }
-  if (chunkGlobalIds.size > 0) {
-    merged = merged.filter(function(m) {
-      if (m.globalId && chunkGlobalIds.has(m.globalId) && !m.chunkGroupId) return false;
-      return true;
-    });
-  }
   const cur = (settings.model || "").trim();
   history = merged.filter(m => !m.model || m.model === cur);
   for (const m of history) renderMsg(m, false);
@@ -2158,6 +2206,9 @@ function msgDedupKeys(m) {
   var keys = [];
   if (m.globalId) keys.push(m.globalId);
   if (m.id) keys.push(m.id);
+  // thinking entries: the chat-ds page writes a local copy (no globalId) and the
+  // server stores its own (with globalId) — turnId is the only shared identity
+  if (m.from === "thinking" && m.turnId) keys.push("thinking|" + m.turnId);
   // Always include the content fingerprint as cross-source bridge
   keys.push((m.timestamp || "") + "|" + (m.text || "").slice(0, 60));
   return keys;
@@ -2207,6 +2258,44 @@ initHistory();
 
 let _msgIdx = 0;
 function renderMsg(msg, save = true) {
+  // Completed COT entries (written by the chat-ds page and by the server's
+  // /api/messages) render as a static collapsible thinking block, not a bubble
+  if (msg.from === "thinking") {
+    const div = document.createElement("div");
+    div.className = "msg ke";
+    div.setAttribute("data-msg-id", msg.globalId || msg.id || `msg-${Date.now()}-${_msgIdx++}`);
+    const inline = document.createElement("div");
+    inline.className = "thinking-inline";
+    if (msg.turnId) inline.dataset.turnId = msg.turnId;
+    inline.innerHTML = '<div class="thinking-row">'
+      + '<div class="thinking-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>'
+      + '<div class="thinking-inline-header"><span class="thinking-inline-arrow">▼</span> <span class="thinking-inline-label">已思考完毕</span></div>'
+      + '</div>';
+    const body = document.createElement("div");
+    body.className = "thinking-inline-body";
+    body.textContent = msg.text || "";
+    inline.appendChild(body);
+    div.appendChild(inline);
+    messagesEl.appendChild(div);
+    scrollBottom();
+    if (save) { history.push(msg); saveHistory(history); }
+    return div;
+  }
+  // A ke entry carrying a chunks array is one logical message rendered as
+  // multiple bubbles (拆分). Storage keeps the single entry; the split is
+  // purely a render-time effect, so refresh and live views stay identical.
+  if (msg.from !== "you" && Array.isArray(msg.chunks) && msg.chunks.length > 1) {
+    let firstDiv = null;
+    for (let ci = 0; ci < msg.chunks.length; ci++) {
+      const isLast = ci === msg.chunks.length - 1;
+      const part = { from: msg.from, text: msg.chunks[ci], time: msg.time };
+      if (isLast && msg.images) part.images = msg.images;
+      const d = renderMsg(part, false);
+      if (ci === 0) firstDiv = d;
+    }
+    if (save) { history.push(msg); saveHistory(history); }
+    return firstDiv;
+  }
   const div = document.createElement("div");
   div.className = `msg ${msg.from === "you" ? "you" : "ke"}`;
   const msgId = msg.globalId || msg.id || `msg-${Date.now()}-${_msgIdx++}-${Math.random().toString(36).slice(2,6)}`;
@@ -2634,6 +2723,9 @@ function loadCachedThinking() {
     items.forEach(function(item) {
       if (item.phase !== "final") return; // 只恢复已完成的 thinking
       if (!item.fingerprint) return;       // 无指纹无法匹配
+      // history 里已有同 turnId 的 thinking 条目（chat-ds/服务端持久化），
+      // 它会作为独立块渲染 —— 这里再 attach 一份就是双份 COT
+      if (history.some(function(h) { return h.from === "thinking" && h.turnId && h.turnId === item.turnId; })) return;
       thinkingStore.turns[item.turnId] = {
         phase: "final",
         text: item.text,
@@ -2846,46 +2938,53 @@ function connect() {
     try {
       const msg = JSON.parse(ev.data);
       switch (msg.type) {
-      case "text":
-        if (msg.done) saveMessageToModelStorage(msg);
-        if (!msgMatchesModel(msg)) break;
+      case "text": {
+        // 一条逻辑消息 = 一个 history entry（text 整条 + chunks 数组）。
+        // live 时逐 chunk 画气泡（DOM 与 renderMsg 渲染 entry.chunks 的结构一致），
+        // 但只在 done 时写入 history —— 拆分是渲染效果，不进数据层。
+        const bufKey = String(msg.model || "").trim();
+        const isFirst = (!msg.chunkIndex || msg.chunkIndex === 0);
+        if (isFirst || !chunkBuf[bufKey]) chunkBuf[bufKey] = [];
+        chunkBuf[bufKey].push(String(msg.text || ""));
+        let doneEntry = null;
+        if (msg.done) {
+          const parts = chunkBuf[bufKey];
+          delete chunkBuf[bufKey];
+          doneEntry = { from: "ke", text: parts.join(""), time: now(), timestamp: new Date().toISOString(), model: bufKey };
+          if (msg.globalId) doneEntry.globalId = msg.globalId;
+          if (parts.length > 1) doneEntry.chunks = parts.slice();
+        }
+        if (!msgMatchesModel(msg)) {
+          // 非当前 model：完整 entry 落到它自己的 storage，切换 zone 时由 initHistory 读出
+          if (doneEntry) saveEntryToModelStorage(doneEntry);
+          break;
+        }
         if (msg.done) {
           hideTyping();
           finalizeAllThinking();
         }
-        // 多气泡模式：每个 chunk 独立气泡，全部持久化
-        {
-          const isFirst = (!msg.chunkIndex || msg.chunkIndex === 0);
-          if (isFirst) {
-            currentChunkGroupId = 'cg-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+        if (isFirst && streamingMsgEl && !streamingMsgEl.querySelector(".msg-bubble")) {
+          // 复用 thinking placeholder 的容器，只补气泡
+          var oldInline2 = streamingMsgEl.querySelector(".thinking-inline");
+          if (oldInline2 && msg.turnId) oldInline2.dataset.turnId = msg.turnId;
+          ensureBubbleInStreaming(msg.text);
+        } else {
+          var div = renderMsg({ from: "ke", text: msg.text, time: now() }, false);
+          if (isFirst && div) {
+            streamingMsgEl = div;
+            attachThinkingToMessage(div, msg.turnId || "");
           }
-          if (isFirst && streamingMsgEl && !streamingMsgEl.querySelector(".msg-bubble")) {
-            // 复用 thinking placeholder 的容器，只补气泡
-            var oldInline2 = streamingMsgEl.querySelector(".thinking-inline");
-            if (oldInline2 && msg.turnId) oldInline2.dataset.turnId = msg.turnId;
-            ensureBubbleInStreaming(msg.text);
-            const bubble = streamingMsgEl.querySelector(".msg-bubble");
-            if (bubble) bubble.innerHTML = esc(msg.text) + '<div class="time">' + now() + '</div>';
-            history.push({ from:"ke", text:msg.text, time: now(), chunkGroupId: currentChunkGroupId, chunkIndex: msg.chunkIndex || 0 });
-            saveHistory(history);
-          } else {
-            var chunkData = { from:"ke", text:msg.text, time: now(), chunkGroupId: currentChunkGroupId, chunkIndex: msg.chunkIndex || 0 };
-            if (msg.done && msg.globalId) chunkData.globalId = msg.globalId;
-            var div = renderMsg(chunkData, true);
-            if (isFirst && div) {
-              streamingMsgEl = div;
-              attachThinkingToMessage(div, msg.turnId || "");
-            }
-          }
-          if (msg.done) {
-            notify(msg.text);
-            streamingMsgEl = null;
-            streamingText = "";
-            currentChunkGroupId = null;
-          }
+        }
+        if (doneEntry) {
+          history.push(doneEntry);
+          saveHistory(history);
+          notify(doneEntry.text);
+          streamingMsgEl = null;
+          streamingText = "";
         }
         scrollBottom();
         break;
+      }
       case "typing":
         if (msgMatchesModel(msg)) msg.status === 1 ? showTyping() : hideTyping();
         break;
@@ -2931,7 +3030,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=37").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=38").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
@@ -2981,7 +3080,7 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
-<script src="/js/chat-ds.js?v=37"></script>
+<script src="/js/chat-ds.js?v=38"></script>
 <script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->
