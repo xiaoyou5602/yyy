@@ -258,6 +258,90 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: sessions (APP端 Claude Code session JSONL) ──
+    const sessionsDir = path.join(process.env.HOME || "/root", ".claude", "projects", "-root");
+
+    // GET /api/sessions — 会话列表（session JSONL 文件）
+    if (urlPath === "/api/sessions" && req.method === "GET") {
+      try {
+        const days = Math.min(Number.parseInt(query.days, 10) || 7, 60);
+        const cutoff = Date.now() - days * 86400_000;
+        const results = [];
+        let entries;
+        try { entries = fs.readdirSync(sessionsDir); } catch { entries = []; }
+        for (const name of entries) {
+          if (!name.endsWith(".jsonl")) continue;
+          const filePath = path.join(sessionsDir, name);
+          let stat;
+          try { stat = fs.statSync(filePath); } catch { continue; }
+          if (stat.mtimeMs < cutoff) continue;
+          const threadId = name.replace(/\.jsonl$/, "");
+          // 读第一行和最后一行获取 preview 和日期范围
+          let firstLine = "", lastLine = "", lineCount = 0;
+          try {
+            const raw = fs.readFileSync(filePath, "utf8");
+            const lines = raw.trim().split("\n");
+            lineCount = lines.length;
+            firstLine = lines[0] || "";
+            lastLine = lines[lines.length - 1] || "";
+          } catch {}
+          let preview = "", dateRange = [];
+          try {
+            const first = JSON.parse(firstLine);
+            preview = (first.content || first.message?.content || "").slice(0, 100);
+            const ts = first.timestamp;
+            if (ts) dateRange.push(ts.slice(0, 10));
+          } catch {}
+          try {
+            const last = JSON.parse(lastLine);
+            const ts = last.timestamp;
+            if (ts) dateRange.push(ts.slice(0, 10));
+          } catch {}
+          results.push({
+            threadId,
+            messageCount: lineCount,
+            dateRange: [...new Set(dateRange)].sort(),
+            preview,
+            mtime: stat.mtimeMs,
+          });
+        }
+        results.sort((a, b) => b.mtime - a.mtime);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(results));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // GET /api/sessions/:threadId — 下载单个 session JSONL
+    const sessionMatch = urlPath.match(/^\/api\/sessions\/([^/]+)$/);
+    if (sessionMatch && req.method === "GET") {
+      try {
+        const threadId = decodeURIComponent(sessionMatch[1]);
+        // 防止路径穿越
+        if (threadId.includes("..") || threadId.includes("/") || threadId.includes("\\")) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "Invalid threadId" }));
+          return;
+        }
+        const filePath = path.join(sessionsDir, `${threadId}.jsonl`);
+        if (!fs.existsSync(filePath)) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: "Session not found" }));
+          return;
+        }
+        const raw = fs.readFileSync(filePath, "utf8");
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(raw);
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── API: memory-items (统一记忆库) ──
     if (urlPath === "/api/memory-items" && req.method === "GET") {
       try {
