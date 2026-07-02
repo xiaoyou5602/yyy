@@ -32,9 +32,16 @@ function createMessageStore(stateDir) {
 
   function saveDay(dateStr, messages) {
     ensureDir();
-    fs.writeFileSync(getFilePath(dateStr), JSON.stringify(messages, null, 2), "utf8");
+    var fp = getFilePath(dateStr);
+    var tmp = fp + "." + Date.now() + ".tmp";
+    // Atomic write: temp file then rename prevents corruption on crash
+    fs.writeFileSync(tmp, JSON.stringify(messages, null, 2), "utf8");
+    try {
+      fs.renameSync(tmp, fp);
+    } catch (_) {
+      try { fs.unlinkSync(tmp); } catch (__) {}
+    }
   }
-
   return {
     save({ channel, from, text, time, images, model, globalId }) {
       const now = new Date();
