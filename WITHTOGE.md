@@ -192,7 +192,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 调参台完善 — 待验证。所有页面独立微调（13 个 tab），点击遮罩关闭，scrollbar 可见。重启后 toge 自己验证
 - [ ] 三模型页面拆分 — 把当前三个模型页面拆成独立三页，各自不同主题色，可自己画配件/垫图装饰
 - [ ] 日历页去"记忆"跳转 — 删除日历页面的"记忆"跳转入口，计划栏放最底层，确认日历组件是否拆好
-- [x] 新消息自动滚到底端 — **已改需求**：不再无条件强制滚动。改为：停在底部时新消息跟随滚动；往上翻看历史时新消息不打断阅读，改为在悬浮按钮上显示未读角标数字，点击才跳到底部并清零。index.html（5 个模型 zone）+ chat-ds.html（DS 专属页，日常主聊天面）均已改
+- [x] 新消息自动滚到底端 — **已改需求**：不再无条件强制滚动。改为：停在底部时新消息跟随滚动；往上翻看历史时新消息不打断阅读，改为在悬浮按钮上显示未读角标数字，点击才跳到底部并清零。index.html（5 个模型 zone）+ js/chat-ds.js（真正跑在 APP 里的 DS 主聊天页逻辑）均已改。踩坑：一开始改错了孤儿文件 `chat-ds.html`（全仓库无引用，已删），后来才找到真正被 index.html 引入的 js/chat-ds.js 补上
 - [ ] 气泡拆分多 bug — **已修待验证**（07-03 commit dbc5665，已部署 VPS）。根因：①`const merged` 重赋值 TypeError 导致整页历史不渲染；②本地存逐 chunk、服务端存整条，dedup 吃掉带 globalId 的末 chunk 导致双份并存；③`/api/messages` 的 thinking 条目被当普通气泡渲染。修法：history 一条逻辑消息一个 entry（text+chunks），拆分只做渲染，renderMsg 唯一入口。验证：APP 刷新后拆分气泡还在、无双份、COT 显示为可折叠块
 - [ ] 通知延迟+页内弹出+掉线显示在线 — 待验证。APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s
 - [ ] APP 加强制刷新键 — 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史
@@ -235,3 +235,4 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | **06/23**    | **聊天记录存档导入**：15 个 MD 存档解析器 + **记忆库统一 MemoryItem**（conversation+letter）+ **信件区**（CRUD+iframe 阅读+编辑器）；设置页去昵称 + 世界书 AI 名字按模型同步标题栏                                                                                                                                                                                            |
 | **06/25**    | **VPS 东京正式上线**：LocVPS ¥36/月，systemd 守护 3 服务，告别 Windows guardian。**Notion MCP** 部署：7 工具 + notion.withtoge.us 域名                                                                                                                                                                                                                                        |
 | **06/29~30** | **DS 聊天页 Gemini 暖瓷风复刻**：独立 `chat-ds.html` + 按标准流程嵌入 `#chat-ds-page`（CSS/JS 拆分、showPage、slide 动画、侧边栏路由）。踩坑：CSS 静默替换失败、connect() 被插坏、selectSidebarModel 误删 16 行。GPT 审查建议以后 UI 大改拆 UI+接入两阶段                                                                                                                     |
+| **07/03**    | **新消息滚动改未读角标**：停底部跟随、翻历史不打扰，悬浮按钮加未读数（index.html + js/chat-ds.js）；**清缓存白屏修复**（另一会话，commit `bfb2ff4`）；**仓库大扫除**：删 8 个一次性迁移脚本 + 孤儿文件 `chat-ds.html`（全仓库无引用，真正的 DS 页逻辑在 js/chat-ds.js）+ 旧 APK 构建产物                                                                                          |
