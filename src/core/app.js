@@ -677,11 +677,27 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
     let fullThinking = "";
     let textBuffer = "";
     let thinkingBuffer = "";
+    // API 路径没有 runtime turnId，自己生成一个，串联流式思考显示与存档（前端按 turnId 归组/dedup）
+    const apiTurnId = "api-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
 
     const flushText = (isFinal = false) => {
       if (!textBuffer) return;
-      const chunk = textBuffer;
-      textBuffer = "";
+      let chunk;
+      if (isFinal) {
+        chunk = textBuffer;
+        textBuffer = "";
+      } else {
+        // 只发送到最后一个句末/段落边界，残句留在缓冲区，避免气泡从句子中间断开
+        let cut = -1;
+        for (const ch of ["\n", "。", "！", "？", "…", "～"]) {
+          const idx = textBuffer.lastIndexOf(ch);
+          if (idx > cut) cut = idx;
+        }
+        if (cut < 0) return;
+        chunk = textBuffer.slice(0, cut + 1);
+        textBuffer = textBuffer.slice(cut + 1);
+      }
+      if (!chunk.trim()) return;
       this.channelAdapter.sendText({
         userId: prepared.senderId,
         text: chunk,
@@ -699,6 +715,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
       this.channelAdapter.sendThinking({
         userId: prepared.senderId,
         text: chunk,
+        turnId: apiTurnId,
         model: sessionModel,
       }).catch(() => {});
     };
@@ -746,6 +763,9 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
           }
         },
         onText: (chunk) => {
+          // 正文开始 = 思考已结束。先把残留思考发出去，防止短思考（<200 字从未 flush）
+          // 拖到 onDone 才发，被前端当成第二轮思考渲染出重复空块
+          if (!fullText && thinkingBuffer) flushThinking();
           fullText += chunk;
           textBuffer += chunk;
           // 只在句子结束（。！？）或段落边界（双换行）或超 500 字时 flush
@@ -763,7 +783,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
             await this.channelAdapter.saveThinking({
               userId: prepared.senderId,
               text: fullThinking.slice(0, 5000),
-              turnId: "",
+              turnId: apiTurnId,
               model: sessionModel,
             }).catch(() => {});
           }
