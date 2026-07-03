@@ -141,7 +141,8 @@ class StreamDelivery {
         state.turnId = turnId || state.turnId;
         this.captureTurnCompletionText(state, event.payload.text);
         // Persist thinking BEFORE flush so globalId ordering puts thinking before reply
-        if (state.thinkingText && typeof this.channelAdapter.saveThinking === "function") {
+        // 系统轮（checkin）思考不存档——静默轮会在聊天记录里留下孤零零的思考条目
+        if (state.thinkingText && state.replyTarget?.provider !== "system" && typeof this.channelAdapter.saveThinking === "function") {
           const thinkingModel = resolveModelForThread(this.sessionStore, threadId) || state.replyTarget?.model || "";
           await this.channelAdapter.saveThinking({
             userId: state.replyTarget?.userId || "",
@@ -161,6 +162,8 @@ class StreamDelivery {
         const state = this.ensureRunState(threadId, turnId);
         this.attachReplyTarget(state);
         state.thinkingText = normalizeLineEndings(event.payload.text);
+        // 系统轮（checkin 等）的思考不广播——多数以 silent 收场，聊天页会留下没有正文的思考块
+        if (state.replyTarget?.provider === "system") return;
         // thinking 是广播事件不需要 userId 绑定，target 可能尚未就绪
         if (typeof this.channelAdapter.sendThinking === "function") {
           await this.channelAdapter.sendThinking({
