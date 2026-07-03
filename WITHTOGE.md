@@ -196,7 +196,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] APP 加强制刷新键 — 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史
 - [x] 清缓存后气泡全空 — **已修（07-03 commit bfb2ff4，已部署 VPS，浏览器模拟清缓存验证通过：358 条历史自动拉回）**。根因：loadModels（含空 model 回填默认值的兜底）和 initHistory 并行竞态，initHistory 抢跑时带空 `?model=` 拉服务端被过滤成空数组 → 白屏。修法：initHistory `await modelsReady`。APP 端 toge 再验证一次即可归档
 - [ ] Opus 页显示思考摘要 — Claude API 的 thinking 支持 `display: "summarized"` 返回思考摘要（原始 COT 任何客户端都拿不到，摘要是上限）。`direct-api-client.js` 请求加 `thinking: {type: "adaptive", display: "summarized"}`，流式收 thinking_delta，接到 APP 已有的思考显示链路（计时器+折叠块）。注意：adaptive thinking 时 temperature/top_p 等采样参数要移除，否则 400
-- [ ] 收藏不同步+收藏夹内容丢失（07-03 toge 报）— 点击对话收藏后收藏夹里看不到；且原先收藏夹内容丢了。排查方向：收藏夹已改服务端持久化（bookmarks.json API），怀疑收藏写入还走 localStorage 旧路径没调 API，丢失可能与清缓存/一次性迁移标记（bm-server-v1）有关，先查服务端 bookmarks.json 是否还有旧数据
+- [ ] 收藏不同步+收藏夹内容丢失 — **已修待验证（07-03 commit 0a07472，已部署）**。真相：数据没丢（服务端 3 条完好），是 06/29 thinking 重构误删了 `renderBookmarksList()`，收藏夹页一开就 ReferenceError 空白。已恢复函数 + 修 jumpToConversation 异步误用 + 服务端 POST 改按 id 合并防覆盖。toge 打开收藏夹页看到 3 条旧收藏即验证通过
 - [ ] 小手机日历组件今日不加亮（07-03 toge 报）— 日历小组件没有给今天的日期自动高亮。`index.html` phone-home 区段的日历渲染逻辑，对比 today 的判断可能有时区/日期格式问题
 - [ ] 小手机备忘录不持久化（07-03 toge 报）— 备忘录写完刷新就消失，没真正写 localStorage（或写了没在初始化时读回）。`index.html` phone-home 备忘录逻辑
 
@@ -237,3 +237,4 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 | **06/25**    | **VPS 东京正式上线**：LocVPS ¥36/月，systemd 守护 3 服务，告别 Windows guardian。**Notion MCP** 部署：7 工具 + notion.withtoge.us 域名                                                                                                                                                                                                                                        |
 | **06/29~30** | **DS 聊天页 Gemini 暖瓷风复刻**：独立 `chat-ds.html` + 按标准流程嵌入 `#chat-ds-page`（CSS/JS 拆分、showPage、slide 动画、侧边栏路由）。踩坑：CSS 静默替换失败、connect() 被插坏、selectSidebarModel 误删 16 行。GPT 审查建议以后 UI 大改拆 UI+接入两阶段                                                                                                                     |
 | **07/03**    | **新消息滚动改未读角标**：停底部跟随、翻历史不打扰，悬浮按钮加未读数（index.html + js/chat-ds.js）；**清缓存白屏修复**（另一会话，commit `bfb2ff4`）；**仓库大扫除**：删 8 个一次性迁移脚本 + 孤儿文件 `chat-ds.html`（全仓库无引用，真正的 DS 页逻辑在 js/chat-ds.js）+ 旧 APK 构建产物                                                                                      |
+| **07/03 ②**  | **气泡拆分三 bug 修复**（`dbc5665`）：history 一条消息一个 entry，拆分只做渲染，renderMsg 唯一入口；**md 同步 git 化**（`7ac341e`）：废除覆盖式同步，hook 重写（auto-commit+rebase，纯 md 不重启服务），/root/CLAUDE.md 软链接，本地 sync-md.ps1 计划任务；**收藏夹考古**（`0a07472`）：恢复 06/29 误删的 renderBookmarksList，服务端 POST 改按 id 合并。反模式总结：三处「覆盖式写入」同病同治 |
