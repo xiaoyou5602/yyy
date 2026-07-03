@@ -1,3 +1,40 @@
+## 2026-07-03 · 气泡拆分三 bug + md 同步 git 化 + 收藏夹考古 · `#render-path` `#sync-arch` `#git-archaeology`
+
+### 背景
+
+从凌晨接力到白天的一整场:先按交接文档(`c:\tmp\cot-handoff.md`)修气泡拆分,顺藤摸瓜发现「刷新丢拆分/双份并存/COT 错位」是三个叠加 bug;白天 toge 提出「云端 md 覆盖本地导致改动丢失」的架构问题,把 md 同步整体 git 化;最后收藏夹「内容丢失」结果是一桩 6/29 的悬案。
+
+### 战役一:气泡拆分三 bug(commit `dbc5665`)
+
+根因各自独立但症状纠缠:①`initHistory` 里 `const merged` 被重新赋值,一触发就 TypeError 静默炸掉整页渲染(「刷新后拆分消失」其实是全部消失);②本地 localStorage 逐 chunk 存、服务端存整条,merge 时服务端整条先进场把带同 globalId 的末 chunk 吃掉,「用拆分替代整条」的过滤永远拿不到证据 → 双份并存;③`/api/messages` 返回的 thinking 条目主页面 renderMsg 不认识,渲染成普通气泡还插错位。
+
+修法采纳交接文档方向:**history 一条逻辑消息一个 entry(text+chunks 数组),拆分只是渲染效果,renderMsg 是唯一渲染入口**。live 按 model 分桶积累 chunk,done 时才入库;旧逐 chunk 数据一次性迁移(cleanup v5)。踩坑:一开始想让主页面直接过滤服务端 thinking 条目,后来发现 chat-ds 页和主页面 DS zone **共用同一个 localStorage key**,过滤方案会在 saveHistory 覆写时把 chat-ds 存的 COT 永久抹掉——改成 renderMsg 正确渲染 thinking 块 + turnId 去重。
+
+「丢了一小段聊天」的后续排查:服务端数据完好,是浏览器旧缓存跑旧 JS,清缓存自愈。教训:先查数据层再怀疑代码。
+
+### 战役二:md 同步 git 化(commits `7ac341e` `ae98e2a`)
+
+toge 描述的痛点:APP 端改的待办要同步到本地,只能定时用云端 md 整文件覆盖本地,本地/IDE 端的改动会被吃掉。排查发现真凶藏得更深:**裸仓库 post-receive hook 是 `git reset --hard`**——任何人 push 代码,VPS 工作副本上未 commit 的 md 改动直接蒸发;且 hook 每次 push 都重启 cyberboss,纯 md 同步也会打断 toge 聊天。
+
+新架构:真源 = git 仓库。`/root/CLAUDE.md` 改为软链接指向仓库文件(hook 内置断链自愈);hook 重写为「先 auto-commit 保住未提交 md 改动 → rebase 合并 → 推回双端可见 → **仅非 md 变动才重启服务**」;VPS 侧 auto-sync.sh 重写(监控目录防 inode 失效、两个 md 都盯、push origin+github)并入 systemd 守护;本地新增 `scripts/sync-md.ps1`(auto-commit → pull --rebase --autostash → push → 回写 ~/CLAUDE.md),计划任务每 30 分钟。本地 `~/CLAUDE.md` 因无管理员权限建不了软链接,用「cp + 基线指纹」等价兜底,脚本检测到链接自动降级为 no-op。
+
+端到端实测:VPS 加行 8 秒自动落库 → 本地拉到;本地删行 → VPS 消失(删除正确传播不复活);冲突停下举手;幂等。踩坑:PowerShell 5.1 把无 BOM UTF-8 中文脚本解析成乱码语法错误 → 脚本全 ASCII;首轮无基线时 cp 兜底把刚删的测试行又抄回来 → baseline hash 区分「~/被编辑」和「~/仅落后」。
+
+### 战役三:收藏夹「丢失」考古(commit `0a07472`)
+
+toge 报「收藏不同步 + 原有收藏丢失」。先查数据:服务端 bookmarks.json 三条完好。再查代码:**`renderBookmarksList()` 只有调用点没有定义**——`git log -S` 锁定 6/29「恢复 thinking 全套逻辑」那次大改把它误删(和当天误删 selectSidebarModel 16 行是同一场事故)。页面一打开就 ReferenceError 空白,「旧的丢了」和「新的不显示」是同一个病。从 `51a3b6f^` 恢复函数;顺手修掉 `jumpToConversation` 把异步 `loadBookmarks()` 当同步数组用的必炸点;服务端 POST 从全量覆盖改为按 id 合并——和 md 同步同款的「覆盖式写入」隐患,一起根治。
+
+### 设计决策
+
+- **「覆盖」是这一天反复出现的反模式**:md 定时覆盖、hook reset --hard、收藏夹全量 POST——三处同病同治,全部改成「改动落库/合并,冲突可见」
+- 拆分渲染与数据分离后,收藏/搜索/同步等所有下游只面对「一条消息一个 entry」,不再感知 chunk
+- Fable 5 调研结论记入待办:Claude 系原始 COT 任何客户端都拿不到,`display:"summarized"` 摘要是上限,Opus 页思考显示按此实现
+
+> 📦 [`dbc5665`](https://github.com/xiaoyou5602/yyy/commit/dbc5665) 气泡拆分;[`bfb2ff4`](https://github.com/xiaoyou5602/yyy/commit/bfb2ff4) 清缓存白屏(详见下一篇「顺带」);[`7ac341e`](https://github.com/xiaoyou5602/yyy/commit/7ac341e) [`ae98e2a`](https://github.com/xiaoyou5602/yyy/commit/ae98e2a) md 同步 git 化;[`0a07472`](https://github.com/xiaoyou5602/yyy/commit/0a07472) 收藏夹三连
+> 关键文件:`index.html`、`js/chat-ds.js`、`ws-server.js`、`scripts/sync-md.ps1`、`scripts/auto-sync.sh`、裸仓库 `hooks/post-receive`
+
+---
+
 ## 2026-07-03 · 新消息滚动改未读角标 + 仓库大扫除 · `#scroll-ux` `#dead-code`
 
 ### 背景
