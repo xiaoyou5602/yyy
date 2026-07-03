@@ -735,6 +735,8 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
         const MAX_CHARS = 40000;
         for (let i = raw.length - 1; i >= 0; i--) {
           const m = raw[i];
+          // thinking 存档（07-03 起 API 路径也 saveThinking）不算对话内容，混入会被当成克说过的话
+          if (m.from === "thinking") continue;
           const role = m.from === "you" ? "user" : "assistant";
           const text = (m.text || "").trim();
           if (!text) continue;
