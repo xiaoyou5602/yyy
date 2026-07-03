@@ -200,6 +200,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 收藏不同步+收藏夹内容丢失 — **已修，toge 验收通过（07-03 commit 0a07472）**。真相：数据没丢（服务端 3 条完好），是 06/29 thinking 重构误删了 `renderBookmarksList()`，收藏夹页一开就 ReferenceError 空白。已恢复函数 + 修 jumpToConversation 异步误用 + 服务端 POST 改按 id 合并防覆盖。toge 打开收藏夹页看到 3 条旧收藏即验证通过
 - [x] 小手机日历组件今日不加亮（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`renderCalWidget` 第一行（前 `7-off` 天）循环没有 `today` 判断，7 月 3 日恰在第一周所以不亮。修法：第一行循环也加 `d === today` 检查，与后续行保持一致
 - [x] 小手机备忘录不持久化（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`phAddTodo`/`phToggleTodo`/edit/delete 均无 localStorage 读写。修法：加 `saveTodos()`/`loadTodos()` 函数（存 `withtoge-ph-todo`），phInit 时加载，增删改查后均保存
+- [ ] 刷新键疑似摆设（07-04 toge 报）— 加了↺按钮但点击可能没真正触发同步，需排查
+- [ ] APP 端权限白名单未生效（07-04 toge 报）— 权限白名单配置了但不生效，待排查
 
 ### 后端 / 服务
 
