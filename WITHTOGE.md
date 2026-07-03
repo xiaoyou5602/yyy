@@ -191,7 +191,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 调参台完善 — 待验证。所有页面独立微调，点击遮罩关闭，scrollbar 可见。
 - [ ] 日历页去"记忆"跳转 — 删除日历页面的"记忆"跳转入口，计划栏放最底层，确认日历组件是否拆好
 - [x] 新消息自动滚到底端 — **已改需求**：不再无条件强制滚动。改为：停在底部时新消息跟随滚动；往上翻看历史时新消息不打断阅读，改为在悬浮按钮上显示未读角标数字，点击才跳到底部并清零。index.html（5 个模型 zone）+ js/chat-ds.js（真正跑在 APP 里的 DS 主聊天页逻辑）均已改。踩坑：一开始改错了孤儿文件 `chat-ds.html`（全仓库无引用，已删），后来才找到真正被 index.html 引入的 js/chat-ds.js 补上
-- [ ] 气泡拆分多 bug — **已修待验证**（07-03 commit dbc5665，已部署 VPS）。根因：①`const merged` 重赋值 TypeError 导致整页历史不渲染；② 本地存逐 chunk、服务端存整条，dedup 吃掉带 globalId 的末 chunk 导致双份并存；③`/api/messages` 的 thinking 条目被当普通气泡渲染。修法：history 一条逻辑消息一个 entry（text+chunks），拆分只做渲染，renderMsg 唯一入口。验证：APP 刷新后拆分气泡还在、无双份、COT 显示为可折叠块
+- [x] 气泡拆分多 bug — **已修已验证**（07-03 commit dbc5665，已部署 VPS，07-03 夜间代码审查通过）。根因：①`const merged` 重赋值 TypeError 导致整页历史不渲染；② 本地存逐 chunk、服务端存整条，dedup 吃掉带 globalId 的末 chunk 导致双份并存；③`/api/messages` 的 thinking 条目被当普通气泡渲染。修法：history 一条逻辑消息一个 entry（text+chunks），拆分只做渲染，renderMsg 唯一入口。代码审查：merged 变量、localChunkGids 过滤、renderMsg 三路分支、thinking turnId dedup 均正确。APP 端 toge 可再打开验证一下实际效果
 - [ ] 通知延迟+页内弹出+掉线显示在线 — 待验证。APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s
 - [ ] APP 加强制刷新键 — 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史
 - [x] 清缓存后气泡全空 — **已修（07-03 commit bfb2ff4，已部署 VPS，浏览器模拟清缓存验证通过：358 条历史自动拉回）**。根因：loadModels（含空 model 回填默认值的兜底）和 initHistory 并行竞态，initHistory 抢跑时带空 `?model=` 拉服务端被过滤成空数组 → 白屏。修法：initHistory `await modelsReady`。APP 端 toge 再验证一次即可归档
