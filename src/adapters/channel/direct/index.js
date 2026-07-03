@@ -9,6 +9,7 @@ const {
   normalizeLineEndings,
 } = require("../shared/chunking");
 const { createMessageStore } = require("../shared/message-store");
+const { createRecentContextWriter } = require("../../../services/recent-context-writer");
 
 const DIRECT_USER_ID = "direct-user";
 const DIRECT_CONTEXT_TOKEN = "direct-ctx-1";
@@ -39,6 +40,7 @@ function createDirectChannelAdapter(config) {
     return ts + "-" + rand + "-" + String(++globalMsgSeq).padStart(4, "0");
   }
   const messageStore = createMessageStore(stateDir);
+  const recentContextWriter = createRecentContextWriter({ stateDir, messageStore });
 
   function enqueueMessage(msg) {
     const images = Array.isArray(msg.images) ? msg.images : [];
@@ -91,6 +93,7 @@ function createDirectChannelAdapter(config) {
         model: m,
         globalId: msg.globalId,
       });
+      recentContextWriter.schedule();
     }
     if (pendingResolve) {
       const resolve = pendingResolve;
@@ -239,6 +242,7 @@ function createDirectChannelAdapter(config) {
       const gid = finalChunk ? nextGlobalId() : "";
       if (finalChunk) {
         messageStore.save({ channel: "direct", from: "ke", text: content.trim(), model: m, globalId: gid });
+        recentContextWriter.schedule();
       }
       const normalized = trimOuterBlankLines(normalizeLineEndings(content));
       if (preserveBlock) {

@@ -3,9 +3,10 @@ const { renderInstructionTemplate } = require("../../core/instructions-template"
 
 function buildOpeningTurnText(config, userText, provider = "") {
   const instructions = loadWechatInstructions(config);
+  const recentContext = provider === "direct" ? loadRecentContext(config) : "";
   const handoff = provider === "direct" ? loadHandoffContext(config) : "";
   const normalizedText = String(userText || "").trim();
-  if (!instructions && !handoff) {
+  if (!instructions && !recentContext && !handoff) {
     return normalizedText;
   }
   const parts = [
@@ -15,6 +16,9 @@ function buildOpeningTurnText(config, userText, provider = "") {
   ];
   if (instructions) {
     parts.push("", instructions);
+  }
+  if (recentContext) {
+    parts.push("", recentContext, "", "请自然地延续最近的对话，不要复述这段回顾。");
   }
   if (handoff) {
     parts.push("", "## 上一段手札（跨 Session 接力）", "", handoff, "", "请自然地延续上一段对话，不要复述这段手札。");
@@ -114,6 +118,20 @@ function loadInstructionFile(filePath, config = {}) {
     const result = renderInstructionTemplate(raw, config).trim();
     instructionCache.set(cacheKey, result);
     return result;
+  } catch {
+    return "";
+  }
+}
+
+// 系统自动生成的最近对话回顾（recent-context-writer.js 维护），文件自带标题和尾注说明
+function loadRecentContext(config = {}) {
+  try {
+    const path = require("path");
+    const stateDir = config.stateDir;
+    if (!stateDir) return "";
+    const filePath = path.join(stateDir, "recent-context.md");
+    if (!fs.existsSync(filePath)) return "";
+    return fs.readFileSync(filePath, "utf8").trim();
   } catch {
     return "";
   }

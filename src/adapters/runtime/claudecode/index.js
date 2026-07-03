@@ -489,7 +489,12 @@ function createClaudeCodeRuntimeAdapter(config) {
       }
 
       const { client, threadId: activeThreadId } = attached;
-      const outboundText = (openingTurn && provider !== "system") ? buildOpeningTurnText(config, text, provider) : text;
+      // 进程重启后内存无活 session，此时即使带旧 threadId resume 也几乎必失败（CLI 静默另开
+      // 新 session，即日志 session_replaced 的主要来源），消息不会走 opening 注入——新 session
+      // 拿不到 persona/回顾。所以重启后首条消息一律按 opening turn 构造；万一 resume 成功，
+      // 同一 session 重复收到一次指令，无害
+      const treatAsOpening = openingTurn || !hadExistingSession;
+      const outboundText = (treatAsOpening && provider !== "system") ? buildOpeningTurnText(config, text, provider) : text;
       const outboundThreadId = activeThreadId || threadId;
       if (outboundThreadId) {
         sessionStore.setThreadIdForWorkspace(bindingKey, workspaceRoot, outboundThreadId, metadata, runtimeId);
