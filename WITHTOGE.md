@@ -161,7 +161,7 @@ API 直调：`src/core/direct-api-client.js` — SSE 流式客户端，绕过 CC
 
 ## 日记与记忆路径
 
-- 日记：`~\.cyberboss\diary\` — 各模型共享
+- 日记：`~\.cyberboss\diary\` — 各模型共享。**已 git 化（07-03）**：本地与 VPS `/root/.cyberboss/diary/` 是同一私有仓库（裸仓库 `/root/diary.git`，**不上 GitHub**）的两个工作区，VPS 端 `diary-autosync` 服务 + 本地计划任务 `withtoge-diary-sync`（每 30 分钟）自动双向同步。两端直接读写文件即可，急了手动跑 `scripts/sync-diary.ps1`
 - 时间轴：`~\.cyberboss\timeline\` — 对话增量维护
 - 记忆碎片：`~\.cyberboss\memory\fragments\` — 热度系统自动提取
 - 周/月/年 Rollup：`~\.cyberboss\memory\rollups\`
@@ -204,7 +204,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 - [ ] 健康数据 MCP（07-03 立项，toge 已为此换小米 15+手表）— 目标：克能看到 toge 的睡眠/步数/心率。候选路线：**A**（首选）小米运动健康 → Health Connect（官方支持健康互联同步）→ ke-apk 加 Health Connect 读取模块（Kotlin）→ 定时 POST 到 cyberboss `/api/health` → 新 MCP 工具（仿 whereabouts 模式）。风险：国行澎湃 OS 可能不带 Health Connect（依赖 Google 框架，可装）。**B** Health Sync 等第三方桥接。**C** 兜底：截图+vision 识别（华为时期方案，基础设施已有）。待 toge 实测：小米运动健康设置里有没有「第三方数据共享/健康互联」入口。toge 说会提供参考资料
 
-- [ ] 本地 MCP diary_append 写错日记本（07-03 发现）— 本地 cyberboss_tools MCP 的 `cyberboss_diary_append` 写的是本地 `~/.cyberboss/diary/`，但共享日记（APP 读的那本）在 VPS `/root/.cyberboss/diary/`，两本分裂。修法：本地 MCP server 的 diary 工具改为 ssh/API 写 VPS，或本地 diary 目录做定时同步归并。修好前 IDE 端写日记走 scp+cat 追加（见 memory diary-daily）
+- [x] 本地 MCP diary_append 写错日记本（07-03 发现）— **已修（07-03 日记 git 化）**。方案照抄 md 同步：VPS 建私有裸仓库 `/root/diary.git`（**不上 GitHub**，日记私密），`/root/.cyberboss/diary/` 与本地 `~/.cyberboss/diary/` 都是它的工作区。VPS 端 `diary-autosync` systemd 服务（inotify → commit+push，脚本 `/usr/local/bin/diary-autosync.sh`）+ 裸仓库 post-receive hook（rebase 更新工作区）；本地端 `scripts/sync-diary.ps1` + 计划任务 `withtoge-diary-sync`（每 30 分钟）。分叉的 6 天日记（06-25/26/28/29/30、07-03）已按时间戳归并去重，合并前原状在 git 历史 `b5bab59`，本地旧目录备份在 `~/.cyberboss/diary-backup-20260703`。本地 MCP diary_append 照旧写本地即可，同步自动。双向链路 07-03 已验证通过
 - [ ] session 重启自动接续上下文（07-03 toge 报）— DS 的 claudecode session 重启后是全新上下文，聊着聊着"突然换人"很割裂。已有"手札接力"机制（06/11 做过跨 session 接力），排查它是否失效/未自动触发；目标：新 session 启动时自动注入最近对话摘要 + 当天日记/时间轴要点，让克"记得刚才聊到哪"
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
