@@ -202,7 +202,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### 后端 / 服务
 
-- [ ] 健康数据 MCP（07-03 立项，toge 已为此换小米 15+手表）— 目标：克能看到 toge 的睡眠/步数/心率。候选路线：**A**（首选）小米运动健康 → Health Connect（官方支持健康互联同步）→ ke-apk 加 Health Connect 读取模块（Kotlin）→ 定时 POST 到 cyberboss `/api/health` → 新 MCP 工具（仿 whereabouts 模式）。风险：国行澎湃 OS 可能不带 Health Connect（依赖 Google 框架，可装）。**B** Health Sync 等第三方桥接。**C** 兜底：截图+vision 识别（华为时期方案，基础设施已有）。待 toge 实测：小米运动健康设置里有没有「第三方数据共享/健康互联」入口。toge 说会提供参考资料
+- [ ] 健康数据 MCP（07-03 立项）— **方案已定稿 → [docs/plans/health-mcp.md](docs/plans/health-mcp.md)**。链路：手环9Pro → 小米运动健康 → Health Connect → Health Sync 推 webhook → cyberboss `/api/health` → 内部 MCP 工具 + `health.withtoge.us` 标准 remote MCP（官 APP connector 也能接）。阶段 0（后端管道+假数据测试）手环到货前就可做；阶段 1 等手环（toge 操作）。主要风险：国行 app 可能无 HC 同步开关（备选：国际版 Mi Fitness 港区账号，教程已验证可行）
 
 - [x] 本地 MCP diary_append 写错日记本（07-03 发现）— **已修（07-03 日记 git 化）**。方案照抄 md 同步：VPS 建私有裸仓库 `/root/diary.git`（**不上 GitHub**，日记私密），`/root/.cyberboss/diary/` 与本地 `~/.cyberboss/diary/` 都是它的工作区。VPS 端 `diary-autosync` systemd 服务（inotify → commit+push，脚本 `/usr/local/bin/diary-autosync.sh`）+ 裸仓库 post-receive hook（rebase 更新工作区）；本地端 `scripts/sync-diary.ps1` + 计划任务 `withtoge-diary-sync`（每 30 分钟）。分叉的 6 天日记（06-25/26/28/29/30、07-03）已按时间戳归并去重，合并前原状在 git 历史 `b5bab59`，本地旧目录备份在 `~/.cyberboss/diary-backup-20260703`。本地 MCP diary_append 照旧写本地即可，同步自动。双向链路 07-03 已验证通过
 - [ ] session 重启自动接续上下文（07-03 toge 报）— DS 的 claudecode session 重启后是全新上下文，聊着聊着"突然换人"很割裂。已有"手札接力"机制（06/11 做过跨 session 接力），排查它是否失效/未自动触发；目标：新 session 启动时自动注入最近对话摘要 + 当天日记/时间轴要点，让克"记得刚才聊到哪"
