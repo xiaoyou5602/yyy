@@ -48,9 +48,10 @@ async function sendApiTurn({
   };
   if (system && !isOpenAI) body.system = system;
   if (!isOpenAI && modelConfig.thinking) {
-    // 思考摘要：原始 COT 任何客户端都拿不到，summarized 是上限。
-    // adaptive thinking 时不能带 temperature/top_p/top_k（4.7+ 会 400）
-    body.thinking = { type: "adaptive", display: "summarized" };
+    // 思考显示。实测（2026-07-03）55api 中转会剥离 adaptive 模式（200 但流里无 thinking 块），
+    // 只有老式 enabled+budget_tokens 能透传（4.6 上 deprecated 但可用）。换直连官方 API 时改回
+    // { type: "adaptive", display: "summarized" }。约束：budget_tokens < max_tokens。
+    body.thinking = { type: "enabled", budget_tokens: 4096 };
     body.max_tokens = 16000; // thinking 消耗输出预算，4096 会被思考吃光
   }
 
