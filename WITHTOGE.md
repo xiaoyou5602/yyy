@@ -202,6 +202,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### 后端 / 服务
 
+- [ ] 本地 MCP diary_append 写错日记本（07-03 发现）— 本地 cyberboss_tools MCP 的 `cyberboss_diary_append` 写的是本地 `~/.cyberboss/diary/`，但共享日记（APP 读的那本）在 VPS `/root/.cyberboss/diary/`，两本分裂。修法：本地 MCP server 的 diary 工具改为 ssh/API 写 VPS，或本地 diary 目录做定时同步归并。修好前 IDE 端写日记走 scp+cat 追加（见 memory diary-daily）
 - [ ] session 重启自动接续上下文（07-03 toge 报）— DS 的 claudecode session 重启后是全新上下文，聊着聊着"突然换人"很割裂。已有"手札接力"机制（06/11 做过跨 session 接力），排查它是否失效/未自动触发；目标：新 session 启动时自动注入最近对话摘要 + 当天日记/时间轴要点，让克"记得刚才聊到哪"
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
