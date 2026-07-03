@@ -193,7 +193,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 新消息自动滚到底端 — **已改需求**：不再无条件强制滚动。改为：停在底部时新消息跟随滚动；往上翻看历史时新消息不打断阅读，改为在悬浮按钮上显示未读角标数字，点击才跳到底部并清零。index.html（5 个模型 zone）+ js/chat-ds.js（真正跑在 APP 里的 DS 主聊天页逻辑）均已改。踩坑：一开始改错了孤儿文件 `chat-ds.html`（全仓库无引用，已删），后来才找到真正被 index.html 引入的 js/chat-ds.js 补上
 - [x] 气泡拆分多 bug — **已修已验证**（07-03 commit dbc5665，已部署 VPS，07-03 夜间代码审查通过）。根因：①`const merged` 重赋值 TypeError 导致整页历史不渲染；② 本地存逐 chunk、服务端存整条，dedup 吃掉带 globalId 的末 chunk 导致双份并存；③`/api/messages` 的 thinking 条目被当普通气泡渲染。修法：history 一条逻辑消息一个 entry（text+chunks），拆分只做渲染，renderMsg 唯一入口。代码审查：merged 变量、localChunkGids 过滤、renderMsg 三路分支、thinking turnId dedup 均正确。APP 端 toge 可再打开验证一下实际效果
 - [ ] 通知延迟+页内弹出+掉线显示在线 — 待验证。APK v13：heartbeat 桥防页内重复弹、setOnlineStatus 同步前台通知状态、轮询 120s→60s
-- [ ] APP 加强制刷新键 — 服务重启/断连后 APP localStorage 可能丢消息，加手动刷新按钮重新拉服务端历史
+- [x] APP 加强制刷新键 — **已修（07-03 夜间自动任务）**。在 header-right 加↺刷新图标按钮，点击调用 `syncHistoryFromServer()` 重拉服务端历史，带 360° 旋转动画反馈
 - [x] 清缓存后气泡全空 — **已修（07-03 commit bfb2ff4，已部署 VPS，浏览器模拟清缓存验证通过：358 条历史自动拉回）**。根因：loadModels（含空 model 回填默认值的兜底）和 initHistory 并行竞态，initHistory 抢跑时带空 `?model=` 拉服务端被过滤成空数组 → 白屏。修法：initHistory `await modelsReady`。APP 端 toge 再验证一次即可归档
 - [ ] Opus 页显示思考摘要 — Claude API 的 thinking 支持 `display: "summarized"` 返回思考摘要（原始 COT 任何客户端都拿不到，摘要是上限）。`direct-api-client.js` 请求加 `thinking: {type: "adaptive", display: "summarized"}`，流式收 thinking_delta，接到 APP 已有的思考显示链路（计时器+折叠块）。注意：adaptive thinking 时 temperature/top_p 等采样参数要移除，否则 400
 - [ ] 收藏不同步+收藏夹内容丢失 — **已修待验证（07-03 commit 0a07472，已部署）**。真相：数据没丢（服务端 3 条完好），是 06/29 thinking 重构误删了 `renderBookmarksList()`，收藏夹页一开就 ReferenceError 空白。已恢复函数 + 修 jumpToConversation 异步误用 + 服务端 POST 改按 id 合并防覆盖。toge 打开收藏夹页看到 3 条旧收藏即验证通过
