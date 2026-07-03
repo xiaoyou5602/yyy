@@ -202,6 +202,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### 后端 / 服务
 
+- [ ] 健康数据 MCP（07-03 立项，toge 已为此换小米 15+手表）— 目标：克能看到 toge 的睡眠/步数/心率。候选路线：**A**（首选）小米运动健康 → Health Connect（官方支持健康互联同步）→ ke-apk 加 Health Connect 读取模块（Kotlin）→ 定时 POST 到 cyberboss `/api/health` → 新 MCP 工具（仿 whereabouts 模式）。风险：国行澎湃 OS 可能不带 Health Connect（依赖 Google 框架，可装）。**B** Health Sync 等第三方桥接。**C** 兜底：截图+vision 识别（华为时期方案，基础设施已有）。待 toge 实测：小米运动健康设置里有没有「第三方数据共享/健康互联」入口。toge 说会提供参考资料
+
 - [ ] 本地 MCP diary_append 写错日记本（07-03 发现）— 本地 cyberboss_tools MCP 的 `cyberboss_diary_append` 写的是本地 `~/.cyberboss/diary/`，但共享日记（APP 读的那本）在 VPS `/root/.cyberboss/diary/`，两本分裂。修法：本地 MCP server 的 diary 工具改为 ssh/API 写 VPS，或本地 diary 目录做定时同步归并。修好前 IDE 端写日记走 scp+cat 追加（见 memory diary-daily）
 - [ ] session 重启自动接续上下文（07-03 toge 报）— DS 的 claudecode session 重启后是全新上下文，聊着聊着"突然换人"很割裂。已有"手札接力"机制（06/11 做过跨 session 接力），排查它是否失效/未自动触发；目标：新 session 启动时自动注入最近对话摘要 + 当天日记/时间轴要点，让克"记得刚才聊到哪"
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
