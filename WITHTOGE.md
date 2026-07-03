@@ -197,8 +197,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 清缓存后气泡全空 — **已修（07-03 commit bfb2ff4，已部署 VPS，浏览器模拟清缓存验证通过：358 条历史自动拉回）**。根因：loadModels（含空 model 回填默认值的兜底）和 initHistory 并行竞态，initHistory 抢跑时带空 `?model=` 拉服务端被过滤成空数组 → 白屏。修法：initHistory `await modelsReady`。APP 端 toge 再验证一次即可归档
 - [ ] Opus 页显示思考摘要 — Claude API 的 thinking 支持 `display: "summarized"` 返回思考摘要（原始 COT 任何客户端都拿不到，摘要是上限）。`direct-api-client.js` 请求加 `thinking: {type: "adaptive", display: "summarized"}`，流式收 thinking_delta，接到 APP 已有的思考显示链路（计时器+折叠块）。注意：adaptive thinking 时 temperature/top_p 等采样参数要移除，否则 400
 - [ ] 收藏不同步+收藏夹内容丢失 — **已修待验证（07-03 commit 0a07472，已部署）**。真相：数据没丢（服务端 3 条完好），是 06/29 thinking 重构误删了 `renderBookmarksList()`，收藏夹页一开就 ReferenceError 空白。已恢复函数 + 修 jumpToConversation 异步误用 + 服务端 POST 改按 id 合并防覆盖。toge 打开收藏夹页看到 3 条旧收藏即验证通过
-- [ ] 小手机日历组件今日不加亮（07-03 toge 报）— 日历小组件没有给今天的日期自动高亮。`index.html` phone-home 区段的日历渲染逻辑，对比 today 的判断可能有时区/日期格式问题
-- [ ] 小手机备忘录不持久化（07-03 toge 报）— 备忘录写完刷新就消失，没真正写 localStorage（或写了没在初始化时读回）。`index.html` phone-home 备忘录逻辑
+- [x] 小手机日历组件今日不加亮（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`renderCalWidget` 第一行（前 `7-off` 天）循环没有 `today` 判断，7 月 3 日恰在第一周所以不亮。修法：第一行循环也加 `d === today` 检查，与后续行保持一致
+- [x] 小手机备忘录不持久化（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`phAddTodo`/`phToggleTodo`/edit/delete 均无 localStorage 读写。修法：加 `saveTodos()`/`loadTodos()` 函数（存 `withtoge-ph-todo`），phInit 时加载，增删改查后均保存
 
 ### 后端 / 服务
 

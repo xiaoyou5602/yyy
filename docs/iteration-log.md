@@ -1,3 +1,19 @@
+## 2026-07-03 夜间·小手机两 bug 修复（日历今日高亮 + 备忘录持久化）· `#phone-home` `#localstorage`
+
+### 背景
+
+无人值守夜间自动任务，toge 在 07-03 白天报了小手机主页的两个 bug，趁夜间自动任务修掉。
+
+### 日历今日不高亮
+
+`renderCalWidget` 里把日历格子分两段渲染：第一段循环渲染当月第一行（前 `7-off` 天，`off` 由第一天的周几决定），第二段循环渲染剩余行，只有第二段有 `d === today` 高亮判断。
+
+07 月 1 日是周三（getDay()=3），`off = 2`，第一行渲染 1-5 号，今天 3 号在第一行，第一行没检查 today → 不亮。修法：给第一行循环也加 `d === today` 判断，与第二段代码完全对称。
+
+### 备忘录不持久化
+
+`ph-todo-list` 的增删改查全部只改 DOM，没有任何 localStorage 读写。新增 `saveTodos()` / `loadTodos()` 函数（存 key `withtoge-ph-todo`，格式 `[{text, done}]`），在以下时机保存：`phToggleTodo` 切换完成状态、`phAddTodo` 新增项、edit 失焦（`contentEditable blur`）、delete 200ms 动画后。`phInit` 时先调 `loadTodos()` 从 localStorage 恢复（首次无数据则保留 HTML 硬编码示例并存入 localStorage），再调原有 `initTodoLongPress()` 绑长按事件（两者分工明确，避免重复绑定）。
+
 ## 2026-07-03 · 气泡拆分三 bug + md 同步 git 化 + 收藏夹考古 · `#render-path` `#sync-arch` `#git-archaeology`
 
 ### 背景

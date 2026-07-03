@@ -3327,7 +3327,7 @@ window.updateKe = function () {
     var pmd = new Date(y, m, 0).getDate();
     for (var i = 0; i < off; i++) h += '<span style="color:var(--ph-cloud-light,#bfbfba)">' + (pmd - off + i + 1) + '</span>';
     var d;
-    for (d = 1; d <= 7 - off; d++) h += '<span>' + d + '</span>';
+    for (d = 1; d <= 7 - off; d++) h += '<span' + (d === today ? ' class="day-cell today"' : '') + '>' + (d === today ? '&nbsp;' + d + '&nbsp;' : d) + '</span>';
     for (var row = 1; row < 6; row++) {
       for (var col = 0; col < 7; col++, d++) {
         if (d > dim) break;
@@ -3416,6 +3416,7 @@ window.updateKe = function () {
       if (ww) ww.addEventListener('click', function(e) { e.stopPropagation(); window.phSwitchCity(); });
       var cw = document.querySelector('#phone-home-page .ph-widget-calendar');
       if (cw) cw.addEventListener('click', function(e) { e.stopPropagation(); showPage('calendar'); });
+      loadTodos();
       initTodoLongPress();
       console.log('[phInit] done. grid children:', document.getElementById('ph-app-grid')?.children.length, 'time HTML:', document.getElementById('ph-time-display')?.innerHTML?.length||0, 'cal children:', document.getElementById('ph-cal-grid')?.children.length);
     } catch(e) {
@@ -3432,6 +3433,34 @@ window.updateKe = function () {
   };
 
   /* ── Todo ── */
+  var PH_TODO_KEY = 'withtoge-ph-todo';
+  function saveTodos() {
+    var list = document.getElementById('ph-todo-list');
+    if (!list) return;
+    var items = [];
+    list.querySelectorAll('.todo-item').forEach(function(li) {
+      items.push({ text: (li.querySelector('.todo-text') || {}).textContent || '', done: li.classList.contains('completed') });
+    });
+    try { localStorage.setItem(PH_TODO_KEY, JSON.stringify(items)); } catch {}
+  }
+  function loadTodos() {
+    var list = document.getElementById('ph-todo-list');
+    if (!list) return;
+    var raw = null;
+    try { raw = localStorage.getItem(PH_TODO_KEY); } catch {}
+    if (!raw) { saveTodos(); list.querySelectorAll('.todo-item').forEach(function(li) { li.onclick = function() { window.phToggleTodo(li); }; }); return; }
+    var items; try { items = JSON.parse(raw); } catch { return; }
+    list.innerHTML = '';
+    items.forEach(function(item) {
+      var li = document.createElement('li');
+      li.className = 'todo-item' + (item.done ? ' completed' : '');
+      var safeText = String(item.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      li.innerHTML = '<div class="todo-checkbox' + (item.done ? ' checked' : '') + '">' + (item.done ? '✓' : '') + '</div><span class="todo-text">' + safeText + '</span>';
+      li.onclick = function() { window.phToggleTodo(li); };
+      list.appendChild(li);
+    });
+  }
+
   window.phToggleTodo = function(el) {
     if (el.classList.contains('ph-editing')) return; // locked during edit
     var cb = el.querySelector('.todo-checkbox');
@@ -3440,6 +3469,7 @@ window.updateKe = function () {
     } else {
       el.classList.add('completed'); cb.classList.add('checked'); cb.innerHTML = '✓';
     }
+    saveTodos();
   };
   window.phAddTodo = function() {
     var list = document.getElementById('ph-todo-list');
@@ -3450,6 +3480,7 @@ window.updateKe = function () {
     li.innerHTML = '<div class="todo-checkbox"></div><span class="todo-text">New item</span>';
     addLongPress(li);
     list.appendChild(li);
+    saveTodos();
   };
   function addLongPress(li) {
     var timer;
@@ -3485,6 +3516,7 @@ window.updateKe = function () {
         span.contentEditable = 'false';
         li.classList.remove('ph-editing');
         span.removeEventListener('blur', done);
+        saveTodos();
       };
       span.addEventListener('blur', done);
       menu.remove();
@@ -3492,7 +3524,7 @@ window.updateKe = function () {
     menu.querySelector('.delete').onclick = function(ev) {
       ev.stopPropagation();
       li.style.transition = 'opacity 0.2s'; li.style.opacity = '0';
-      setTimeout(function() { li.remove(); }, 200);
+      setTimeout(function() { li.remove(); saveTodos(); }, 200);
       menu.remove();
     };
     setTimeout(function() {
