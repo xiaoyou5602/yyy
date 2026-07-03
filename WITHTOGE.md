@@ -206,7 +206,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 健康数据 MCP（07-03 立项）— **方案已定稿 → [docs/plans/health-mcp.md](docs/plans/health-mcp.md)**。链路：手环9Pro → 小米运动健康 → Health Connect → Health Sync 推 webhook → cyberboss `/api/health` → 内部 MCP 工具 + `health.withtoge.us` 标准 remote MCP（官 APP connector 也能接）。阶段 0（后端管道+假数据测试）手环到货前就可做；阶段 1 等手环（toge 操作）。主要风险：国行 app 可能无 HC 同步开关（备选：国际版 Mi Fitness 港区账号，教程已验证可行）
 
 - [x] 本地 MCP diary_append 写错日记本（07-03 发现）— **已修（07-03 日记 git 化）**。方案照抄 md 同步：VPS 建私有裸仓库 `/root/diary.git`（**不上 GitHub**，日记私密），`/root/.cyberboss/diary/` 与本地 `~/.cyberboss/diary/` 都是它的工作区。VPS 端 `diary-autosync` systemd 服务（inotify → commit+push，脚本 `/usr/local/bin/diary-autosync.sh`）+ 裸仓库 post-receive hook（rebase 更新工作区）；本地端 `scripts/sync-diary.ps1` + 计划任务 `withtoge-diary-sync`（每 30 分钟）。分叉的 6 天日记（06-25/26/28/29/30、07-03）已按时间戳归并去重，合并前原状在 git 历史 `b5bab59`，本地旧目录备份在 `~/.cyberboss/diary-backup-20260703`。本地 MCP diary_append 照旧写本地即可，同步自动。双向链路 07-03 已验证通过
-- [ ] session 重启自动接续上下文（07-03 toge 报）— DS 的 claudecode session 重启后是全新上下文，聊着聊着"突然换人"很割裂。已有"手札接力"机制（06/11 做过跨 session 接力），排查它是否失效/未自动触发；目标：新 session 启动时自动注入最近对话摘要 + 当天日记/时间轴要点，让克"记得刚才聊到哪"
+- [ ] session 重启自动接续上下文（07-03 toge 报）— **已排查（07-03）**：手札接力（06/11）只有"读"的一半是系统化的（`loadHandoffContext` 在 opening turn 注入 `~/.cyberboss/ke-handoff.md`），"写"完全靠 DS 的克在对话中自觉维护文件——不可靠，且该文件已被 toge 删除，VPS 上不存在，接力从未稳定生效。toge 记忆中的"结构化 state 恢复"机制不存在。**推荐修法**：放弃靠克写手札，改为系统自动接续——新 session 的 opening turn 由服务端自动从 messageStore 取最近 N 条跨 session 聊天记录（数据现成，Opus API 路径就是这么做的：每轮带最近 3 天/40k 字符历史）拼"最近对话回顾"注入，DS 就有了和 Opus 同级的"记得刚才"。可选加当天日记/时间轴要点。另一条可调研路线：claudecode 的 `--resume` 恢复原 session（改动大、边界多，暂缓）
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
 
