@@ -1627,6 +1627,31 @@ function bookmarkSelected() {
   });
 }
 
+// 收藏夹列表渲染 — 06/29 thinking 重构时被误删,07-03 从 51a3b6f^ 恢复
+function renderBookmarksList() {
+  loadBookmarks().then(function(bm) {
+    const body = document.getElementById("bookmarks-body");
+    if (!bm.length) {
+      body.innerHTML = '<div class="empty-state">还没有收藏过对话</div>';
+      return;
+    }
+    let html = "";
+    bm.slice().reverse().forEach((b, idx) => {
+      const preview = b.messages.slice(0, 3).map(m => `<span class="bm-msg-preview ${m.from}">${esc(m.from === "you" ? "你" : "克")}: ${esc(m.text.slice(0, 50))}${m.text.length > 50 ? "..." : ""}</span>`).join("");
+      const msgCount = b.messages.length;
+      const date = new Date(b.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      html += `<div class="bookmark-item" data-bm-id="${b.id}" onclick="openBookmarkLetter('${b.id}')">
+        <div class="bm-item-header">
+          <span class="bm-item-date">${date}</span>
+          <span class="bm-item-count">${msgCount} 条</span>
+        </div>
+        <div class="bm-item-preview">${preview}</div>
+      </div>`;
+    });
+    body.innerHTML = html;
+  });
+}
+
 function deleteSelected() {
   if (selectedMsgs.size === 0) return;
   showConfirmDialog(
@@ -1809,9 +1834,15 @@ function jumpToConversation() {
   closeLetter();
   showPage("chat");
   if (!bmId) return;
-  var bm = loadBookmarks().find(function(b) { return b.id === bmId; });
-  if (!bm || !bm.messages || !bm.messages.length) return;
-  var msgId = bm.messages[0].id;
+  // loadBookmarks 是异步(服务端优先),不能同步 .find
+  loadBookmarks().then(function(list) {
+    var bm = list.find(function(b) { return b.id === bmId; });
+    if (!bm || !bm.messages || !bm.messages.length) return;
+    jumpToBookmarkMsg(bm.messages[0].id);
+  });
+}
+
+function jumpToBookmarkMsg(msgId) {
   var tries = 0;
   function tryJump() {
     var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');

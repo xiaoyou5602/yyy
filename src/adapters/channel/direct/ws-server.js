@@ -896,9 +896,19 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
               res.end(JSON.stringify({ error: "bookmarks array required" }));
               return;
             }
-            writeBookmarks(stateDir, parsed.bookmarks);
+            // 按 id 合并而非整体覆盖：客户端若基于不完整数据(清缓存/离线)提交,
+            // 服务端已有的收藏不会被抹掉。前端没有删除收藏功能,合并无副作用;
+            // 以后要删除请加 DELETE /api/bookmarks/:id,别改回覆盖。
+            const existing = readBookmarks(stateDir);
+            const byId = new Map(existing.map(b => [b.id, b]));
+            for (const b of parsed.bookmarks) {
+              if (b && b.id) byId.set(b.id, b);
+            }
+            const merged = Array.from(byId.values())
+              .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+            writeBookmarks(stateDir, merged);
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({ ok: true, count: parsed.bookmarks.length }));
+            res.end(JSON.stringify({ ok: true, count: merged.length }));
           } catch (e) {
             res.writeHead(400);
             res.end(JSON.stringify({ error: e.message }));
