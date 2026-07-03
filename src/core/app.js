@@ -756,8 +756,17 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
             flushText(false);
           }
         },
-        onDone: () => {
+        onDone: async () => {
           flushThinking();
+          // 存档 thinking：在最终文本 flush 前存，globalId 排序让思考排在回复前（与 stream-delivery 一致）
+          if (fullThinking && typeof this.channelAdapter.saveThinking === "function") {
+            await this.channelAdapter.saveThinking({
+              userId: prepared.senderId,
+              text: fullThinking.slice(0, 5000),
+              turnId: "",
+              model: sessionModel,
+            }).catch(() => {});
+          }
           flushText(true);
           this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
         },

@@ -47,6 +47,12 @@ async function sendApiTurn({
     stream: true,
   };
   if (system && !isOpenAI) body.system = system;
+  if (!isOpenAI && modelConfig.thinking) {
+    // 思考摘要：原始 COT 任何客户端都拿不到，summarized 是上限。
+    // adaptive thinking 时不能带 temperature/top_p/top_k（4.7+ 会 400）
+    body.thinking = { type: "adaptive", display: "summarized" };
+    body.max_tokens = 16000; // thinking 消耗输出预算，4096 会被思考吃光
+  }
 
   const url = new URL(baseUrl + apiPath);
   const transport = url.protocol === "https:" ? https : http;

@@ -21,6 +21,7 @@ const MODELS = {
     apiKey: process.env.CYBERBOSS_55API_KEY || "",
     apiModel: "[A8-按量]claude-opus-4-6",
     modelName: "claude-opus-4-6",
+    thinking: true, // 开启思考摘要（adaptive + summarized），接入 APP 思考显示链路
   },
   glm: {
     type: "api",
