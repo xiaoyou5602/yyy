@@ -957,6 +957,46 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: health data ingest (POST) ──
+    if (urlPath === "/api/health" && req.method === "POST") {
+      const authHeader = req.headers["authorization"] || "";
+      const expectedToken = process.env.CYBERBOSS_HEALTH_TOKEN || "";
+      if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized" }));
+        return;
+      }
+      const chunks = [];
+      req.on("data", chunk => chunks.push(chunk));
+      req.on("end", () => {
+        try {
+          const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          const result = mergeHealthData(stateDir, body);
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, date: result.date }));
+        } catch (e) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
+
+    // ── API: health data query (GET) ──
+    if (urlPath === "/api/health" && req.method === "GET") {
+      try {
+        const days = Math.min(Number.parseInt(query.days, 10) || 7, 30);
+        const type = query.type || "all";
+        const records = readHealthData(stateDir, days, type);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(records));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── Health check ──
     if (urlPath === "/healthz" && (req.method === "GET" || req.method === "HEAD")) {
       res.writeHead(200, {
@@ -1937,6 +1977,92 @@ function deleteLetter(stateDir, id) {
   letters.splice(idx, 1);
   writeLetters(stateDir, letters);
   return true;
+}
+
+// ── Health data helpers ──
+function healthDataDir(stateDir) {
+  const dir = path.join(stateDir, "health");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function mergeHealthData(stateDir, body) {
+  const date = body.date || formatShanghaiDate(new Date());
+  const filePath = path.join(healthDataDir(stateDir), `${date}.json`);
+
+  let current = { date };
+  if (fs.existsSync(filePath)) {
+    try { current = JSON.parse(fs.readFileSync(filePath, "utf8")); } catch {}
+  }
+  if (!current.date) current.date = date;
+
+  const type = body.type;
+  const data = body.data || {};
+  const now = new Date().toISOString();
+
+  if (type === "steps" || body.steps !== undefined) {
+    const d = type === "steps" ? data : (body.steps || {});
+    const newTotal = Number(d.total || d.count || d.value || 0);
+    const prevTotal = current.steps?.total || 0;
+    current.steps = { total: Math.max(prevTotal, newTotal), updatedAt: now };
+  }
+
+  if (type === "heart_rate" || body.heart_rate !== undefined) {
+    const d = type === "heart_rate" ? data : (body.heart_rate || {});
+    if (!current.heart_rate) current.heart_rate = { samples: [] };
+    if (!Array.isArray(current.heart_rate.samples)) current.heart_rate.samples = [];
+    const ts = d.timestamp || d.ts || now;
+    const bpm = Number(d.value || d.bpm || 0);
+    if (bpm > 0 && !current.heart_rate.samples.some(s => s.ts === ts)) {
+      current.heart_rate.samples.push({ ts, bpm });
+      current.heart_rate.samples.sort((a, b) => a.ts.localeCompare(b.ts));
+    }
+    const bpms = current.heart_rate.samples.map(s => s.bpm).filter(b => b > 0);
+    if (bpms.length) current.heart_rate.avg = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
+    if (d.resting || d.resting_bpm) current.heart_rate.resting = Number(d.resting || d.resting_bpm);
+    current.heart_rate.updatedAt = now;
+  }
+
+  if (type === "sleep" || body.sleep !== undefined) {
+    const d = type === "sleep" ? data : (body.sleep || {});
+    current.sleep = {
+      duration_min: Number(d.duration_min || d.duration || 0),
+      deep_min: Number(d.deep_min || d.deep || 0),
+      light_min: Number(d.light_min || d.light || 0),
+      rem_min: Number(d.rem_min || d.rem || 0),
+      awake_min: Number(d.awake_min || d.awake || 0),
+      start: d.start || d.startTime || "",
+      end: d.end || d.endTime || "",
+      score: Number(d.score || 0),
+      updatedAt: now,
+    };
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(current, null, 2), "utf8");
+  return current;
+}
+
+function readHealthData(stateDir, days, type) {
+  const dir = healthDataDir(stateDir);
+  const records = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const date = formatShanghaiDate(d);
+    const filePath = path.join(dir, `${date}.json`);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const record = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      if (type && type !== "all") {
+        const filtered = { date: record.date || date };
+        if (record[type]) filtered[type] = record[type];
+        records.push(filtered);
+      } else {
+        records.push(record);
+      }
+    } catch {}
+  }
+  return records;
 }
 
 module.exports = { createDirectWebSocketServer };

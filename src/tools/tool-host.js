@@ -961,6 +961,58 @@ const PROJECT_TOOLS = [
     },
   },
   {
+    name: "health_read",
+    description: "Read toge's health data (steps, heart_rate, sleep) from the local health directory. Returns daily records for recent days. Use this to check how toge is doing physically.",
+    shortHint: "Read health data (steps/heart_rate/sleep) by date range.",
+    topics: ["health"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        days: { type: "integer", description: "Number of recent days to read (default 7, max 30)." },
+        type: { type: "string", enum: ["steps", "heart_rate", "sleep", "all"], description: "Data type filter. Default: all." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ args }) {
+      const days = Math.min(args.days || 7, 30);
+      const type = args.type || "all";
+      const healthDir = path.join(os.homedir(), ".cyberboss", "health");
+      const records = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const date = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Shanghai",
+          year: "numeric", month: "2-digit", day: "2-digit",
+        }).format(d);
+        const filePath = path.join(healthDir, `${date}.json`);
+        if (!fs.existsSync(filePath)) continue;
+        try {
+          const record = JSON.parse(fs.readFileSync(filePath, "utf8"));
+          if (type && type !== "all") {
+            const filtered = { date: record.date || date };
+            if (record[type]) filtered[type] = record[type];
+            records.push(filtered);
+          } else {
+            records.push(record);
+          }
+        } catch {}
+      }
+      return {
+        text: records.length
+          ? `Health data for ${records.length} days:\n${records.map(r => {
+              const parts = [];
+              if (r.steps) parts.push(`步数: ${r.steps.total}`);
+              if (r.heart_rate) parts.push(`心率均值: ${r.heart_rate.avg || "?"} bpm`);
+              if (r.sleep) parts.push(`睡眠: ${r.sleep.duration_min} min`);
+              return `${r.date}: ${parts.join(", ") || "no data"}`;
+            }).join("\n")}`
+          : "No health data found.",
+        data: { records, count: records.length },
+      };
+    },
+  },
+  {
     name: "cyberboss_gift_delete",
     description: "Delete a gift by id.",
     shortHint: "Delete a gift by id.",
