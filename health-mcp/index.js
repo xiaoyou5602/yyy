@@ -133,7 +133,14 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // Auth check (optional)
+  // Health check (no auth required)
+  if (req.url === "/health" || req.url === "/healthz") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, service: "health-mcp" }));
+    return;
+  }
+
+  // Auth check (optional, applies to /mcp)
   if (AUTH_TOKEN) {
     const authHeader = req.headers["authorization"] || "";
     if (authHeader !== `Bearer ${AUTH_TOKEN}`) {
@@ -141,13 +148,6 @@ const httpServer = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: "Unauthorized" }));
       return;
     }
-  }
-
-  // Health check
-  if (req.url === "/health" || req.url === "/healthz") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, service: "health-mcp" }));
-    return;
   }
 
   // MCP endpoint

@@ -30,12 +30,12 @@
 ## 实施阶段
 
 ### 阶段 0 · 手环到货前就能做(后端全部)
-- [ ] cyberboss 加 `POST /api/health`:Bearer token 验证(`.env` 加 `CYBERBOSS_HEALTH_TOKEN`),body 按类型(steps/heart_rate/sleep)归并写入当天 JSON
-- [ ] `GET /api/health?days=N&type=X` 查询端点
-- [ ] MCP 工具 `health_read`(仿 whereabouts 模式接入 cyberboss_tools)
-- [ ] 用 curl 假数据端到端测试
-- [ ] 独立 `health-mcp` 标准 Streamable HTTP MCP server(Node,官方 SDK),读同一数据目录;cloudflared ingress 加 `health.withtoge.us` → 该服务端口;仿 Notion MCP 部署(systemd)
-- [ ] 官 APP custom connector 试接(URL: https://health.withtoge.us/mcp)
+- [x] cyberboss 加 `POST /api/health`:Bearer token 验证(`.env` 加 `CYBERBOSS_HEALTH_TOKEN`),body 按类型(steps/heart_rate/sleep)归并写入当天 JSON
+- [x] `GET /api/health?days=N&type=X` 查询端点
+- [x] MCP 工具 `health_read`(仿 whereabouts 模式接入 cyberboss_tools)
+- [x] 用 curl 假数据端到端测试(steps/heart_rate/sleep 写入 + 查询验证均通过)
+- [x] 独立 `health-mcp` 标准 Streamable HTTP MCP server(Node,官方 SDK),读同一数据目录;cloudflared ingress 加 `health.withtoge.us` → 3100 端口;systemd service 已启动
+- [ ] 官 APP custom connector 试接(URL: https://health.withtoge.us/mcp) — **需要 toge 本人在 Claude APP 里手动添加 custom connector**
 
 ### 阶段 1 · 手环到货后(toge 操作,克远程陪同)
 - [ ] 小米运动健康绑定手环,开心率/睡眠/步数监测
