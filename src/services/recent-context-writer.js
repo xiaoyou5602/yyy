@@ -10,7 +10,9 @@ const DEBOUNCE_MS = 5000;
 const WINDOW_HOURS = 24;
 const MAX_CHARS = 8000;
 const MAX_ENTRIES = 60;
-const MODEL_KEY = "ds"; // 只有 DS 走 CLI session，API 模型每轮自带历史
+// 只有 DS 走 CLI session，API 模型每轮自带历史。存储里 model 字段是 modelName
+// （"deepseek-v4-pro"）而非路由键 "ds"；空 model 是 checkin 主动消息等系统路径（仅 DS 有）
+const DS_MODELS = new Set(["deepseek-v4-pro", ""]);
 
 function createRecentContextWriter({ stateDir, messageStore }) {
   let timer = null;
@@ -31,12 +33,13 @@ function createRecentContextWriter({ stateDir, messageStore }) {
 
   function writeNow() {
     // 取 2 个自然日覆盖跨午夜的 24 小时窗口
-    const raw = messageStore.load(2, MODEL_KEY);
+    const raw = messageStore.load(2);
     const cutoff = Date.now() - WINDOW_HOURS * 3600 * 1000;
 
     const kept = [];
     let prevFrom = "";
     for (const m of raw) {
+      if (!DS_MODELS.has(m.model || "")) continue;
       if (m.from !== "you" && m.from !== "ke") continue; // thinking 存档不是对话
       const text = String(m.text || "").trim();
       if (!text) continue;
