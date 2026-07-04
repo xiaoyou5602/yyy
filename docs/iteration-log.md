@@ -25,6 +25,14 @@ model ∈ {deepseek-v4-pro, ""} → from ∈ {you, ke} → 剔除空文本 / ke 
 - VPS 真实数据生成 2833 字干净回顾（无 thinking/JSON/审批）
 - 待 toge 验证：APP 给 DS 发「我们刚才聊到哪了」（部署时已重启过服务，正好制造了换 session 场景）
 
+### 同日续 · DS 页卡"连接中"排查（commit `dd56551`）
+
+部署后 toge 报"一直显示连接中"，怀疑隧道没重启。逐层排除：cloudflared 四连接正常、外网 curl 200、cyberboss 零报错、服务端还有 client connected——不是链路问题。用 mcpbrowser 打开线上页面对比发现：主 header `status-text`="在线"，但 `ds-status-text`="连接中…"；再对照截图 header 只有两个图标 → toge 在 chat-ds 页，那是**独立的状态指示 + 独立的 WebSocket**。
+
+根因（浏览器 100% 复现）：index.html:1357 启动路由在主内联脚本里执行，`last-page=chat-ds` 时立即 showPage+dsChatInit，但 chat-ds.js 在页面尾部（:3183）尚未加载，`typeof window.dsChatInit === "function"` 为 false 静默跳过，之后无人补调——DS 页显示但从未建 WS。只要上次停在 DS 页（toge 的日常），每次 APP 重开/刷新必中。修法：chat-ds.js 末尾自愈（DS 页已显示且未 inited → 补跑 init），v39→v40。修复后同场景复测 `dsInited=true`、状态"在线 · DeepSeek"。
+
+教训：**"连接中"不等于连接问题**——先分清页面上有几套状态指示、几条 WS；`typeof x === "function"` 守卫会把加载顺序 bug 变成静默失败，守卫跳过时至少 console.warn 一声。
+
 ## 2026-07-03 夜间·小手机两 bug 修复（日历今日高亮 + 备忘录持久化）· `#phone-home` `#localstorage`
 
 ### 背景
