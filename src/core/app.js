@@ -1952,6 +1952,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
         sessionStore.clearApprovalPrompt(event.payload.threadId);
         throw error;
       });
+      this._scheduleApprovalTimeout(event.payload, linked);
       return;
     }
     const approvalResponse = buildApprovalResponsePayload(event.payload, "yes");
@@ -2004,6 +2005,50 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
     const workspaceRoot = workspaceRoots[0] || "";
     if (!workspaceRoot) return "";
     return (sessionStore.getRuntimeParamsForWorkspace(bindingKey, workspaceRoot)?.model || "").trim();
+  }
+
+  // 审批弹窗超时自动拒绝：toge 手机静音/没看软件时，turn 不该无限等审批挂死
+  // （07-04 实测挂了 1061s 才被 turn-gate 兜底清理）。2 分钟无响应 → 自动 decline，
+  // turn 继续跑，聊天页留一条说明（进历史，克跨 session 回顾也能看到不是 toge 主动拒绝）
+  _scheduleApprovalTimeout(approval, linked) {
+    const APPROVAL_TIMEOUT_MS = 2 * 60 * 1000;
+    const threadId = approval?.threadId;
+    const requestId = approval?.requestId;
+    if (!threadId || requestId == null) return;
+    if (!this._approvalTimeouts) this._approvalTimeouts = new Map();
+    const old = this._approvalTimeouts.get(threadId);
+    if (old) clearTimeout(old);
+    const timer = setTimeout(async () => {
+      this._approvalTimeouts.delete(threadId);
+      try {
+        const pending = this.threadStateStore.getThreadState(threadId)?.pendingApproval;
+        // 已被响应 / turn 已结束 / 换了新审批 → 什么都不做
+        if (!pending || String(pending.requestId) !== String(requestId)) return;
+        const payload = buildApprovalResponsePayload(pending, "no");
+        if (!payload) return;
+        console.log(
+          `[cyberboss] approval timeout auto-deny thread=${threadId} requestId=${requestId} after=${APPROVAL_TIMEOUT_MS}ms`
+        );
+        await this.runtimeAdapter.respondApproval(payload);
+        this.runtimeAdapter.getSessionStore().clearApprovalPrompt(threadId);
+        this.threadStateStore.resolveApproval(threadId, "running");
+        this._resetWatchdog(threadId, linked.workspaceRoot, linked.bindingKey);
+        const target = this.resolveReplyTargetForBinding(linked.bindingKey);
+        if (target) {
+          await this.channelAdapter.sendText({
+            userId: target.userId,
+            text: "⏰ 这条审批 2 分钟没人响应，系统自动拒绝了这一步（toge 大概没看到弹窗，不是主动拒绝）。克会跳过这个操作继续。",
+            contextToken: target.contextToken,
+            preserveBlock: true,
+            model: this.resolveCurrentModel(linked.bindingKey),
+          }).catch(() => {});
+        }
+      } catch (error) {
+        console.warn(`[cyberboss] approval timeout handler failed: ${error.message}`);
+      }
+    }, APPROVAL_TIMEOUT_MS);
+    if (typeof timer.unref === "function") timer.unref();
+    this._approvalTimeouts.set(threadId, timer);
   }
 
   async sendApprovalPrompt({ bindingKey, approval }) {
