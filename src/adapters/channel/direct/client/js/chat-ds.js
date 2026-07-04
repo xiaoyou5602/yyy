@@ -440,4 +440,10 @@
     Object.keys(thinkingStore.turns).forEach(function(turnId) { thinkingStore.cleanup(turnId); });
     streamingMsgEl = null;
   };
+
+  // 自愈：index.html 的启动路由（last-page=chat-ds 时 showPage+dsChatInit）在主内联脚本里执行，
+  // 早于本脚本（页面尾部 <script src>）加载，彼时 dsChatInit 尚未定义、typeof 检查静默跳过，
+  // DS 页显示了却永远没建 WS（症状：卡"连接中…"）。此处兜底补跑一次。
+  var dsPageEl = document.getElementById("chat-ds-page");
+  if (dsPageEl && dsPageEl.classList.contains("show") && !window._dsInited) window.dsChatInit();
 })();
