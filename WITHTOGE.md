@@ -202,7 +202,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 小手机备忘录不持久化（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`phAddTodo`/`phToggleTodo`/edit/delete 均无 localStorage 读写。修法：加 `saveTodos()`/`loadTodos()` 函数（存 `withtoge-ph-todo`），phInit 时加载，增删改查后均保存
 - [x] DS 页刷新/重开后卡"连接中"（07-04 toge 报）— **已修（07-04 commit dd56551，已部署，浏览器复现+验证通过）**。根因：index.html 启动路由（localStorage last-page=chat-ds 时 showPage+dsChatInit）在主内联脚本里执行，早于页面尾部的 `<script src="chat-ds.js">` 加载，`typeof window.dsChatInit` 为 undefined 被静默跳过——DS 页显示了但从未初始化、从未建立自己的 WebSocket，状态永远"连接中"，消息也收不到（主页面 WS 其实在线，服务端一切正常）。修法：chat-ds.js 末尾自愈——脚本加载完检测 DS 页已显示且未初始化则补跑 dsChatInit。v39→v40。**注意此 bug 会伪装成"隧道断了/通知不来/丢消息"**——凡 APP 重开后 DS 页异常先想到它
 - [ ] 刷新键疑似摆设（07-04 toge 报）— 加了↺按钮但点击可能没真正触发同步，需排查。**可能与上条同源**：↺在主 chat 页 header，而 toge 常驻的 DS 页（chat-ds）没有刷新键，且 DS 页 WS 未建时同步了也不显示——上条修复后请 toge 再试
-- [ ] APP 端权限白名单未生效（07-04 toge 报）— 权限白名单配置了但不生效，待排查
+- [x] APP 端权限白名单未生效（07-04 toge 报）— **已修（07-04，直接改 VPS `/root/.claude/settings.json`，原文件备份 `.bak-20260704`，已重启生效）**。根因：规则格式全错，一条都匹配不上——① `Bash(ls *)` 空格写法是**字面精确匹配**，前缀通配必须用冒号 `Bash(ls:*)`；② `Read(/root/**)` 单斜杠开头**不是绝对路径**（gitignore 风格，绝对路径要双斜杠 `Read(//root/**)`），单斜杠被当相对路径永不匹配。已按原放行范围改写全部规则。**此文件不在 git 里，改动只存在于 VPS**
+- [ ] 审批弹窗无人响应导致 turn 挂死（07-04 发现）— 19:27 一轮对话连弹 3 个审批，toge 点了 2 个第 3 个没看到，turn 挂 1061s 才被 turn-gate 兜底清理，期间克不回任何消息。白名单修好后弹窗会大幅变少，但仍建议：审批发出 N 分钟无响应 → 自动 deny 并让 turn 继续（而不是无限等），或至少在聊天页显示"等待审批中"状态而非静默
 
 ### 后端 / 服务
 
