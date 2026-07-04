@@ -492,8 +492,13 @@ function createClaudeCodeRuntimeAdapter(config) {
       // 进程重启后内存无活 session，此时即使带旧 threadId resume 也几乎必失败（CLI 静默另开
       // 新 session，即日志 session_replaced 的主要来源），消息不会走 opening 注入——新 session
       // 拿不到 persona/回顾。所以重启后首条消息一律按 opening turn 构造；万一 resume 成功，
-      // 同一 session 重复收到一次指令，无害
-      const treatAsOpening = openingTurn || !hadExistingSession;
+      // 同一 session 重复收到一次指令，无害。
+      // 另外：checkin 系统轮会先 spawn 裸 session（不带 persona/回顾），5 分钟 idle 才清理——
+      // 期间 toge 的首条消息 attach 上去时 openingTurn=false 且 hadExistingSession=true，
+      // 注入被完全绕过（07-04 实测：克只有 checkin 上下文，只能翻记忆库）。所以用户轮进入
+      // 从未有过用户轮的 session 时也强制按 opening 构造
+      const priorUserTurn = !!(existingEntry && existingEntry.userTurnSeen);
+      const treatAsOpening = openingTurn || !hadExistingSession || (provider !== "system" && !priorUserTurn);
       const outboundText = (treatAsOpening && provider !== "system") ? buildOpeningTurnText(config, text, provider) : text;
       const outboundThreadId = activeThreadId || threadId;
       if (outboundThreadId) {
@@ -523,6 +528,7 @@ function createClaudeCodeRuntimeAdapter(config) {
         entry.threadId = returnedThreadId;
         entry.sessionId = returnedThreadId;
         entry.lastActiveAt = Date.now();
+        if (provider !== "system") entry.userTurnSeen = true;
       }
 
       // ── Auto-cleanup for system-spawned sessions ──
