@@ -43,7 +43,7 @@ function createRecentContextWriter({ stateDir, messageStore }) {
       if (m.from !== "you" && m.from !== "ke") continue; // thinking 存档不是对话
       const text = String(m.text || "").trim();
       if (!text) continue;
-      if (m.from === "ke" && (text.startsWith("{") || text.startsWith("❌"))) continue;
+      if (m.from === "ke" && (text.startsWith("{") || text.startsWith("❌") || text.startsWith("🔐"))) continue; // 🔐 = 审批弹窗 UI 消息
       // 主动标注基于全序列判断（窗口截断前），避免窗口头部的克消息被误标
       const proactive = m.from === "ke" && prevFrom !== "you";
       prevFrom = m.from;
