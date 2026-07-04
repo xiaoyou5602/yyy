@@ -200,7 +200,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 收藏不同步+收藏夹内容丢失 — **已修，toge 验收通过（07-03 commit 0a07472）**。真相：数据没丢（服务端 3 条完好），是 06/29 thinking 重构误删了 `renderBookmarksList()`，收藏夹页一开就 ReferenceError 空白。已恢复函数 + 修 jumpToConversation 异步误用 + 服务端 POST 改按 id 合并防覆盖。toge 打开收藏夹页看到 3 条旧收藏即验证通过
 - [x] 小手机日历组件今日不加亮（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`renderCalWidget` 第一行（前 `7-off` 天）循环没有 `today` 判断，7 月 3 日恰在第一周所以不亮。修法：第一行循环也加 `d === today` 检查，与后续行保持一致
 - [x] 小手机备忘录不持久化（07-03 toge 报）— **已修（07-03 夜间自动任务）**。根因：`phAddTodo`/`phToggleTodo`/edit/delete 均无 localStorage 读写。修法：加 `saveTodos()`/`loadTodos()` 函数（存 `withtoge-ph-todo`），phInit 时加载，增删改查后均保存
-- [ ] 刷新键疑似摆设（07-04 toge 报）— 加了↺按钮但点击可能没真正触发同步，需排查
+- [x] DS 页刷新/重开后卡"连接中"（07-04 toge 报）— **已修（07-04 commit dd56551，已部署，浏览器复现+验证通过）**。根因：index.html 启动路由（localStorage last-page=chat-ds 时 showPage+dsChatInit）在主内联脚本里执行，早于页面尾部的 `<script src="chat-ds.js">` 加载，`typeof window.dsChatInit` 为 undefined 被静默跳过——DS 页显示了但从未初始化、从未建立自己的 WebSocket，状态永远"连接中"，消息也收不到（主页面 WS 其实在线，服务端一切正常）。修法：chat-ds.js 末尾自愈——脚本加载完检测 DS 页已显示且未初始化则补跑 dsChatInit。v39→v40。**注意此 bug 会伪装成"隧道断了/通知不来/丢消息"**——凡 APP 重开后 DS 页异常先想到它
+- [ ] 刷新键疑似摆设（07-04 toge 报）— 加了↺按钮但点击可能没真正触发同步，需排查。**可能与上条同源**：↺在主 chat 页 header，而 toge 常驻的 DS 页（chat-ds）没有刷新键，且 DS 页 WS 未建时同步了也不显示——上条修复后请 toge 再试
 - [ ] APP 端权限白名单未生效（07-04 toge 报）— 权限白名单配置了但不生效，待排查
 
 ### 后端 / 服务
