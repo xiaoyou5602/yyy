@@ -1,3 +1,30 @@
+## 2026-07-04 · DS session 自动接续上下文（回顾文件）· `#session-relay` `#claudecode-runtime`
+
+### 背景
+
+计划见 `docs/plans/session-context-relay.md`。DS 走 claudecode runtime，cyberboss 每次部署重启后首条消息 resume 旧 session 必失败、CLI 静默另开新 session（日志 `session_replaced` 近 4 天 20+ 次）——每次部署 = 换人。旧手札接力只有读端系统化，写端靠克自觉维护文件，从未稳定生效。
+
+### 实现（commits `36d750e` `8ffad02` `06d2b97`）
+
+- **写端** `src/services/recent-context-writer.js`：direct adapter 两处 `messageStore.save`（from=you/ke）后挂钩子，防抖 5s 重写 `{stateDir}/recent-context.md`。24h 窗口 / 8000 字 / 60 条，从尾部往前取（同 Opus 逐轮历史逻辑），临时文件 + rename 原子写，失败只 warn。
+- **读端** `shared-instructions.js`：`loadRecentContext`（照抄 loadHandoffContext 模式），`buildOpeningTurnText` 在 handoff 段前注入回顾 + 尾注「请自然地延续，不要复述」。`ke-handoff.md` 手动通道保留。
+- **runtime 关键补丁**（计划外发现）：日志里的 `session_replaced` 场景 `openingTurn=false`——消息按普通 turn 发出后 CLI 才静默换 session，**根本不走 buildOpeningTurnText**，新 session 连 persona 都拿不到，光改读端打不中主要断片场景。修法：`claudecode/index.js` opening 条件加 `|| !hadExistingSession`——重启后内存无活 session 时首条消息一律按 opening turn 构造；万一 resume 成功只是重复注入一次，无害。
+
+### 踩坑
+
+1. **存储 model 字段是 modelName 不是路由键**：计划写「过滤 model=ds」，真实数据里 DS 消息是 `model="deepseek-v4-pro"`，按 "ds" 过滤一条都取不到（VPS 真实数据首跑生成 0 字才发现）。且空 model 是 checkin 主动消息等系统路径（仅 DS 有），也要收进回顾。
+2. **审批弹窗消息混入回顾**：`🔐 【Approval】Edit ...` 带文件路径和 diff 又长又噪，加过滤规则（ke 且 🔐 开头跳过）。
+
+### 过滤规则终版（写端）
+
+model ∈ {deepseek-v4-pro, ""} → from ∈ {you, ke} → 剔除空文本 / ke 的 `{`、`❌`、`🔐` 开头 → 24h 窗口 → 尾部截窗。主动标注：ke 且前一条保留消息非 you → 「克（主动）」（基于截窗前全序列判断，防窗口头部误标）。
+
+### 验证
+
+- 本地假数据 12 断言全过（过滤/标注/单行化/空库空文件/非 DS 排除）；读端 buildOpeningTurnText 注入 direct-only 验证过
+- VPS 真实数据生成 2833 字干净回顾（无 thinking/JSON/审批）
+- 待 toge 验证：APP 给 DS 发「我们刚才聊到哪了」（部署时已重启过服务，正好制造了换 session 场景）
+
 ## 2026-07-03 夜间·小手机两 bug 修复（日历今日高亮 + 备忘录持久化）· `#phone-home` `#localstorage`
 
 ### 背景
