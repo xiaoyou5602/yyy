@@ -33,6 +33,14 @@ model ∈ {deepseek-v4-pro, ""} → from ∈ {you, ke} → 剔除空文本 / ke 
 
 教训：**"连接中"不等于连接问题**——先分清页面上有几套状态指示、几条 WS；`typeof x === "function"` 守卫会把加载顺序 bug 变成静默失败，守卫跳过时至少 console.warn 一声。
 
+### 同日续② · 接续验收失败 → checkin 裸 session 抢跑（commit `6570745`）
+
+toge 验收：问 DS「凌晨 1:26 发了什么」，克答不上、跑去翻记忆库还引用 6/3 的旧记录——而回顾文件里明明有那条消息。定位：克的回答里提到「1:00 睡到 8:00 的健康数据」，**健康数据只存在于 checkin 系统轮的提示词里** → 克在系统轮的 session 里。日志证实：12:17 checkin spawn 裸 session（系统轮不注入 persona/回顾），5 分钟 idle 清理未跑到，toge 12:23 的消息 attach 上去——`openingTurn=false`（threadId 在）且 `hadExistingSession=true`（client 活着），两个 opening 条件全绕过。这是 06-11「系统行为创造人格」边界问题的新形态。
+
+修法：session entry 加 `userTurnSeen` 标记（用户轮发送成功后置位），treatAsOpening 条件加第三条：`provider !== "system" && !priorUserTurn`——用户的第一条消息进入任何从未有过用户轮的 session，都强制带完整 opening 注入。
+
+教训：验收失败时先看**克引用了什么它不该知道/该知道的东西**——「健康数据」三个字直接暴露了它在哪个 session 里。
+
 ## 2026-07-03 夜间·小手机两 bug 修复（日历今日高亮 + 备忘录持久化）· `#phone-home` `#localstorage`
 
 ### 背景
