@@ -1102,27 +1102,22 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
     }
   }, 300_000);
 
-  wss.on("connection", (ws) => {
-    ws.isAlive = true;
-    clients.add(ws);
-    console.log(`[ws-server] client connected count=${clients.size}`);
-
-    // ── Catch-up sync: push recent ke messages so client can fill gaps after reconnect ──
-    if (messageStore) {
-      setTimeout(() => {
-        if (ws.readyState !== 1) return; // client already disconnected
-        try {
-          const recent = messageStore.load(1); // today only
-          const aiMessages = recent.filter(m => m.from === "ke" || m.from === "thinking").slice(-50);
-          if (aiMessages.length > 0) {
-            ws.send(JSON.stringify({ type: "sync", messages: aiMessages }));
-            console.log(`[ws-server] sync sent count=${aiMessages.length}`);
-          }
-        } catch (err) {
-          console.error("[ws-server] sync error:", err.message);
-        }
-      }, 600); // short delay to let client finish loading localStorage history first
+  wss.on("connection", (ws, req) => {
+    // 单连接约束：APP 断线重连时旧 socket 经常没有真正关闭（后台冻结/网络切换），
+    // 攒着几个死连接会让 clients.size 和 broadcast 状态飘忽。新连接进来就把其余的干掉，
+    // 只保留最新这个——单用户场景下没有"多端同时在线"的需求。
+    for (const old of clients) {
+      if (old !== ws) {
+        try { old.terminate(); } catch {}
+        clients.delete(old);
+      }
     }
+    ws.isAlive = true;
+    ws.connectedAt = Date.now();
+    clients.add(ws);
+    const ip = req?.socket?.remoteAddress || "?";
+    const ua = req?.headers?.["user-agent"] || "?";
+    console.log(`[ws-server] client connected count=${clients.size} ip=${ip} ua=${ua}`);
 
     ws.on("pong", () => {
       ws.isAlive = true;
@@ -1175,7 +1170,8 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
 
     ws.on("close", () => {
       clients.delete(ws);
-      console.log(`[ws-server] client closed count=${clients.size}`);
+      const aliveSec = ws.connectedAt ? Math.round((Date.now() - ws.connectedAt) / 1000) : "?";
+      console.log(`[ws-server] client closed count=${clients.size} aliveSec=${aliveSec}`);
     });
 
     ws.on("error", (err) => {

@@ -2467,7 +2467,16 @@ function showTyping() { if (!streamingMsgEl) { var preTurnId = "pre-" + Date.now
 function hideTyping() { typingEl.classList.remove("show"); }
 
 var pageHidden = document.hidden;
-document.addEventListener('visibilitychange', () => { pageHidden = document.hidden; });
+document.addEventListener('visibilitychange', () => {
+  pageHidden = document.hidden;
+  // APP 从后台切回前台时，安卓可能已经冻结过 JS 定时器导致 WS 连接静默断开
+  // 而前端没能感知——这里主动检查一次，断了就立刻重连，不等心跳/退避计时器
+  if (!document.hidden && (!ws || ws.readyState > 1)) {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    reconnectDelay = 1000;
+    connect();
+  }
+});
 
 function notify(text) {
   if (!document.hidden && !pageHidden) {
@@ -3030,6 +3039,7 @@ function cleanupAllThinking() {
 
 /* ── WebSocket ── */
 function connect() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   try { ws = new WebSocket(WS_URL); } catch (_) { scheduleReconnect(); return; }
   ws.onopen = () => { online(true); reconnectDelay = 1000; if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; } if (initHistoryDone) syncHistoryFromServer(); };
