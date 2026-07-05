@@ -177,7 +177,8 @@
       worldbook: 'worldbook', gifts: 'gifts',
       camera: 'camera', mcp: 'mcp', bookmarks: 'bookmarks',
       bubbletea: 'bubbletea',
-      'phone-home': 'phone-home'
+      'phone-home': 'phone-home',
+      'chat-ds': 'chat-ds'
     };
     var scopeId = map[page] || 'global';
     if (window._pageTokens && window._pageTokens[scopeId]) return scopeId;

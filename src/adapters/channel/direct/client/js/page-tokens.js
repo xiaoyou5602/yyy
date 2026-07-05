@@ -57,6 +57,20 @@ window._pageTokens = {
     ]
   },
 
+  // ── DS 聊天页 ──
+  'chat-ds': {
+    label: 'DS聊天',
+    selector: '#chat-ds-page',
+    tokens: [
+      { key:'--ds-bg',       label:'页面背景',   section:'页面', type:'color', default:'#f0f0eb' },
+      { key:'--ds-bg-light', label:'头部/底部栏底色', section:'页面', type:'color', default:'#fafaf7' },
+      { key:'--ds-blue',     label:'AI 强调色',  section:'色彩', type:'color', default:'#5989b9' },
+      { key:'--ds-orange',   label:'你的强调色', section:'色彩', type:'color', default:'#cc7b5c' },
+      { key:'--ds-slate',    label:'正文字色',   section:'色彩', type:'color', default:'#2d2d2d' },
+      { key:'--ds-border',   label:'边框色',     section:'色彩', type:'color', default:'rgba(45,45,45,0.06)' },
+    ]
+  },
+
   // ── 记忆页 ──
   memory: {
     label: '记忆',

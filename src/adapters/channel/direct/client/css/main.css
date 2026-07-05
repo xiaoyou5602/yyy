@@ -12,7 +12,7 @@
   --accent-soft: rgba(89,137,185,0.06);
   --accent-cool: #a4c2e6;
   --accent-cool-soft: rgba(164,194,230,0.12);
-  --bubble-you: rgba(89,137,185,0.04);
+  --bubble-you: #eaece9;
   --bubble-you-text: #2d2d2d;
   --bubble-ke: #fafaf7;
   --bubble-ke-text: #2d2d2d;
@@ -282,7 +282,7 @@ header {
 
 .msg.you {
   align-self: flex-end; width: fit-content;
-  background: rgba(89,137,185,0.04); color: #2d2d2d;
+  background: var(--bubble-you); color: var(--bubble-you-text);
   border: 1px solid rgba(89,137,185,0.12);
   border-radius: 16px 4px 16px 16px;
   box-shadow: none;
@@ -296,7 +296,7 @@ header {
 .msg.ke .msg-inner { align-items: flex-start; }
 .msg.ke .msg-bubble {
   width: fit-content; max-width: 100%;
-  background: #fafaf7; color: #2d2d2d;
+  background: var(--bubble-ke); color: var(--bubble-ke-text);
   padding: 11px 15px; border-radius: 4px 16px 16px 16px;
   border: 1px solid rgba(45,45,45,0.06);
   box-shadow: 0 4px 12px rgba(0,0,0,0.005);
