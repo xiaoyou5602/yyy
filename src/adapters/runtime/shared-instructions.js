@@ -18,7 +18,16 @@ function buildOpeningTurnText(config, userText, provider = "") {
     parts.push("", instructions);
   }
   if (recentContext) {
-    parts.push("", recentContext, "", "请自然地延续最近的对话，不要复述这段回顾。");
+    // 当前时间锚点必须动态生成——回顾文件里全是过去的时间戳，没有"现在"参照时，
+    // 克会把上一个凌晨的对话错位成"刚才"（07-05 toge 报：明明 21 点睡了，克说她凌晨 2 点还醒着）
+    parts.push(
+      "",
+      `【当前时间】${formatNowShanghai()}。回顾里的时间戳都是过去的时刻，判断"刚才/昨晚/今天"以本行为准。`,
+      "",
+      recentContext,
+      "",
+      "请自然地延续最近的对话，不要复述这段回顾。"
+    );
   }
   if (handoff) {
     parts.push("", "## 上一段手札（跨 Session 接力）", "", handoff, "", "请自然地延续上一段对话，不要复述这段手札。");
@@ -121,6 +130,21 @@ function loadInstructionFile(filePath, config = {}) {
   } catch {
     return "";
   }
+}
+
+function formatNowShanghai() {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}（${get("weekday")}）${get("hour")}:${get("minute")}`;
 }
 
 // 系统自动生成的最近对话回顾（recent-context-writer.js 维护），文件自带标题和尾注说明
