@@ -49,6 +49,14 @@ toge 验收：问 DS「凌晨 1:26 发了什么」，克答不上、跑去翻记
 
 教训：**权限规则语法两大坑——Bash 用冒号不用空格，绝对路径双斜杠不是单斜杠**；配完白名单要实际触发一次验证，"配置了"≠"生效了"。
 
+### 同日续④ · 静默 COT 复发二修 + 回顾内容审计（commit `5b715fa`）
+
+toge 报静默思考又出现在聊天页（bdd3e9b 一修当晚复发）。根因是时序：系统轮的 replyTarget 要等 `sendTurn` **返回后**（app.js:630-637）才注册，而 CLI 在 sendTurn 期间就开始流 thought 事件——这些早期 thought 在 `attachReplyTarget` 里走 bindingKey 兜底，拿到的是上一轮 direct 的 target（系统轮和用户轮共用 `default:direct:direct-user`），`provider==="system"` 判断形同虚设。二修：dispatchPreparedTurn 在 sendTurn 之前按 bindingKey 打系统轮标记（值为时间戳，15 分钟自动过期，防 completed 事件丢失导致标记泄漏永久压制正常思考），thought 广播与 saveThinking 双查标记，turn 完成/失败/跳过/异常五个出口全清除。
+
+同时审计了回顾文件内容（toge 问的）：① 每条带 `[MM-DD HH:mm]` 时间戳 ✓；② 静默轮不落库、不进回顾 ✓（checkin trigger 和 silent 回复都不走 messageStore）；③ 主动消息保留并标"（主动）"✓；④ 补过滤 `/always` 等审批命令（from=you 以 `/` 开头）和 💡 auto-approve 提示。顺带发现 14:41 克已答出凌晨 1:25/1:26 的内容——**session 接续验收通过**。
+
+教训：**"provider 判断"这类依赖 replyTarget 的守卫都要过一遍时序审计**——target 注册晚于事件流开始的窗口里，守卫全部失效；bdd3e9b 一修就是栽在只看了状态不看时序。
+
 ## 2026-07-03 夜间·小手机两 bug 修复（日历今日高亮 + 备忘录持久化）· `#phone-home` `#localstorage`
 
 ### 背景
