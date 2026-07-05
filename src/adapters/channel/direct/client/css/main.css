@@ -12,7 +12,7 @@
   --accent-soft: rgba(89,137,185,0.06);
   --accent-cool: #a4c2e6;
   --accent-cool-soft: rgba(164,194,230,0.12);
-  --bubble-you: #eaece9;
+  --bubble-you: rgba(89,137,185,0.04);
   --bubble-you-text: #2d2d2d;
   --bubble-ke: #fafaf7;
   --bubble-ke-text: #2d2d2d;
@@ -180,6 +180,11 @@ body.has-wallpaper footer { position: relative; z-index: 1; }
 .chat-zone.has-wallpaper .chat-messages,
 .chat-zone.has-wallpaper .image-preview,
 .chat-zone.has-wallpaper .typing-indicator { position: relative; z-index: 1; }
+/* 无壁纸时 .msg.you 维持原透明底色（零变化）；有壁纸时换成毛玻璃兜底，防止贴图上隐形 */
+body.has-wallpaper .msg.you {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
 
 /* ── Calendar nav button ── */
 #cal-nav-btn {
