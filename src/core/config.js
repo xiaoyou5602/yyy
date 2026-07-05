@@ -201,8 +201,15 @@ function getModelMemoryDir(stateDir, model) {
 
 function resolveModelKey(model) {
   const direct = typeof model === "string" ? model.trim() : "";
-  if (direct === "ds" || direct === "opus" || direct === "haiku") return direct;
+  if (ALL_MODEL_KEYS.includes(direct)) return direct;
   return modelToKey(model);
+}
+
+// 记忆碎片提取/梦境整理只对这些模型跑（CYBERBOSS_MEMORY_MODELS，逗号分隔，"all" = 全部）
+function getMemoryModelKeys() {
+  const raw = (process.env.CYBERBOSS_MEMORY_MODELS || "ds").trim();
+  if (raw === "all") return [...ALL_MODEL_KEYS];
+  return raw.split(",").map((s) => s.trim()).filter((k) => ALL_MODEL_KEYS.includes(k));
 }
 
 function getModelSessionsFile(stateDir, model) {
@@ -229,4 +236,4 @@ function keyToModel(key) {
 
 const ALL_MODEL_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
 
-module.exports = { readConfig, modelToKey, modelToDisplayName, resolveModelKey, keyToModel, getModelMemoryDir, getModelSessionsFile, getModelWorldbookDir, getModelWorldbookFile, ALL_MODEL_KEYS };
+module.exports = { readConfig, modelToKey, modelToDisplayName, resolveModelKey, keyToModel, getModelMemoryDir, getModelSessionsFile, getModelWorldbookDir, getModelWorldbookFile, getMemoryModelKeys, ALL_MODEL_KEYS };

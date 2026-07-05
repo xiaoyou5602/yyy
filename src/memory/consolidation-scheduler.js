@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 const { CalendarRollupStore, getWeekKey, getMonthKey } = require("./calendar-rollup-store");
+const { keyToModel, getMemoryModelKeys } = require("../core/config");
 
 const ROLLUP_VERSION = 1;
 const CONSOLIDATION_HOUR_START = 3;
@@ -76,10 +77,18 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
   const writeLetter = shouldWriteLetterToday(config);
   if (writeLetter) console.log("[cyberboss] will ask LLM to write a letter for toge today");
 
+  // 记忆白名单：只有名单内的模型才提取碎片/做梦（CYBERBOSS_MEMORY_MODELS，默认只有 ds）
+  const activeKeys = getMemoryModelKeys();
+
   let firstModel = true;
   for (const modelKey of allModelKeys) {
     const memoryService = memoryServices.get(modelKey);
     if (!memoryService) continue;
+
+    if (!activeKeys.includes(modelKey)) {
+      console.log(`[cyberboss] skipping model [${modelKey}] (not in memory whitelist)`);
+      continue;
+    }
 
     // 跳过从未被 toge 实际使用过的模型（没有聊天碎片 = 只有日记提取的幻影碎片）
     if (!memoryService.hasChatActivity()) {
@@ -95,7 +104,7 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
     }
 
     // Gather today's fragments for quality review
-    const todayFrags = memoryService.readByDate({ date: today });
+    const todayFrags = await memoryService.readByDate({ date: today });
     const hotFragments = memoryService.getHighHeatFragments(50);
 
     // Solidify: enqueue system message if there's anything to process
@@ -495,9 +504,8 @@ function sleep(ms) {
 }
 
 function modelKeyToModelName(modelKey) {
-  if (modelKey === "opus") return "claude-opus-4-6";
-  if (modelKey === "haiku") return "claude-haiku-4-5";
-  return "";
+  if (modelKey === "ds") return ""; // ds 走 CLI 默认模型，历史上就用空 model
+  return keyToModel(modelKey);
 }
 
 module.exports = { runConsolidationScheduler };

@@ -6,7 +6,7 @@ const { createChannelAdapter } = require("./channel-factory");
 const { ReminderQueueStore } = require("./reminder-queue-store");
 const { MemoryService } = require("../services/memory-service");
 const { runConsolidationScheduler } = require("../memory/consolidation-scheduler");
-const { resolveModelKey, getModelMemoryDir, modelToDisplayName, ALL_MODEL_KEYS } = require("./config");
+const { resolveModelKey, getModelMemoryDir, modelToDisplayName, getMemoryModelKeys, ALL_MODEL_KEYS } = require("./config");
 const { isApiModel, getModelConfig } = require("./model-routes");
 const { sendApiTurn } = require("./direct-api-client");
 const DEFAULT_MIN_CHUNK_CHARS = 20;
@@ -450,8 +450,8 @@ class CyberbossApp {
       return;
     }
 
-    // Extract memory fragments from incoming user message
-    if (normalized.text && normalized.provider !== "system") {
+    // Extract memory fragments from incoming user message (whitelist: CYBERBOSS_MEMORY_MODELS)
+    if (normalized.text && normalized.provider !== "system" && getMemoryModelKeys().includes(resolveModelKey(normalized.model))) {
       const memSvc = this.getMemoryServiceForModel(normalized.model);
       memSvc.extractFromTurn({
         userText: normalized.text,
