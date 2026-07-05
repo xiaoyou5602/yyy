@@ -1103,15 +1103,6 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
   }, 300_000);
 
   wss.on("connection", (ws, req) => {
-    // 单连接约束：APP 断线重连时旧 socket 经常没有真正关闭（后台冻结/网络切换），
-    // 攒着几个死连接会让 clients.size 和 broadcast 状态飘忽。新连接进来就把其余的干掉，
-    // 只保留最新这个——单用户场景下没有"多端同时在线"的需求。
-    for (const old of clients) {
-      if (old !== ws) {
-        try { old.terminate(); } catch {}
-        clients.delete(old);
-      }
-    }
     ws.isAlive = true;
     ws.connectedAt = Date.now();
     clients.add(ws);

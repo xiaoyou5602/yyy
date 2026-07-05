@@ -77,7 +77,7 @@
 
 - [x] **B2**（2026-07-05 已实施）`connect()` 开头加了 `if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }`，防止 B1 的立即重连和原有的 `scheduleReconnect` 定时器打架产生二次连接。
 
-- [x] **B3**（2026-07-05 已实施）`wss.on("connection")` 开头加了单连接约束，新连接进来时 terminate 所有其他现存连接。
+- [x] **B3**（2026-07-05 实施后当天回滚）加了单连接约束后立刻在 VPS 日志里发现手机 APP 和电脑浏览器**互相踢线**：toge 同时用两个客户端，前提"单用户没有多端同时在线需求"是错的——新连接一来就 terminate 别的连接，被踢的那端立刻自动重连又把对方踢下去，形成秒级乒乓循环，表现为"一直反复重连/在线"。已撤销这条约束，恢复允许多端同时连接（本来 `broadcast()` 就是广播给所有 clients，多端一直是支持的）。
 
 - [x] **B4**（2026-07-05 已实施）连接日志加了 IP / UA（`connected` 时）和存活时长（`closed` 时，`aliveSec`）。
 
