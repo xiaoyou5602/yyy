@@ -205,7 +205,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 静默 checkin 的思考出现在聊天页（07-04 toge 报，当晚复发二修）— **一修 bdd3e9b**（replyTarget.provider==="system" 不广播不存档）**当晚复发**：系统轮的 replyTarget 在 sendTurn 返回后才注册，CLI 早期 thought 事件靠 bindingKey 兜底拿到上一轮 direct 的 target，provider 判断形同虚设。**二修 5b715fa（已部署）**：dispatchPreparedTurn 在 sendTurn **之前**按 bindingKey 打系统轮标记（15 分钟自动过期防标记泄漏永久压制正常思考），thought 广播与 saveThinking 都查标记，turn 完成/失败/跳过/异常时清除。**待 toge 观察**：下次 checkin 静默轮后聊天页不应再出现孤思考块
 - [x] 梦境系统 07-02 起每晚崩 — **已修（07-05）**：readByDate 补 await。待验证：明晨 3 点日志无 `todayFrags.slice` 报错
 - [x] resolveModelKey("glm") 落回 ds — **已修（07-05）**：名单改用 ALL_MODEL_KEYS；scheduler modelKeyToModelName 改用 keyToModel。**新增记忆白名单** `CYBERBOSS_MEMORY_MODELS`（默认只有 ds，设 "all" 恢复全模型），提取和梦境都只对白名单模型跑
-- [ ] 清理 haiku/opus/openclaw 的日记幻影碎片 — VPS 上删 diary 来源存量（haiku 整目录退役），跑完划掉
+- [x] 清理 haiku/opus/openclaw 的日记幻影碎片 — **已清（07-05）**：haiku 整目录退役备份，opus 12→5、openclaw 5→1（只留真实 chat），备份 `*.bak-0705`
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
 

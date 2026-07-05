@@ -3,6 +3,31 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-05 ② · 梦境系统全面体检：每晚崩溃 + glm 记忆混入 ds + 幻影碎片清理（commit `30952f8`）
+
+### 背景
+
+toge 报三个症状：最近各端口都没做梦、碎片大量没打标签、没跟 o46/haiku 聊过却有碎片（怀疑记录时混了模型）。
+
+### 诊断
+
+1. **梦境 07-02 起每晚必崩**：`consolidation-scheduler.js` runDailyDream 里 `memoryService.readByDate()` 是 async 但没 await（07-01 大修 `010e3a2` 引入），拿到 Promise 传进 buildDreamTrigger 一调 `.slice()` 就炸——`todayFrags.slice is not a function`。崩点在模型循环最前面，所有模型的打标签/质量整理/热度衰减/rollup/写信全部停摆。没打标签正是连带后果：初始标签只靠小关键词表，本该由夜间梦境 LLM 补标。
+2. **glm 记忆混入 ds**：`config.js` resolveModelKey 直通名单只有 ds/opus/haiku，传 `"glm"` 掉进 modelToKey 兜底返回 "ds" → glm 的 MemoryService 目录 = ds 目录（VPS 上 memory/glm 根本不存在）。同病：scheduler `modelKeyToModelName` 只认 opus/haiku，glm/openclaw 的梦境消息会以 model="" 发给 ds。
+3. **幻影碎片不是模型混淆**：碎片提取是纯正则代码不调 API；梦境时每个"活跃"模型独立从共享日记提碎片。haiku 的 9 个文件全是 diary 来源（07-01 加 hasChatActivity 闸之前的存量，haiku 已从路由表退役）；opus 大部分 diary + 少量 toge 真实测试消息（正因这几条 chat，hasChatActivity 闸拦不住它继续做梦花 API）。
+
+### 修法
+
+- readByDate 补 await；modelKeyToModelName 改用 config 的 keyToModel（ds 保持 ""）
+- resolveModelKey 直通名单改用 ALL_MODEL_KEYS（以后加模型不会再踩）
+- **新增记忆白名单** `CYBERBOSS_MEMORY_MODELS`（默认 `ds`，`all` = 全部）：extractFromTurn（app.js）和梦境循环（scheduler）都只对白名单模型跑——toge 最近只用 DS，其他模型的提取/做梦暂停省 API
+- VPS 数据清理（已备份 `*.bak-0705`）：haiku 整目录退役（`haiku.phantom-bak-0705`），opus 12→5 文件、openclaw 5→1 条（只删 diary 来源，保留真实 chat）
+
+### 教训
+
+- async 函数改签名（同步→异步）时必须全仓 grep 调用点补 await——07-01 大修改了 readByDate 却漏了 scheduler 里的调用
+- 模型 key 名单散落三处（resolveModelKey、modelToKey、modelKeyToModelName），加模型只改了 model-routes.js 就会静默漏——已收敛到 ALL_MODEL_KEYS/keyToModel
+- 待验证：明晨 03:25 梦境日志应无报错，DS 端碎片被补标签
+
 ## 2026-07-05 · 回顾注入加当前时间锚点（commit `41c77da`）
 
 toge 报克时间感混乱：她 21 点就睡了，克却说她"凌晨 2 点还醒着"，克自称幻觉。真相是**时间错位不是凭空幻觉**：回顾的 24h 窗口里有 07-04 凌晨 1:25-1:40 的真实对话（前一晚熬夜那次），但注入时没有任何"现在是几点"的参照，克把上一个凌晨的活动定位成了刚过去的凌晨——素材是真的，锚点缺失。
