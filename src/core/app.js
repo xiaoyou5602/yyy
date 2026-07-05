@@ -588,6 +588,11 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
       const sendTurn = typeof this.runtimeAdapter.sendTurn === "function"
         ? this.runtimeAdapter.sendTurn.bind(this.runtimeAdapter)
         : this.runtimeAdapter.sendTextTurn.bind(this.runtimeAdapter);
+      // 系统轮标记必须在 sendTurn 之前打——CLI 在 sendTurn 期间就开始流 thought，
+      // 等 sendTurn 返回再注册 replyTarget 已经漏掉早期思考的广播压制
+      if (prepared.provider === "system") {
+        this.streamDelivery.markSystemTurnActive(bindingKey);
+      }
       const turn = await sendTurn({
         bindingKey,
         workspaceRoot,
@@ -602,6 +607,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
         },
       });
       if (turn?.skipped) {
+        this.streamDelivery.clearSystemTurnActive(bindingKey);
         this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
         return false;
       }
@@ -638,6 +644,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
       }
       return true;
     } catch (error) {
+      this.streamDelivery.clearSystemTurnActive(bindingKey);
       this.turnGateStore.releaseScope(bindingKey, workspaceRoot);
       const messageText = error instanceof Error ? error.message : String(error || "unknown error");
       await this.channelAdapter.sendText({

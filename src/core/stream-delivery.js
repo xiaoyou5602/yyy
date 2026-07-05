@@ -22,6 +22,34 @@ class StreamDelivery {
     this.deferredReplyPrefixByBindingKey = new Map();
     this.stateByRunKey = new Map();
     this.runSequence = 0;
+    // 进行中的系统轮（checkin）按 bindingKey 标记。系统轮的 replyTarget 在 sendTurn 返回后
+    // 才注册，早期 thought 事件靠 bindingKey 兜底会拿到上一轮 direct 的 target——
+    // provider==="system" 判断形同虚设（07-04 静默 COT 复发的根因）。
+    // 值为 mark 时间戳，15 分钟自动过期，防 completed 事件丢失导致永久压制正常思考
+    this.systemTurnMarksByBindingKey = new Map();
+  }
+
+  markSystemTurnActive(bindingKey) {
+    if (bindingKey) this.systemTurnMarksByBindingKey.set(bindingKey, Date.now());
+  }
+
+  clearSystemTurnActive(bindingKey) {
+    if (bindingKey) this.systemTurnMarksByBindingKey.delete(bindingKey);
+  }
+
+  isSystemTurnActive(bindingKey) {
+    if (!this.systemTurnMarksByBindingKey.size) return false;
+    const STALE_MS = 15 * 60 * 1000;
+    for (const [key, ts] of this.systemTurnMarksByBindingKey) {
+      if (Date.now() - ts > STALE_MS) {
+        this.systemTurnMarksByBindingKey.delete(key);
+        continue;
+      }
+      // bindingKey 解析不出（新 spawn 的 thread 尚未入 sessionStore）时，只要有活跃
+      // 系统轮就压制——turn-gate 保证同 binding 串行，单用户系统不会误伤并发用户轮
+      if (!bindingKey || key === bindingKey) return true;
+    }
+    return false;
   }
 
   setReplyTarget(bindingKey, target) {
@@ -140,9 +168,12 @@ class StreamDelivery {
         const state = this.ensureRunState(threadId, turnId);
         state.turnId = turnId || state.turnId;
         this.captureTurnCompletionText(state, event.payload.text);
+        const completedBindingKey = state.bindingKey || this.sessionStore.findBindingForThreadId(threadId)?.bindingKey || "";
+        const systemTurnWasActive = this.isSystemTurnActive(completedBindingKey);
+        this.clearSystemTurnActive(completedBindingKey);
         // Persist thinking BEFORE flush so globalId ordering puts thinking before reply
         // 系统轮（checkin）思考不存档——静默轮会在聊天记录里留下孤零零的思考条目
-        if (state.thinkingText && state.replyTarget?.provider !== "system" && typeof this.channelAdapter.saveThinking === "function") {
+        if (state.thinkingText && state.replyTarget?.provider !== "system" && !systemTurnWasActive && typeof this.channelAdapter.saveThinking === "function") {
           const thinkingModel = resolveModelForThread(this.sessionStore, threadId) || state.replyTarget?.model || "";
           await this.channelAdapter.saveThinking({
             userId: state.replyTarget?.userId || "",
@@ -156,14 +187,17 @@ class StreamDelivery {
         return;
       }
       case "runtime.turn.failed":
+        this.clearSystemTurnActive(this.sessionStore.findBindingForThreadId(threadId)?.bindingKey);
         this.disposeRunState(buildRunKey(threadId, turnId));
         return;
       case "runtime.thought": {
         const state = this.ensureRunState(threadId, turnId);
         this.attachReplyTarget(state);
         state.thinkingText = normalizeLineEndings(event.payload.text);
-        // 系统轮（checkin 等）的思考不广播——多数以 silent 收场，聊天页会留下没有正文的思考块
-        if (state.replyTarget?.provider === "system") return;
+        // 系统轮（checkin 等）的思考不广播——多数以 silent 收场，聊天页会留下没有正文的思考块。
+        // replyTarget 判断不够：系统轮 target 在 sendTurn 返回后才注册，早期 thought 会
+        // 兜底拿到旧 direct target——所以再查 binding 级系统轮标记
+        if (state.replyTarget?.provider === "system" || this.isSystemTurnActive(state.bindingKey)) return;
         // thinking 是广播事件不需要 userId 绑定，target 可能尚未就绪
         if (typeof this.channelAdapter.sendThinking === "function") {
           await this.channelAdapter.sendThinking({
