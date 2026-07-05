@@ -3,6 +3,23 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-05 ③ · 调参台三病根查证 + 阶段 0 快修（commit `b3173b7` `ac1e3bb` `592ea65`，toge 验收通过）
+
+### 背景
+
+toge 报三症状：调参台没有颜色对应 DS 页真实背景、"全局/聊天"分组看不懂、换壁纸气泡底色消失。查证（IDE 端 Fable）：①「聊天」scope 绑 `#chat-page`，toge 常驻的 `#chat-ds-page` 整页不在注册表；②`--bubble-you/--bubble-ke` 和整套 `--model-bubble-*` 是**死变量**（定义了零消费，气泡真实底色硬编码在 `.msg` 规则）——调参台气泡色从来没生效过；③`.msg.you` 底色 `rgba(89,137,185,0.04)` 4% 透明度，壁纸下隐形。方案并入 zone-skin-architecture.md（调参台=主题编辑器定位 + 阶段 0 快修 + 主题专区 UI，参考图 toge 提供）。
+
+### 执行与返工（新分工首跑：官 APP 本地 Sonnet 执行，Fable 出方子+验货）
+
+- `ac1e3bb`（Sonnet）：气泡接活 var(--bubble-*)、chat-ds 注册 6 个 --ds-* token、tweak.js suggestScope 补映射（方子漏的它自己发现）、v31→v32
+- **返工** `592ea65`：方子里"透明底改等价实色 #eaece9"上线后气泡变灰厚重——等价色只在特定背景下成立（Fable 的锅）。改法：默认值退回原透明色（无壁纸 100% 复原），壁纸模式叠毛玻璃兜底（`body.has-wallpaper .msg.you`: rgba(255,255,255,0.55)+backdrop-filter），v33
+
+### 教训
+
+- **透明色改"等价实色"是伪等价**——rgba 的视觉结果取决于底色，气泡会出现在多种背景（chat-bg/壁纸/主题）上。正解是条件兜底（壁纸模式毛玻璃），不是猜一个实色
+- 官 APP code **本地会话**有完整本机权限（SSH 钥匙在手，能独立部署 VPS），云端沙箱只有 GitHub 授权。辨认：commit 作者 `toge <toge@withtoge.local>` = 本地跑
+- sw.js v22 起是网络优先策略，JS 不带 `?v=` 在线时也拿最新——"SW 缓存老坑"只剩离线场景，别再为它虚惊
+
 ## 2026-07-05 ② · 梦境系统全面体检：每晚崩溃 + glm 记忆混入 ds + 幻影碎片清理（commit `30952f8`）
 
 ### 背景
