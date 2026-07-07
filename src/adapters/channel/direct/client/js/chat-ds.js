@@ -409,8 +409,26 @@
       // Header buttons (only once, guarded by _dsInited)
     var menuBtn = document.getElementById("ds-menu-btn");
     var settingsBtn = document.getElementById("ds-settings-btn");
+    var searchBtn = document.getElementById("ds-search-btn");
     if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
-    if (settingsBtn) settingsBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
+    // DS 页设置按钮 → 打开真正的设置面板（不是侧栏）
+    if (settingsBtn) settingsBtn.addEventListener("click", function() {
+      var overlay = document.getElementById("settings-overlay");
+      if (overlay && typeof settings !== 'undefined') {
+        var curKey = (typeof MODEL_META !== 'undefined' && MODEL_META[settings.model]) ? MODEL_META[settings.model].key || 'ds' : 'ds';
+        var wps = typeof normalizeWallpaper === 'function' ? normalizeWallpaper(settings.wallpaper || {}) : {};
+        document.getElementById("setting-wallpaper").value = wps[curKey] || '';
+        document.getElementById("setting-model").value = settings.model || '';
+        if (typeof updateWallpaperPreview === 'function') updateWallpaperPreview(wps[curKey] || '');
+        overlay.classList.add("show");
+      }
+    });
+    // DS 页搜索按钮 → 打开搜索面板
+    if (searchBtn) searchBtn.addEventListener("click", function() {
+      var sOverlay = document.getElementById("search-overlay");
+      var sInput = document.getElementById("search-input");
+      if (sOverlay) { sOverlay.classList.add("show"); if (sInput) { sInput.value = ''; setTimeout(function() { sInput.focus(); }, 100); } }
+    });
 
     chatFlow.addEventListener("click", function(e) {
         var hdr = e.target.closest(".ds-thinking-header");

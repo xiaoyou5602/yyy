@@ -61,9 +61,18 @@ window.saveZoneTheme = function(zoneKey, themeId) {
 
 window.applyZoneTheme = function(zoneKey, themeId) {
   var zoneEl = document.getElementById("chat-zone-" + zoneKey);
-  if (!zoneEl) return;
-  if (themeId) { zoneEl.dataset.theme = themeId; }
-  else { delete zoneEl.dataset.theme; }
+  if (zoneEl) {
+    if (themeId) { zoneEl.dataset.theme = themeId; }
+    else { delete zoneEl.dataset.theme; }
+  }
+  // DS 页有独立的全屏容器 #chat-ds-page，同步应用
+  if (zoneKey === 'ds') {
+    var dsPage = document.getElementById("chat-ds-page");
+    if (dsPage) {
+      if (themeId) { dsPage.dataset.theme = themeId; }
+      else { delete dsPage.dataset.theme; }
+    }
+  }
 };
 
 // 对所有 zone 应用已保存的主题
