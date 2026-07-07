@@ -965,6 +965,7 @@
 
   <!-- 控制栏 -->
   <footer class="theme-control-panel">
+    <button id="theme-apply-btn" class="theme-apply-btn">✓ 已应用</button>
     <div class="theme-slider-wrap">
       <label for="theme-alpha-slider">不透明度</label>
       <div class="theme-slider-row">
@@ -974,7 +975,7 @@
     </div>
     <div class="theme-actions">
       <button id="theme-gallery-btn" class="theme-btn theme-btn-secondary">从图库选择</button>
-      <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">🔄 重置</button>
+      <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">重置</button>
     </div>
     <input type="file" id="theme-wallpaper-file" accept="image/*" hidden>
   </footer>
@@ -2010,47 +2011,49 @@ var themeCarouselHint = document.getElementById("theme-carousel-hint");
 
 var carouselScrollTimer = null;
 var carouselRafId = null;
+var draftThemeId = null; // 草稿态：用户选中的卡片但还没应用
 
-// 渲染主题卡片到轮播轨道
+// 渲染主题卡片
 function renderThemeCards() {
   if (!themeCardsTrack) return;
   var curKey = activeZoneKey || "ds";
-  var currentTheme = window.loadZoneTheme(curKey);
+  var activeTheme = window.loadZoneTheme(curKey);
+  draftThemeId = activeTheme; // 初始草稿 = 当前已应用的主题
   var themes = window.THEME_REGISTRY;
+  var customThemes = window.loadCustomThemes ? window.loadCustomThemes() : [];
+  var allThemes = themes.concat(customThemes);
 
-  var html = "";
-  // 左侧 padding 占位，让第一个卡片也能滑到中间
-  html += '<div class="theme-carousel-spacer"></div>';
-  for (var i = 0; i < themes.length; i++) {
-    var t = themes[i];
-    var isActive = t.id === currentTheme;
-    html += '<div class="theme-card-item' + (isActive ? ' is-focused' : '') + '" data-theme-id="' + t.id + '">';
-    html += '<div class="theme-card-preview" style="background:' + t.preview.bg + ';">';
-    // 模拟聊天气泡预览
-    html += '<div class="theme-card-bubble me" style="background:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.15)' : 'rgba(89,137,185,0.04)') + ';border-color:' + t.preview.accent + '20;"></div>';
-    html += '<div class="theme-card-bubble ke" style="background:' + (t.id === 'midnight' ? '#1e2430' : '#fafaf7') + ';border-color:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.1)' : 'rgba(45,45,45,0.06)') + ';"></div>';
-    html += '<div class="theme-card-bubble me short"></div>';
+  var html = '<div class="theme-carousel-spacer"></div>';
+  for (var i = 0; i < allThemes.length; i++) {
+    var t = allThemes[i];
+    var isActive = t.id === activeTheme;
+    var isCustom = t._custom === true;
+    var cardClass = isActive ? ' is-active' : '';
+    html += '<div class="theme-card-item' + cardClass + '" data-theme-id="' + t.id + '"' + (isCustom ? ' data-custom="1"' : '') + '>';
+    // 纯色/渐变预览（不用丑线框图）
+    html += '<div class="theme-card-preview" style="background:' + (t.preview && t.preview.bg ? t.preview.bg : 'linear-gradient(135deg, #f0f0eb, #fafaf7)') + ';">';
+    if (isActive) html += '<span class="theme-card-check">✓</span>';
+    if (isCustom) html += '<button class="theme-card-delete" data-theme-id="' + t.id + '" title="删除">✕</button>';
     html += '</div>';
     html += '<span class="theme-card-name">' + t.name + '</span>';
-    if (isActive) html += '<span class="theme-card-check">✓</span>';
     html += '</div>';
   }
-  // 「+ 添加」卡片
+  // 「+ 添加」
   html += '<div class="theme-card-item theme-card-add" id="theme-add-card">';
   html += '<div class="theme-card-preview add-preview"><span class="add-icon">+</span></div>';
   html += '<span class="theme-card-name">添加</span>';
   html += '</div>';
-  // 右侧 padding 占位
   html += '<div class="theme-carousel-spacer"></div>';
 
   themeCardsTrack.innerHTML = html;
 
-  // 绑定点击
+  // 绑定卡片点击 → 草稿态选中
   themeCardsTrack.querySelectorAll('.theme-card-item:not(.theme-card-add)').forEach(function(card) {
     card.addEventListener('click', function() {
-      selectTheme(card.dataset.themeId);
+      selectDraft(card.dataset.themeId);
     });
   });
+
   // 「+ 添加」→ 调参台
   var addCard = document.getElementById('theme-add-card');
   if (addCard) {
@@ -2059,32 +2062,77 @@ function renderThemeCards() {
     });
   }
 
-  // 动态设置 spacers 宽度 (= 容器宽度一半 - 卡片宽度一半)
+  // 删除按钮
+  themeCardsTrack.querySelectorAll('.theme-card-delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteCustomTheme(btn.dataset.themeId);
+    });
+  });
+
+  // 动态 spacers
   var container = themeCardsTrack.parentElement;
   if (container) {
-    var spacerW = Math.max(20, container.clientWidth / 2 - 98); // 卡片宽180 + gap16 / 2 ≈ 98
-    var spacers = themeCardsTrack.querySelectorAll('.theme-carousel-spacer');
-    spacers.forEach(function(s) { s.style.width = spacerW + 'px'; });
+    var spacerW = Math.max(20, container.clientWidth / 2 - 110);
+    themeCardsTrack.querySelectorAll('.theme-carousel-spacer').forEach(function(s) { s.style.width = spacerW + 'px'; });
   }
 
-  // 滚动到当前选中的卡片
+  // 滚动到当前激活的卡片
   requestAnimationFrame(function() {
     scrollToFocusedCard(false);
+    updateApplyButton();
   });
 }
 
-// 选中主题
-function selectTheme(themeId) {
-  var curKey = activeZoneKey || "ds";
-  window.saveZoneTheme(curKey, themeId);
-  window.applyZoneTheme(curKey, themeId);
-  // 更新卡片状态
+// 草稿态选中（只改卡片视觉，不应用主题）
+function selectDraft(themeId) {
+  draftThemeId = themeId;
   themeCardsTrack.querySelectorAll('.theme-card-item').forEach(function(c) {
     c.classList.toggle('is-focused', c.dataset.themeId === themeId);
     var check = c.querySelector('.theme-card-check');
     if (check) check.style.display = c.dataset.themeId === themeId ? '' : 'none';
   });
   scrollToFocusedCard(true);
+  updateApplyButton();
+}
+
+// 应用装扮（写入全局 + localStorage）
+function applyDraftTheme() {
+  if (!draftThemeId && draftThemeId !== '') return;
+  var curKey = activeZoneKey || "ds";
+  window.saveZoneTheme(curKey, draftThemeId);
+  window.applyZoneTheme(curKey, draftThemeId);
+  // 更新卡片上的 is-active 标记
+  themeCardsTrack.querySelectorAll('.theme-card-item').forEach(function(c) {
+    c.classList.toggle('is-active', c.dataset.themeId === draftThemeId);
+  });
+  updateApplyButton();
+  showToast('装扮已应用 ✓');
+}
+
+// 更新「应用」按钮状态
+function updateApplyButton() {
+  var btn = document.getElementById('theme-apply-btn');
+  if (!btn) return;
+  var curKey = activeZoneKey || "ds";
+  var activeTheme = window.loadZoneTheme(curKey);
+  var isDirty = draftThemeId !== activeTheme;
+  btn.classList.toggle('is-dirty', isDirty);
+  btn.textContent = isDirty ? '● 应用装扮' : '✓ 已应用';
+}
+
+// 删除自定义主题
+function deleteCustomTheme(themeId) {
+  var themes = window.loadCustomThemes ? window.loadCustomThemes() : [];
+  var idx = -1;
+  for (var i = 0; i < themes.length; i++) { if (themes[i].id === themeId) { idx = i; break; } }
+  if (idx === -1) return;
+  themes.splice(idx, 1);
+  window.saveCustomThemes ? window.saveCustomThemes(themes) : null;
+  // 如果删除的是当前草稿，重置
+  if (draftThemeId === themeId) draftThemeId = '';
+  renderThemeCards();
+  showToast('已删除');
 }
 
 // 滚动到聚焦卡片（带弹性动画）
@@ -2216,6 +2264,16 @@ function openThemeZone() {
   renderThemeCards();
   setupCarouselScroll();
 }
+
+// 「应用装扮」按钮
+document.getElementById('theme-apply-btn').addEventListener('click', function() {
+  var btn = this;
+  applyDraftTheme();
+  // 物理回弹动画
+  btn.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+  btn.style.transform = 'scale(0.94)';
+  setTimeout(function() { btn.style.transform = ''; }, 150);
+});
 
 // 不透明度滑条
 if (themeAlphaSlider) {
