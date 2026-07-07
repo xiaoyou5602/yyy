@@ -132,6 +132,16 @@ async function runDailyDream({ memoryServices, allModelKeys, systemMessageQueue,
 
     // Rollup generation
     await generateDueRollups({ memoryService, rollupStore, modelKey });
+
+    // Phase 4: Episode candidate detection
+    try {
+      const newEpisodes = memoryService.detectEpisodes({ days: 3 });
+      if (newEpisodes.length > 0) {
+        console.log(`[cyberboss] dream growth [${modelKey}]: detected ${newEpisodes.length} episode candidates (confidence: ${newEpisodes.map(e => e.confidence).join(", ")})`);
+      }
+    } catch (err) {
+      console.warn(`[cyberboss] episode detection failed for [${modelKey}]: ${err?.message || err}`);
+    }
   }
 
   console.log("[cyberboss] consolidation (dream) complete");

@@ -456,6 +456,8 @@ class CyberbossApp {
       memSvc.extractFromTurn({
         userText: normalized.text,
         date: new Date().toISOString().slice(0, 10),
+        messageId: normalized.messageId || "",
+        role: "user",
       }).catch((err) => {
         console.warn(`[cyberboss] memory extractFromTurn failed: ${err?.message || err}`);
       });
@@ -672,10 +674,13 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
     const memoryContext = await this.getMemoryServiceForModel(sessionModel).injectMemoryContext({
       text: prepared.text || prepared.originalText || "",
     });
+    const contextRoutes = await this.getMemoryServiceForModel(sessionModel).injectContextRoutes({
+      text: prepared.text || prepared.originalText || "",
+    });
     const worldbookContext = this.projectServices.worldbook.buildPromptSection(sessionModel);
     const channelContext = loadChannelInstructions(this.config, prepared?.provider);
 
-    const systemParts = [worldbookContext, channelContext, memoryContext].filter(Boolean);
+    const systemParts = [worldbookContext, channelContext, contextRoutes, memoryContext].filter(Boolean);
     const systemPrompt = systemParts.join("\n") + "\n现在时间：" + new Date().toISOString().slice(0, 16).replace("T", " ");
 
     console.log(`[api-turn] model=${modelKey} base_url=${cfg.baseUrl} api_model=${cfg.apiModel}`);
@@ -841,6 +846,9 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
     const memoryContext = await this.getMemoryServiceForModel(model).injectMemoryContext({
       text: prepared.text || prepared.originalText || "",
     });
+    const contextRoutes = await this.getMemoryServiceForModel(model).injectContextRoutes({
+      text: prepared.text || prepared.originalText || "",
+    });
     const worldbookContext = this.projectServices.worldbook.buildPromptSection(model);
     const channelContext = loadChannelInstructions(this.config, prepared?.provider);
     return {
@@ -849,6 +857,7 @@ n  // Reset the turn watchdog timer. Called after approval resolution or any
         config: this.config,
         visionContext,
         memoryContext,
+        contextRoutes,
         worldbookContext,
         channelContext,
       }),

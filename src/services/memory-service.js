@@ -1,6 +1,9 @@
+const fs = require("fs");
+const path = require("path");
 const { MemoryFragmentStore } = require("../memory/memory-fragment-store");
 const { MemoryIndex } = require("../memory/memory-index");
 const { CalendarRollupStore } = require("../memory/calendar-rollup-store");
+const { MemoryEpisodeStore } = require("../memory/memory-episode-store");
 
 // ── 提取模式：按优先级从高到低 ──
 // identity 最高优先 — 关于 toge 是谁的不可变事实
@@ -215,6 +218,7 @@ class MemoryService {
     this.store = new MemoryFragmentStore({ memoryDir: this.memoryDir });
     this.index = new MemoryIndex();
     this.rollupStore = new CalendarRollupStore({ memoryDir: this.memoryDir });
+    this.episodeStore = new MemoryEpisodeStore({ memoryDir: this.memoryDir });
 
     this._rebuildIndex();
   }
@@ -224,18 +228,68 @@ class MemoryService {
     this.index.build(all);
   }
 
+  // ── Phase 4: Episode 检测 ──
+
+  detectEpisodes({ days = 3 } = {}) {
+    const recent = this.store.getRecent(days);
+    if (recent.length < 3) return [];
+    return this.episodeStore.detectCandidates(recent);
+  }
+
+  getEpisodes({ days = 7, status = "candidate" } = {}) {
+    if (status === "confirmed") return this.episodeStore.getConfirmed(days);
+    return this.episodeStore.getCandidates(days);
+  }
+
+  confirmEpisode(id) {
+    return this.episodeStore.confirmEpisode(id);
+  }
+
+  rejectEpisode(id) {
+    return this.episodeStore.rejectCandidate(id);
+  }
+
   // ── Core injection: called before sending to LLM ──
 
   async injectMemoryContext({ text = "" }) {
     const query = String(text || "").trim();
     if (!query || !shouldInjectMemory(query)) return "";
 
-    const lines = [];
+    // Phase 3: 意图感知搜索
+    const intent = classifyQueryIntent(query);
+    const filters = INTENT_FILTERS[intent] || INTENT_FILTERS.general;
 
-    const results = this.index.search(query, { topK: 5, minHeat: 20 });
-    if (results.length > 0) {
-      lines.push("<memory_context>");
-      for (const { fragment } of results) {
+    this._rebuildIndex();
+    const results = this.index.search(query, {
+      topK: filters.maxResults,
+      minHeat: filters.minHeat,
+    });
+
+    // 按 subtype 过滤 + 按时间范围过滤（如果 fragment 有 subtype 且在过滤列表中加分）
+    let filtered = results;
+    if (filters.subtype) {
+      filtered = results.map(r => {
+        const hasMatchingSubtype = (r.fragment.subtype || []).some(st => filters.subtype.includes(st));
+        return { ...r, score: r.score * (hasMatchingSubtype ? 1.3 : 1.0) };
+      });
+    }
+
+    // heatBoost：高热度加权
+    if (filters.heatBoost) {
+      filtered = filtered.map(r => ({
+        ...r,
+        score: r.score * (r.fragment.heat >= 70 ? 1.5 : 1.0),
+      }));
+    }
+
+    filtered.sort((a, b) => b.score - a.score);
+    const top = filtered.slice(0, filters.maxResults);
+
+    const lines = [];
+    if (top.length > 0) {
+      const intentLabel = intent !== "general" ? ` intent="${intent}"` : "";
+      lines.push(`<memory_context${intentLabel}>`);
+      for (const { fragment } of top) {
         const date = fragment.created ? fragment.created.slice(0, 10) : "";
         const typeLabel = fragment.type !== "fact" ? `[${fragment.type}] ` : "";
         lines.push(`- ${date} ${typeLabel}${fragment.content}`);
@@ -253,9 +307,55 @@ class MemoryService {
     return lines.length > 0 ? lines.join("\n") : "";
   }
 
+  // ── Context routes: keyword-based rule injection ──
+
+  async injectContextRoutes({ text = "" }) {
+    const query = String(text || "").trim();
+    if (!query) return "";
+
+    const routesPath = path.join(this.config.stateDir, "context-routes.json");
+    let routes = [];
+    try {
+      if (fs.existsSync(routesPath)) {
+        routes = JSON.parse(fs.readFileSync(routesPath, "utf8"));
+      }
+    } catch {
+      return "";
+    }
+    if (!Array.isArray(routes) || !routes.length) return "";
+
+    const matchedRules = [];
+    const rulesDir = path.join(this.config.stateDir, "context-rules");
+    const queryLower = query.toLowerCase();
+
+    for (const route of routes) {
+      const keywords = Array.isArray(route.keywords) ? route.keywords : [];
+      const matched = keywords.some((kw) => queryLower.includes(String(kw).toLowerCase()));
+      if (!matched) continue;
+
+      const ruleFiles = Array.isArray(route.ruleFiles) ? route.ruleFiles : [];
+      for (const file of ruleFiles) {
+        const rulePath = path.join(rulesDir, file);
+        try {
+          if (fs.existsSync(rulePath)) {
+            const content = fs.readFileSync(rulePath, "utf8").trim();
+            if (content) {
+              matchedRules.push(content);
+            }
+          }
+        } catch {
+          // skip missing/unreadable files
+        }
+      }
+    }
+
+    if (matchedRules.length === 0) return "";
+    return "<context_rules>\n" + matchedRules.join("\n\n") + "\n</context_rules>";
+  }
+
   // ── Fragment extraction from turns ──
 
-  async extractFromTurn({ userText = "", date = "" }) {
+  async extractFromTurn({ userText = "", date = "", messageId = "", role = "user" }) {
     const text = String(userText || "").trim();
     if (!text) return [];
 
@@ -284,8 +384,9 @@ class MemoryService {
             type,
             content: trimmed,
             heat: Math.min(100, (HEAT_INITIAL_MAP[type] || 35) + bonus),
-            source: { kind: "chat", date: day, ref: `chat/${day}` },
+            source: { kind: "chat", date: day, ref: `chat/${day}`, message_id: messageId || "", role },
             tags: extractTags(trimmed),
+            subtype: classifySubtypes(trimmed),
             created: new Date().toISOString(),
           });
           if (fragment) extracted.push(fragment);
@@ -317,8 +418,9 @@ class MemoryService {
         type,
         content: trimmed,
         heat: Math.min(100, (HEAT_INITIAL_MAP[type] || 35) + bonus),
-        source: { kind: "chat", date: day, ref: `chat/${day}` },
+        source: { kind: "chat", date: day, ref: `chat/${day}`, message_id: messageId || "", role },
         tags: extractTags(trimmed),
+        subtype: classifySubtypes(trimmed),
         created: new Date().toISOString(),
       });
       if (fragment) extracted.push(fragment);
@@ -635,6 +737,75 @@ function extractTags(text) {
     }
   }
   return tags;
+}
+
+// ── Phase 2: Subtype 多标签分类 ──
+// 每个规则独立判断，允许一个碎片命中多个 subtype
+function classifySubtypes(content) {
+  const subtypes = [];
+  const text = String(content || "");
+
+  if (/累了|困了|好累|状态不好|不舒服|心情|身体|不行了|好多了/.test(text))
+    subtypes.push("STATE_CHANGE");
+  if (/聊天|聊了|打电话|发消息|见面|跟.*说|和朋友|和同学/.test(text))
+    subtypes.push("INTERACTION");
+  if (/买了|花了|块钱|食堂|奶茶|外卖|吃饭|喝了|吃了|付款|消费/.test(text))
+    subtypes.push("CONSUMPTION");
+  if (/决定|打算|报名|从今天|准备.*做|计划|开始.*跑步|开始.*学/.test(text))
+    subtypes.push("PLAN");
+  if (/完成了|通过了|拿到了|做到了|考完了|终于|做完了/.test(text))
+    subtypes.push("ACHIEVEMENT");
+
+  // OPINION vs RELATIONSHIP 消歧义
+  const hasRelationCtx = /关系|在乎|爱不爱|我们.*什么|之间|算什么/.test(text);
+  const hasOpinionWord = /好用|难用|好吃|难吃|太.*了|垃圾|最爱|喜欢|讨厌/.test(text);
+  if (hasRelationCtx) subtypes.push("RELATIONSHIP");
+  if (hasOpinionWord && !hasRelationCtx) subtypes.push("OPINION");
+
+  return subtypes;
+}
+
+// ── Phase 3: 意图感知搜索 ──
+
+// Intent → Filters 映射（解耦：intent 决定 filter，不直接决定搜索源）
+const INTENT_FILTERS = {
+  fact_lookup: {
+    // "我什么时候买的小米15"、"上次体检什么时候"
+    subtype: ["CONSUMPTION", "ACHIEVEMENT", "STATE_CHANGE", "PLAN"],
+    timeRange: 90,
+    minHeat: 10,
+    maxResults: 8,
+    heatBoost: false,
+  },
+  reflection: {
+    // "最近状态怎么样"、"我们关系好吗"
+    subtype: ["STATE_CHANGE", "RELATIONSHIP", "OPINION"],
+    timeRange: 30,
+    minHeat: 40,
+    maxResults: 5,
+    heatBoost: true,
+  },
+  general: {
+    subtype: null,
+    timeRange: 60,
+    minHeat: 20,
+    maxResults: 5,
+    heatBoost: false,
+  },
+};
+
+function classifyQueryIntent(query) {
+  const q = String(query || "");
+
+  // fact_lookup 信号：时间词、数量词、具体事实查询
+  if (/什么时候|哪天|几[点个次]|多少|在哪|谁|上次|最近一次|有没有.*过|做了.*没/.test(q))
+    return "fact_lookup";
+
+  // reflection 信号：关系、情感、总结
+  if (/关系|怎么样|这段时间|那段时间|最近.*状态|变化|成长|感觉.*如何|开心.*吗|好不好|总结|回顾/.test(q))
+    return "reflection";
+
+  return "general";
 }
 
 function formatDate(date) {

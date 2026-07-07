@@ -57,11 +57,14 @@ class MemoryFragmentStore {
       id: fragment.id || `mem-${date}-${String(fragments.length + 1).padStart(3, "0")}`,
       type: fragment.type || "fact",
       content: String(fragment.content || "").trim(),
-      source: fragment.source || { kind: "manual", date, ref: "" },
+      source: fragment.source
+        ? { kind: "manual", date, ref: "", ...fragment.source }
+        : { kind: "manual", date, ref: "" },
       heat: typeof fragment.heat === "number" ? fragment.heat : (HEAT_INITIAL[fragment.type] || 35),
       locked: fragment.locked !== undefined ? Boolean(fragment.locked) : (fragment.type === "identity" && (typeof fragment.heat === "number" ? fragment.heat : (HEAT_INITIAL[fragment.type] || 95)) >= 85),
       status: fragment.status || "active",
       tags: Array.isArray(fragment.tags) ? fragment.tags : [],
+      subtype: Array.isArray(fragment.subtype) ? fragment.subtype : [],
       created: fragment.created || formatShanghaiISO(new Date()),
       lastRecalled: fragment.lastRecalled || fragment.created || formatShanghaiISO(new Date()),
     };

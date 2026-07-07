@@ -28,6 +28,7 @@ async function loadMemoryTab(tab) {
       case "diary": await loadDiary(); break;
       case "memory": await loadMemory(); break;
       case "rollups": await loadRollups(); break;
+      case "episodes": await loadEpisodes(); break;
     }
   } catch (err) {
     memoryContent.innerHTML = `<div class="empty-state">加载失败</div>`;
@@ -143,6 +144,7 @@ async function loadMemory() {
     return;
   }
   const typeLabel = { fact: "事实", event: "事件", reflection: "感悟", preference: "偏好" };
+  const subtypeLabel = { STATE_CHANGE: "状态", INTERACTION: "互动", CONSUMPTION: "消费", PLAN: "计划", OPINION: "评价", ACHIEVEMENT: "成就", RELATIONSHIP: "关系" };
   let html = buildModelChips("memory", counts) +
     `<div class="mem-filter">
     <input type="text" id="mem-search" placeholder="搜索记忆…">
@@ -178,6 +180,7 @@ async function loadMemory() {
         <div class="mem-card-tags">${tagsHtml}</div>
         <div class="mem-card-footer">
           <span class="mem-card-type-badge ${type}">${typeLabel[type] || type}</span>
+          ${(f.subtype || []).map(st => `<span class="mem-card-subtype-badge">${subtypeLabel[st] || st}</span>`).join("")}
           ${sourceKind ? `<span class="mem-card-src">${sourceKind}</span>` : ""}
           ${modelBadge}
         </div>
@@ -224,6 +227,41 @@ async function loadRollups() {
         </div>
       </div>`;
     }
+  }
+  html += `</div>`;
+  memoryContent.innerHTML = html;
+}
+
+// ── Phase 4: Episode 话题候选 ──
+
+async function loadEpisodes() {
+  const modelParam = _memoryModelFilter ? `?model=${encodeURIComponent(_memoryModelFilter)}` : "";
+  const res = await fetch(`/api/memory/episodes${modelParam}`);
+  const episodes = await res.json();
+  if (!Array.isArray(episodes) || !episodes.length) {
+    memoryContent.innerHTML = `<div class="empty-state">还没有话题候选<br>系统会在梦境整理时自动检测</div>`;
+    return;
+  }
+  const subtypeLabel = { STATE_CHANGE: "状态", INTERACTION: "互动", CONSUMPTION: "消费", PLAN: "计划", OPINION: "评价", ACHIEVEMENT: "成就", RELATIONSHIP: "关系" };
+  let html = `<div class="rollup-list">`;
+  html += `<div class="day-head">话题候选（置信度排序）</div>`;
+  for (const ep of episodes) {
+    const confidencePct = Math.round((ep.confidence || 0) * 100);
+    const confColor = confidencePct >= 75 ? "#4caf50" : confidencePct >= 60 ? "#ff9800" : "#f44336";
+    const subtypeBadges = (ep.mainSubtypes || []).map(st => `<span class="mem-card-subtype-badge">${subtypeLabel[st] || st}</span>`).join("");
+    html += `<div class="rollup-card">
+      <div class="rollup-card-inner">
+        <div class="rollup-period">
+          ${esc(ep.title || "未命名话题")}
+          <span style="color:${confColor};font-size:13px;margin-left:8px;">置信度 ${confidencePct}%</span>
+        </div>
+        <div class="rollup-summary">${esc(ep.summary || "")}</div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-secondary);">
+          ${esc(ep.period?.start || "")} ~ ${esc(ep.period?.end || "")} · ${ep.fragmentCount} 条片段 · 平均热度 ${ep.avgHeat || 0}
+          ${subtypeBadges}
+        </div>
+      </div>
+    </div>`;
   }
   html += `</div>`;
   memoryContent.innerHTML = html;

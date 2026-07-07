@@ -4,6 +4,11 @@ class MemoryIndex {
     this.inverted = new Map();  // token → [{fragmentIdx, tf}]
     this.docLengths = [];        // fragmentIdx → total term count
     this.avgDocLength = 0;
+
+    // 二级索引（Phase 0：地基）
+    this.bySubtype = {};         // "RELATIONSHIP" → [fragIdx, ...]
+    this.bySourceMessage = {};   // "msg_xxx" → [fragIdx, ...]
+    this.byEpisode = {};         // "ep-xxx" → [fragIdx, ...]
   }
 
   /**
@@ -68,6 +73,20 @@ class MemoryIndex {
       }
     }
     this.avgDocLength = this.fragments.length > 0 ? totalLen / this.fragments.length : 0;
+
+    // ── 构建二级索引 ──
+    this.bySubtype = {};
+    this.bySourceMessage = {};
+    for (let i = 0; i < fragments.length; i++) {
+      const f = fragments[i];
+      // subtype 是数组
+      for (const st of (f.subtype || [])) {
+        (this.bySubtype[st] ||= []).push(i);
+      }
+      // source message 反查
+      const msgId = f.source?.message_id;
+      if (msgId) (this.bySourceMessage[msgId] ||= []).push(i);
+    }
   }
 
   search(query, { topK = 20, minHeat = 0 } = {}) {
@@ -131,6 +150,31 @@ class MemoryIndex {
 
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, topK);
+  }
+
+  // ── 二级索引查询方法 ──
+
+  /** 按 subtype 查找 fragment 索引 */
+  getBySubtype(subtype) {
+    return this.bySubtype[subtype] || [];
+  }
+
+  /** 按 source.message_id 反查 fragment 索引 */
+  getBySourceMessage(msgId) {
+    return this.bySourceMessage[msgId] || [];
+  }
+
+  /** 按 episode ID 查找 fragment 索引（Phase 4 使用） */
+  getByEpisode(epId) {
+    return this.byEpisode[epId] || [];
+  }
+
+  /** 注册 episode → fragmentIds 映射（Phase 4 调用） */
+  registerEpisode(epId, fragmentIds) {
+    for (const id of fragmentIds) {
+      const idx = this.fragments.findIndex(f => f.id === id);
+      if (idx >= 0) (this.byEpisode[epId] ||= []).push(idx);
+    }
   }
 }
 

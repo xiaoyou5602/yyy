@@ -509,6 +509,25 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── Phase 4: Episode candidates API ──
+    if (urlPath === "/api/memory/episodes") {
+      try {
+        const model = query.model || "";
+        const status = query.status || "candidate";
+        const modelDir = model ? path.join(memoryDir, model) : memoryDir;
+        const episodeStore = new (require("../../../memory/memory-episode-store").MemoryEpisodeStore)({ memoryDir: modelDir });
+        const episodes = status === "confirmed"
+          ? episodeStore.getConfirmed(30)
+          : episodeStore.getCandidates(7);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(episodes));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── API: models（前端动态加载模型列表）──
     if (urlPath === "/api/models" && req.method === "GET") {
       try {
