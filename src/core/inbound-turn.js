@@ -44,7 +44,7 @@ function buildMergedInboundPrepared({
   };
 }
 
-function assembleRuntimeTurnText({ prepared, config = {}, visionContext = {}, memoryContext = "", worldbookContext = "", channelContext = "" }) {
+function assembleRuntimeTurnText({ prepared, config = {}, visionContext = {}, memoryContext = "", contextRoutes = "", worldbookContext = "", channelContext = "" }) {
   const lines = [];
   if (worldbookContext) {
     lines.push(worldbookContext);
@@ -52,6 +52,10 @@ function assembleRuntimeTurnText({ prepared, config = {}, visionContext = {}, me
   }
   if (channelContext) {
     lines.push(channelContext);
+    lines.push("");
+  }
+  if (contextRoutes) {
+    lines.push(contextRoutes);
     lines.push("");
   }
   if (memoryContext) {
