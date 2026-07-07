@@ -7,7 +7,7 @@ window._pageTokens = {
     label: '全局',
     selector: null,  // null = document.documentElement
     tokens: [
-      // 色彩
+      // 色彩（全站共享设计 token）
       { key:'--bg',              label:'背景色',      section:'色彩', type:'color' },
       { key:'--surface',         label:'卡片底色',    section:'色彩', type:'color' },
       { key:'--text',            label:'正文色',      section:'色彩', type:'color' },
@@ -17,17 +17,35 @@ window._pageTokens = {
       { key:'--accent-soft',     label:'主题浅底',    section:'色彩', type:'color' },
       { key:'--accent-cool',     label:'冷调强调',    section:'色彩', type:'color' },
       { key:'--accent-cool-soft',label:'冷调浅底',    section:'色彩', type:'color' },
-      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
-      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
-      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
-      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
       { key:'--border',          label:'边框色',      section:'色彩', type:'color' },
       { key:'--border-soft',     label:'浅边框',      section:'色彩', type:'color' },
-      // 圆角
+      { key:'--status-on-color', label:'在线状态色',  section:'色彩', type:'color' },
+      // 圆角（全站共享）
       { key:'--radius-xs', label:'小圆角',   section:'圆角', type:'range', min:2, max:18, step:1, unit:'px' },
       { key:'--radius-sm', label:'中小圆角', section:'圆角', type:'range', min:4, max:26, step:1, unit:'px' },
       { key:'--radius',    label:'默认圆角', section:'圆角', type:'range', min:6, max:36, step:1, unit:'px' },
       { key:'--radius-lg', label:'大圆角',   section:'圆角', type:'range', min:8, max:48, step:1, unit:'px' },
+      // 字体（全站共享）
+      { key:'--font-body-size', label:'正文字号', section:'字体', type:'range', min:12, max:19, step:0.5, unit:'px' },
+      { key:'--h1-font-size',   label:'标题字号', section:'字体', type:'range', min:14, max:26, step:0.5, unit:'px' },
+      // 壁纸
+      { key:'--wallpaper-overlay-alpha', label:'壁纸遮罩透明度', section:'壁纸', type:'range', min:0, max:1, step:0.05, unit:'', default:0.75 },
+    ]
+  },
+
+  // ── 聊天页（主聊天区共享 + per-zone 覆盖）──
+  chat: {
+    label: '聊天',
+    selector: '#chat-page',
+    tokens: [
+      { key:'--chat-bg', label:'页面背景', section:'页面', type:'color', default:'#fafaf9' },
+      { key:'--header-bg', label:'头部底色', section:'头部', type:'color', default:'transparent' },
+      { key:'--footer-bg', label:'底部栏底色', section:'底部栏', type:'color', default:'transparent' },
+      // 气泡
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
       // 间距
       { key:'--msg-gap',       label:'消息间距',   section:'间距', type:'range', min:2, max:28, step:1, unit:'px' },
       { key:'--msg-padding-x', label:'消息内边距', section:'间距', type:'range', min:6, max:28, step:1, unit:'px' },
@@ -39,21 +57,81 @@ window._pageTokens = {
       { key:'--pet-size',      label:'小螃蟹大小', section:'间距', type:'range', min:32, max:80, step:2, unit:'px' },
       { key:'--bubble-max-w',  label:'气泡最大宽', section:'间距', type:'range', min:60, max:95, step:1, unit:'%' },
       { key:'--footer-pb',     label:'底部安全距', section:'间距', type:'range', min:0, max:24, step:1, unit:'px' },
-      // 字体
-      { key:'--font-body-size', label:'正文字号', section:'字体', type:'range', min:12, max:19, step:0.5, unit:'px' },
-      { key:'--msg-font-size',  label:'消息字号', section:'字体', type:'range', min:13, max:18, step:0.5, unit:'px' },
-      { key:'--h1-font-size',   label:'标题字号', section:'字体', type:'range', min:14, max:26, step:0.5, unit:'px' },
+      // 输入区
+      { key:'--input-bg',          label:'输入区底色', section:'输入区', type:'color' },
+      { key:'--input-border',      label:'输入区边框', section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--input-focus-ring',  label:'输入聚焦环', section:'输入区', type:'color' },
+      // 发送按钮
+      { key:'--send-btn-bg',        label:'发送钮底色', section:'发送', type:'color' },
+      { key:'--send-btn-color',     label:'发送钮图标', section:'发送', type:'color' },
+      { key:'--send-btn-shadow',    label:'发送钮阴影', section:'发送', type:'color' },
+      { key:'--send-btn-active-bg', label:'发送钮按下', section:'发送', type:'color' },
+      // 其他
+      { key:'--placeholder-color', label:'占位文字色', section:'其他', type:'color' },
+      { key:'--image-btn-color',   label:'图片按钮色', section:'其他', type:'color' },
+      { key:'--chat-empty-color',  label:'空态提示色', section:'其他', type:'color' },
+      { key:'--footer-border',     label:'底部栏边框', section:'底部栏', type:'color' },
     ]
   },
 
-  // ── 聊天页 ──
-  chat: {
-    label: '聊天',
-    selector: '#chat-page',
+  // ── Opus 聊天 zone ──
+  'chat-opus': {
+    label: 'Opus聊天',
+    selector: '#chat-zone-opus',
     tokens: [
-      { key:'--chat-bg', label:'页面背景', section:'页面', type:'color', default:'#fafaf9' },
-      { key:'--header-bg', label:'头部底色', section:'头部', type:'color', default:'transparent' },
-      { key:'--footer-bg', label:'底部栏底色', section:'底部栏', type:'color', default:'transparent' },
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
+      { key:'--input-bg',        label:'输入区底色',  section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--send-btn-bg',     label:'发送钮底色',  section:'发送', type:'color' },
+    ]
+  },
+
+  // ── Haiku 聊天 zone ──
+  'chat-haiku': {
+    label: 'Haiku聊天',
+    selector: '#chat-zone-haiku',
+    tokens: [
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
+      { key:'--input-bg',        label:'输入区底色',  section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--send-btn-bg',     label:'发送钮底色',  section:'发送', type:'color' },
+    ]
+  },
+
+  // ── GLM 聊天 zone ──
+  'chat-glm': {
+    label: 'GLM聊天',
+    selector: '#chat-zone-glm',
+    tokens: [
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
+      { key:'--input-bg',        label:'输入区底色',  section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--send-btn-bg',     label:'发送钮底色',  section:'发送', type:'color' },
+    ]
+  },
+
+  // ── OpenClaw 聊天 zone ──
+  'chat-openclaw': {
+    label: '米米子聊天',
+    selector: '#chat-zone-openclaw',
+    tokens: [
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
+      { key:'--input-bg',        label:'输入区底色',  section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--send-btn-bg',     label:'发送钮底色',  section:'发送', type:'color' },
     ]
   },
 
