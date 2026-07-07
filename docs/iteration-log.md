@@ -3,6 +3,36 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-07 · 记忆系统四项改进：证据链 + subtype + 意图搜索 + Episode 候选（commit `7f5b390`）
+
+### 背景
+
+toge 让看 EbbingFlow（github.com/mmx920/ebbingflow）能吸收什么。详细对比后（GPT review 参与审方案），挑了四个轻量改进，不改存储引擎、不引入新依赖、基于现有 JSON + 内存索引。
+
+### 执行
+
+**Phase 0 — 地基**（`memory-index.js`）：新增三个二级索引 `bySubtype` / `bySourceMessage` / `byEpisode`，后续所有查询都走索引不扫盘。
+
+**Phase 1 — 证据链**（`memory-fragment-store.js` + `memory-service.js` + `app.js`）：碎片 `source` 增加 `message_id` + `role`，每条记忆知道"哪条消息、谁说的"。以后审计幻觉可回溯原文。
+
+**Phase 2 — subtype 数组分类**（`memory-service.js` + 前端 `memory.js`）：7 种事件子类型（STATE_CHANGE / INTERACTION / CONSUMPTION / PLAN / OPINION / ACHIEVEMENT / RELATIONSHIP），一个碎片可打多个标签。OPINION vs RELATIONSHIP 做了消歧义（"我喜欢克" → RELATIONSHIP 不是 OPINION）。前端记忆卡片显示 subtype badge。
+
+**Phase 3 — 意图感知搜索**（`memory-service.js`）：解耦 intent 与 retrieval strategy。`classifyQueryIntent()` 三路路由 → `fact_lookup`（精确优先，不加热度加权）/ `reflection`（高热加权 ×1.5）/ `general`（默认）。不直接扫 JSONL——走 fragment index → source.message_id 回溯。
+
+**Phase 4 — Episode Candidate**（新建 `memory-episode-store.js` + 前端"话题"tab）：梦境时对最近 3 天碎片做聚类（时间 ≤4h + 标签/subtype 交集），≥3 条成簇 → 生成 candidate episode + 置信度评分。不自动注入 prompt，需确认后才可能用。API: `GET /api/memory/episodes`。
+
+### GPT review 关键建议
+
+- `msg_id` → `message_id` + `role`（系统里多套 ID 会混）
+- subtype 单值 → 数组（一个事件天然多属性）
+- episode → candidate 机制 + 置信度（高层记忆错了会改变模型对人的理解，不能自动保存）
+- fact 搜索不能直接扫 JSONL（数据量大了会慢），走 fragment index → 回溯
+
+### 教训
+
+- 大改动前跑计划给 GPT review 一遍很值——三个小改动（数组化、candidate、message_id+role）成本极低但大幅降低返工概率
+- 索引是地基。后面 episode 集群要查 subtype 交集、要反查 source message，索引不先补后面一定痛
+
 ## 2026-07-05 ③ · 调参台三病根查证 + 阶段 0 快修（commit `b3173b7` `ac1e3bb` `592ea65`，toge 验收通过）
 
 ### 背景
