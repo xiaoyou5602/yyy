@@ -1,4 +1,6 @@
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const { resolveSelectedAccount } = require("../adapters/channel/weixin/account-store");
 const { SessionStore } = require("../adapters/runtime/codex/session-store");
@@ -15,7 +17,19 @@ async function runSystemCheckinPoller(config, channelAdapter = null) {
   const sessionStore = new SessionStore({ filePath: config.sessionsFile });
   const target = resolvePollerTarget({ config, account, sessionStore });
   const defaultRange = resolveDefaultCheckinRange();
+
+  // ── Machine-level singleton lock ──
+  const lockPath = path.join(path.dirname(config.checkinConfigFile), "checkin-poller.lock");
+  if (!acquireLock(lockPath)) {
+    return; // another poller already running
+  }
+  const release = () => releaseLock(lockPath);
+  process.on("exit", release);
+  process.on("SIGTERM", release);
+  process.on("SIGINT", release);
+
   let currentRange = checkinConfigStore.getRange(defaultRange);
+  let lastHeartbeat = Date.now();
 
   console.log(`[cyberboss] checkin poller ready user=${target.senderId} workspace=${target.workspaceRoot}`);
   console.log(`[cyberboss] checkin interval range ${formatRangeMinutes(currentRange)}`);
@@ -32,6 +46,10 @@ async function runSystemCheckinPoller(config, channelAdapter = null) {
       continue;
     }
 
+    // Refresh heartbeat so stale-lock detection has a fresh timestamp
+    refreshHeartbeat(lockPath);
+    lastHeartbeat = Date.now();
+
     const queued = queue.enqueue({
       id: crypto.randomUUID(),
       accountId: account.accountId,
@@ -43,6 +61,70 @@ async function runSystemCheckinPoller(config, channelAdapter = null) {
     console.log(`[cyberboss] checkin queued id=${queued.id}`);
   }
 }
+
+// ── Lock helpers ──
+
+function acquireLock(lockPath) {
+  try {
+    fs.writeFileSync(lockPath, JSON.stringify({
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      heartbeat: new Date().toISOString(),
+    }, null, 2), { flag: "wx" });
+    console.log(`[checkin-poller] acquired lock pid=${process.pid}`);
+    return true;
+  } catch (e) {
+    if (e.code !== "EEXIST") throw e;
+    // Lock exists — check if holder is alive
+    try {
+      const raw = fs.readFileSync(lockPath, "utf8");
+      const lock = JSON.parse(raw);
+      try {
+        process.kill(lock.pid, 0);
+        // PID is alive → another poller is running
+        console.log(`[checkin-poller] skipped, already running pid=${lock.pid}`);
+        return false;
+      } catch (_dead) {
+        // PID is dead → stale lock
+        console.log(`[checkin-poller] stale lock detected (pid=${lock.pid} dead), recovering`);
+        fs.unlinkSync(lockPath);
+        return acquireLock(lockPath);
+      }
+    } catch (_parseErr) {
+      // Corrupted lock file
+      console.log("[checkin-poller] corrupted lock file, recovering");
+      try { fs.unlinkSync(lockPath); } catch (_) {}
+      return acquireLock(lockPath);
+    }
+  }
+}
+
+function refreshHeartbeat(lockPath) {
+  try {
+    const raw = fs.readFileSync(lockPath, "utf8");
+    const lock = JSON.parse(raw);
+    if (lock.pid !== process.pid) return;
+    lock.heartbeat = new Date().toISOString();
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2));
+  } catch (_) {
+    // best effort
+  }
+}
+
+function releaseLock(lockPath) {
+  try {
+    const raw = fs.readFileSync(lockPath, "utf8");
+    const lock = JSON.parse(raw);
+    if (lock.pid === process.pid) {
+      fs.unlinkSync(lockPath);
+      console.log(`[checkin-poller] released lock pid=${process.pid}`);
+    }
+  } catch (_) {
+    // already gone or not ours
+  }
+}
+
+// ── Existing helpers (unchanged) ──
 
 function resolvePollerTarget({ config, account, sessionStore }) {
   const senderId = resolvePreferredSenderId({
