@@ -13,16 +13,6 @@ const MODELS = {
     apiModel: "deepseek-v4-pro",
     modelName: "deepseek-v4-pro",
   },
-  opus: {
-    type: "api",
-    apiFormat: "anthropic",
-    displayName: "Claude Opus 4.6（55api）",
-    baseUrl: process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
-    apiKey: process.env.CYBERBOSS_55API_KEY || "",
-    apiModel: "[A8-按量]claude-opus-4-6",
-    modelName: "claude-opus-4-6",
-    thinking: true, // 开启思考摘要（adaptive + summarized），接入 APP 思考显示链路
-  },
   glm: {
     type: "api",
     apiFormat: "openai",
@@ -47,8 +37,8 @@ const MODELS = {
     displayName: "Rism",
     baseUrl: process.env.CYBERBOSS_RISM_ENDPOINT || process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
     apiKey: process.env.CYBERBOSS_RISM_KEY || process.env.CYBERBOSS_55API_KEY || "",
-    apiModel: process.env.CYBERBOSS_RISM_MODEL || "claude-opus-4-8",
-    modelName: "claude-opus-4-8",
+    apiModel: process.env.CYBERBOSS_RISM_MODEL || "[A8-按量]claude-opus-4-6",
+    modelName: "claude-opus-4-6",
     thinking: true,
   },
   // 以后加新模型：复制上面一段，改 type/apiFormat/baseUrl/apiKey/apiModel/modelName/displayName
