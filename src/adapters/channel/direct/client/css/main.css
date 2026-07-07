@@ -840,256 +840,168 @@ footer {
 #theme-zone-page {
   display: none;
   position: fixed; inset: 0; z-index: 100;
-  background: var(--bg, #F7F4EF);
+  background: #F7F4EF;
   flex-direction: column;
   overflow: hidden;
 }
-#theme-zone-page.show { display: flex; animation: page-in 0.28s ease; }
-#theme-zone-page header {
+#theme-zone-page.show { display: flex; animation: theme-page-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes theme-page-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.theme-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border, #e0ddd6);
-  flex-shrink: 0;
-  background: var(--surface, #fff);
+  padding: 18px 20px 14px;
+  background: transparent; flex-shrink: 0;
 }
-#theme-zone-page header h1 {
-  font-size: 17px; font-weight: 600; color: var(--text, #333); margin: 0;
-}
-#theme-zone-page header button {
-  background: none; border: none; font-size: 20px;
-  color: var(--text, #333); cursor: pointer; padding: 4px 8px;
-}
-.zone-indicator {
-  margin-left: auto;
-  font-size: 12px; color: var(--text-muted);
-  white-space: nowrap;
-}
+#theme-back-btn { background: none; border: none; font-size: 22px; color: #4a4a4a; cursor: pointer; padding: 4px; }
+.theme-title { font-size: 18px; font-weight: 600; color: #2c2c2c; }
+.zone-indicator { margin-left: auto; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 .zone-indicator span { font-weight: 600; color: var(--accent); }
 
-/* ── 横滑卡片轮播 ── */
+/* ── 横滑卡片轮播（CSS Scroll Snap 原生吸附）── */
 .theme-carousel-container {
   flex: 1; overflow-x: auto; overflow-y: hidden;
   display: flex; align-items: center;
   scrollbar-width: none; -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
-  position: relative;
-  padding: 8px 0;
+  scroll-snap-type: x mandatory;
+  padding: 12px 0;
 }
 .theme-carousel-container::-webkit-scrollbar { display: none; }
 
 .theme-track {
-  display: flex; gap: 14px; align-items: center;
-  padding: 0 40px;
-  min-height: 100%;
+  display: flex; gap: 18px; align-items: center;
+  padding: 0 calc(50vw - 110px);
 }
 
-.theme-carousel-spacer {
-  flex-shrink: 0; width: 40px; height: 1px;
-}
-
-.theme-carousel-hint {
-  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-  font-size: 12px; color: var(--text-subtle);
-  pointer-events: none;
-  transition: opacity 0.6s;
-}
-
-/* ── 单张卡片 ── */
+/* ── 单张卡片（零 GPU 滥用）── */
 .theme-card-item {
   flex-shrink: 0; width: 200px;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  scroll-snap-align: center;
   cursor: pointer; user-select: none;
-  transition: transform 0.4s cubic-bezier(0.25,0.8,0.25,1.2),
-              opacity 0.35s ease;
-  transform-style: preserve-3d;
-  will-change: transform, opacity;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s;
+  opacity: 0.55; transform: scale(0.88);
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
-/* 3D 硬件加速 */
-.theme-track,
-.theme-card-item,
-.theme-card-preview {
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+.theme-card-item.is-focused {
+  opacity: 1; transform: scale(1.02);
 }
 
 .theme-card-preview {
   width: 100%; aspect-ratio: 9/16;
-  border-radius: 18px;
-  overflow: hidden;
+  border-radius: 22px; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   position: relative;
-  box-shadow:
-    0 4px 20px rgba(139, 110, 90, 0.05),
-    0 1px 4px rgba(139, 110, 90, 0.04);
-  border: 2px solid rgba(139, 110, 90, 0.06);
-  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+  box-shadow: 0 8px 28px rgba(139,110,90,0.07);
+  border: 2px solid rgba(139,110,90,0.06);
+  background: #fff;
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
 }
-
-/* 已应用标记 */
 .theme-card-item.is-active .theme-card-preview {
   border-color: var(--accent);
-  box-shadow: 0 4px 20px rgba(139, 110, 90, 0.08), 0 0 0 3px var(--accent-soft);
+  box-shadow: 0 8px 28px rgba(139,110,90,0.09), 0 0 0 3px var(--accent-soft);
 }
-
-/* 草稿聚焦 */
 .theme-card-item.is-focused .theme-card-preview {
-  transform: scale(1.04);
-  box-shadow: 0 8px 36px rgba(139, 110, 90, 0.1), 0 0 0 4px var(--accent-soft);
   border-color: var(--accent);
-}
-.theme-card-item.is-focused {
-  z-index: 2;
-}
-/* 同时激活 + 聚焦的强调 */
-.theme-card-item.is-active.is-focused .theme-card-preview {
-  box-shadow: 0 8px 36px rgba(139, 110, 90, 0.12), 0 0 0 6px var(--accent-soft);
+  box-shadow: 0 12px 40px rgba(139,110,90,0.12), 0 0 0 4px var(--accent-soft);
 }
 
-.theme-card-name {
-  font-size: 13px; font-weight: 600; color: var(--text-muted);
-  transition: color 0.3s;
-}
+.theme-card-name { font-size: 14px; font-weight: 500; color: #5a5a5a; transition: color 0.3s; }
 .theme-card-item.is-active .theme-card-name { color: var(--text); font-weight: 700; }
 .theme-card-item.is-focused .theme-card-name { color: var(--text); }
 
-/* ✓ 标记 */
 .theme-card-check {
-  position: absolute; top: 10px; right: 10px;
-  width: 22px; height: 22px; border-radius: 50%;
+  position: absolute; top: 12px; right: 12px;
+  width: 24px; height: 24px; border-radius: 50%;
   background: var(--accent); color: #fff;
   font-size: 12px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  z-index: 3;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  z-index: 3; box-shadow: 0 4px 10px rgba(89,137,185,0.3);
 }
-
-/* 删除按钮 */
 .theme-card-delete {
-  position: absolute; top: 10px; left: 10px;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(0,0,0,0.4); color: #fff;
+  position: absolute; top: 12px; left: 12px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(220,80,80,0.9); color: #fff;
   font-size: 11px; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  z-index: 3;
-  opacity: 0; transition: opacity 0.2s;
+  z-index: 3; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   line-height: 1; padding: 0;
 }
-.theme-card-item:hover .theme-card-delete,
-.theme-card-item:active .theme-card-delete { opacity: 1; }
-.theme-card-delete:active { background: rgba(220,50,50,0.8); }
 
 /* ── 「+ 添加」卡片 ── */
 .theme-card-add .theme-card-preview {
-  background: var(--bg) !important;
-  border: 2px dashed var(--border);
-  box-shadow: none;
+  background: #f4f1eb !important;
+  border: 2px dashed #d2cbd4; box-shadow: none;
 }
-.add-preview {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%;
-}
-.add-icon {
-  font-size: 42px; color: var(--text-subtle); font-weight: 200;
-  transition: color 0.3s, transform 0.3s;
-}
-.theme-card-add:hover .add-icon { color: var(--accent); transform: scale(1.2); }
+.theme-card-add .add-icon { font-size: 36px; color: #9a9184; font-weight: 200; transition: color 0.3s; }
+.theme-card-add:hover .add-icon { color: var(--accent); }
 
-/* ── 控制栏 ── */
+/* ── 控制区：悬浮卡片化面板 ── */
+.theme-panel-wrapper {
+  padding: 0 20px calc(18px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 14px;
+  background: transparent; flex-shrink: 0;
+}
 .theme-control-panel {
-  flex-shrink: 0;
-  padding: 12px 20px calc(18px + env(safe-area-inset-bottom));
-  background: var(--surface, #fff);
-  border-top: 1px solid var(--border, #e0ddd6);
-  display: flex; flex-direction: column; gap: 10px;
+  background: #ffffff; border-radius: 24px;
+  padding: 22px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 8px 32px rgba(139,110,90,0.05);
 }
 
-/* 「应用装扮」主按钮 */
-.theme-apply-btn {
-  width: 100%; padding: 14px 0; border-radius: 14px;
-  font-size: 15px; font-weight: 700; font-family: var(--font-body);
-  cursor: pointer; border: none; text-align: center;
-  background: var(--bg); color: var(--text-muted);
-  transition: all 0.25s cubic-bezier(0.25,0.8,0.25,1.2);
-}
-.theme-apply-btn.is-dirty {
-  background: var(--accent); color: #fff;
-  box-shadow: 0 4px 18px rgba(89,137,185,0.3);
-  animation: apply-pulse 2s ease-in-out infinite;
-}
-@keyframes apply-pulse {
-  0%,100% { box-shadow: 0 4px 18px rgba(89,137,185,0.3); }
-  50% { box-shadow: 0 4px 28px rgba(89,137,185,0.5); }
-}
-.theme-apply-btn:active { transform: scale(0.96); }
+.theme-slider-wrap label { font-size: 13px; font-weight: 600; color: #4a4a4a; display: block; margin-bottom: 8px; }
+.theme-slider-row { display: flex; align-items: center; gap: 12px; }
+.theme-slider-val { font-size: 13px; font-weight: 600; color: var(--accent); min-width: 38px; text-align: right; }
 
-.theme-slider-wrap label {
-  font-size: 12px; font-weight: 600; color: var(--text-muted);
-  display: block; margin-bottom: 4px;
-}
-.theme-slider-row {
-  display: flex; align-items: center; gap: 10px;
-}
-.theme-slider-val {
-  font-size: 13px; font-weight: 600; color: var(--accent);
-  min-width: 36px; text-align: right;
-}
-
-/* 定制滑条 */
 .theme-slider-row input[type="range"] {
-  flex: 1; height: 4px;
+  flex: 1; height: 6px;
   -webkit-appearance: none; appearance: none;
-  background: linear-gradient(90deg, var(--border-soft), var(--accent));
-  border-radius: 2px; outline: none;
-  cursor: pointer;
+  background: #eeebe5; border-radius: 3px; outline: none; cursor: pointer;
 }
 .theme-slider-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 20px; height: 20px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.15), 0 0 0 4px var(--accent-soft);
-  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(89,137,185,0.4); cursor: pointer;
+  transition: transform 0.15s;
 }
-.theme-slider-row input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
-.theme-slider-row input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(1.25);
-}
+.theme-slider-row input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.theme-slider-row input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
 .theme-slider-row input[type="range"]::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #fff;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); border: 3px solid #fff;
 }
 
-/* 操作按钮 */
-.theme-actions {
-  display: flex; gap: 10px;
-}
+.theme-actions { display: flex; gap: 12px; }
 .theme-btn {
-  flex: 1; padding: 11px 0; border-radius: var(--radius-sm);
+  flex: 1; padding: 13px 0; border-radius: 14px;
   font-size: 14px; font-weight: 600; font-family: var(--font-body);
   cursor: pointer; border: none; text-align: center;
   white-space: nowrap;
-  transition: transform 0.15s, opacity 0.15s;
+  transition: transform 0.1s ease;
 }
 .theme-btn:active { transform: scale(0.97); }
-.theme-btn-secondary {
-  background: var(--accent); color: #fff;
+.theme-btn-secondary { background: #eef3f8; color: var(--accent); }
+.theme-btn-ghost { background: #fbfbfa; color: #7a7a7a; border: 1px solid #eadece; }
+
+.theme-apply-main-btn {
+  width: 100%; padding: 15px 0; border-radius: 18px;
+  background: var(--accent); color: #ffffff;
+  font-size: 16px; font-weight: 700; font-family: var(--font-body);
+  cursor: pointer; border: none;
+  box-shadow: 0 6px 20px rgba(89,137,185,0.3);
+  transition: all 0.2s ease;
 }
-.theme-btn-ghost {
-  background: var(--bg); color: var(--text-muted);
-  border: 1px solid var(--border);
-}
+.theme-apply-main-btn:active { transform: scale(0.97); background: var(--send-btn-active-bg, #467099); }
 
 @media (max-width: 480px) {
   .theme-card-item { width: 170px; }
-  .theme-control-panel { padding: 10px 14px calc(14px + env(safe-area-inset-bottom)); gap: 8px; }
-  .theme-apply-btn { padding: 12px 0; font-size: 14px; border-radius: 12px; }
+  .theme-track { padding: 0 calc(50vw - 95px); }
+  .theme-panel-wrapper { padding: 0 14px calc(14px + env(safe-area-inset-bottom)); }
+  .theme-apply-main-btn { padding: 13px 0; font-size: 15px; border-radius: 16px; }
 }
 .settings-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
 .settings-actions button {
