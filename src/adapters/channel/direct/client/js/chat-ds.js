@@ -413,14 +413,15 @@
     if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
     // DS 页设置按钮 → 打开真正的设置面板（不是侧栏）
     if (settingsBtn) settingsBtn.addEventListener("click", function() {
-      var overlay = document.getElementById("settings-overlay");
-      if (overlay && typeof settings !== 'undefined') {
-        var curKey = (typeof MODEL_META !== 'undefined' && MODEL_META[settings.model]) ? MODEL_META[settings.model].key || 'ds' : 'ds';
-        var wps = typeof normalizeWallpaper === 'function' ? normalizeWallpaper(settings.wallpaper || {}) : {};
-        document.getElementById("setting-wallpaper").value = wps[curKey] || '';
-        document.getElementById("setting-model").value = settings.model || '';
-        if (typeof updateWallpaperPreview === 'function') updateWallpaperPreview(wps[curKey] || '');
-        overlay.classList.add("show");
+      if (typeof openSettingsPanel === 'function') { openSettingsPanel(); }
+      else {
+        // 兜底：自己打开
+        try {
+          var overlay = document.getElementById("settings-overlay");
+          var modelSel = document.getElementById("setting-model");
+          if (modelSel && typeof settings !== 'undefined') modelSel.value = settings.model || "";
+          if (overlay) overlay.classList.add("show");
+        } catch(e) {}
       }
     });
     // DS 页搜索按钮 → 打开搜索面板
