@@ -402,36 +402,8 @@
       <div id="wallpaper-preview" class="wallpaper-preview"></div>
       <div class="setting-hint">留空并保存可恢复默认背景；上传图片会保存在本机浏览器里</div>
     </div>
-    <div class="setting-row">
-      <label>壁纸遮罩透明度 <span id="wallpaper-alpha-val" style="font-weight:400;color:var(--text-muted);">0.75</span></label>
-      <input type="range" id="setting-wallpaper-alpha" min="0" max="1" step="0.05" value="0.75" style="width:100%;">
-      <div class="setting-hint">调低 = 壁纸更清晰 / 气泡更透；调高 = 壁纸更淡 / 字更清楚</div>
-    </div>
-    <div class="setting-row">
-      <label>主题皮肤 <span style="font-size:11px;color:var(--text-muted);">（当前聊天页）</span></label>
-      <div class="theme-cards" id="theme-cards">
-        <div class="theme-card active" data-theme="" title="默认暖瓷">
-          <div class="theme-swatch" style="background:linear-gradient(135deg,#f0f0eb,#fafaf7);"></div>
-          <span class="theme-name">暖瓷</span>
-        </div>
-        <div class="theme-card" data-theme="sakura" title="樱花">
-          <div class="theme-swatch" style="background:linear-gradient(135deg,#ffe3ec,#fff5f7);"></div>
-          <span class="theme-name">樱</span>
-        </div>
-        <div class="theme-card" data-theme="midnight" title="午夜">
-          <div class="theme-swatch" style="background:linear-gradient(135deg,#1e2430,#242a38);"></div>
-          <span class="theme-name">午夜</span>
-        </div>
-        <div class="theme-card" data-theme="ocean" title="海洋">
-          <div class="theme-swatch" style="background:linear-gradient(135deg,#e8f2f6,#f0f7fa);"></div>
-          <span class="theme-name">海洋</span>
-        </div>
-        <div class="theme-card" data-theme="forest" title="森林">
-          <div class="theme-swatch" style="background:linear-gradient(135deg,#eaf5ed,#f5faf6);"></div>
-          <span class="theme-name">森林</span>
-        </div>
-      </div>
-      <div class="setting-hint">每个聊天页可独立选主题，切换后立即生效</div>
+    <div class="setting-row" style="text-align:center;margin-top:8px;">
+      <a href="#" id="settings-theme-link" style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:600;">&#127912; 打开主题 / 背景专区 →</a>
     </div>
     <div class="setting-row">
       <label>AI 模型</label>
@@ -984,6 +956,39 @@
   </div>
 </div>
 
+<!-- ═══ THEME ZONE PAGE ═══ -->
+<div id="theme-zone-page">
+  <header>
+    <button id="theme-back-btn" title="返回">&#8592;</button>
+    <h1>主题 / 背景</h1>
+    <div class="zone-indicator" id="theme-zone-indicator">当前装扮：<span id="theme-zone-name">克</span></div>
+  </header>
+
+  <!-- 横滑卡片轮播 — 卡片即预览 -->
+  <main class="theme-carousel-container">
+    <div class="theme-track" id="theme-cards-track">
+      <!-- JS 动态渲染卡片，居中卡片自动 .is-focused -->
+    </div>
+    <div class="theme-carousel-hint" id="theme-carousel-hint">← 左右滑动浏览主题 →</div>
+  </main>
+
+  <!-- 控制栏 -->
+  <footer class="theme-control-panel">
+    <div class="theme-slider-wrap">
+      <label for="theme-alpha-slider">不透明度</label>
+      <div class="theme-slider-row">
+        <input type="range" id="theme-alpha-slider" min="0" max="100" value="75">
+        <span class="theme-slider-val" id="theme-alpha-val">75%</span>
+      </div>
+    </div>
+    <div class="theme-actions">
+      <button id="theme-gallery-btn" class="theme-btn theme-btn-secondary">从图库选择</button>
+      <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">🔄 重置</button>
+    </div>
+    <input type="file" id="theme-wallpaper-file" accept="image/*" hidden>
+  </footer>
+</div>
+
 <script>
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -1119,8 +1124,8 @@ function activateZone(key) {
   updateUnreadBadge();
   activeZoneKey = key;
   try { localStorage.setItem(ZONE_STORAGE_KEY, key); } catch {}
-  // 应用该 zone 的主题（阶段1）
-  applyTheme(key, loadTheme(key));
+  // 应用该 zone 的主题
+  if (typeof window.applyZoneTheme === 'function') window.applyZoneTheme(key, window.loadZoneTheme(key));
   // Reset streaming state (chunkBuf is per-model, keep it across zone switches)
   streamingMsgEl = null; streamingText = "";
   // Exit select mode if active
@@ -1135,9 +1140,9 @@ function getSavedZoneKey() {
 }
 initZones();
 activateZone(getSavedZoneKey());
-// 阶段1：初始化所有 zone 的主题 + 壁纸透明度
-applyAllZoneThemes();
-applyWallpaperAlpha(loadWallpaperAlpha());
+// 初始化所有 zone 的主题 + 壁纸透明度
+if (typeof window.applyAllZoneThemes === 'function') window.applyAllZoneThemes();
+if (typeof window.applyWallpaperAlpha === 'function') window.applyWallpaperAlpha(window.loadWallpaperAlpha ? window.loadWallpaperAlpha() : 0.75);
 
 var ws = null;
 var reconnectTimer = null;
@@ -1186,6 +1191,8 @@ function showPage(page) {
   if (page === "camera") initCamera();
   mcpPage.classList.toggle("show", page === "mcp");
   if (page === "mcp") initMcpPlayroom();
+  themeZonePage.classList.toggle("show", page === "theme-zone");
+  if (page === "theme-zone") openThemeZone();
   if (page === "bubbletea" && window._componentRegistry) {
     window._componentRegistry.switchTo("bubbletea");
   } else {
@@ -1978,89 +1985,304 @@ document.getElementById("refresh-btn").addEventListener("click", () => {
   if (icon) { icon.style.transition = "transform 0.6s"; icon.style.transform = "rotate(360deg)"; setTimeout(() => { icon.style.transition = ""; icon.style.transform = ""; }, 700); }
   syncHistoryFromServer();
 });
-/* ── 主题系统（阶段1）── */
-const THEME_LS_PREFIX = "withtoge-theme-";
-const THEME_LIST = ["", "sakura", "midnight", "ocean", "forest"]; // "" = 默认暖瓷
+/* ── 主题系统（阶段1 v2 — 数据层在 themes.js）── */
 
-function getThemeKey(zoneKey) { return THEME_LS_PREFIX + zoneKey; }
-
-function loadTheme(zoneKey) {
-  try { return localStorage.getItem(getThemeKey(zoneKey)) || ""; }
-  catch(e) { return ""; }
-}
-
-function saveTheme(zoneKey, theme) {
-  try { localStorage.setItem(getThemeKey(zoneKey), theme || ""); } catch(e) {}
-}
-
-function applyTheme(zoneKey, theme) {
-  const zoneEl = document.getElementById("chat-zone-" + zoneKey);
-  if (!zoneEl) return;
-  if (theme) { zoneEl.dataset.theme = theme; }
-  else { delete zoneEl.dataset.theme; }
-}
-
-function applyAllZoneThemes() {
-  ZONE_KEYS.forEach(function(k) {
-    applyTheme(k, loadTheme(k));
-  });
-}
-
-/* ── 壁纸不透明度 ── */
-const WALLPAPER_ALPHA_KEY = "withtoge-wallpaper-alpha";
-
-function loadWallpaperAlpha() {
-  try { var v = localStorage.getItem(WALLPAPER_ALPHA_KEY); return v !== null ? parseFloat(v) : 0.75; }
-  catch(e) { return 0.75; }
-}
-
-function saveWallpaperAlpha(alpha) {
-  try { localStorage.setItem(WALLPAPER_ALPHA_KEY, String(alpha)); } catch(e) {}
-}
-
-function applyWallpaperAlpha(alpha) {
-  document.documentElement.style.setProperty("--wallpaper-overlay-alpha", alpha);
-}
-
+// 设置页打开 → 只加载壁纸和模型
 document.getElementById("settings-btn").addEventListener("click", () => {
   const wps_norm = normalizeWallpaper(settings.wallpaper);
   const curKey = MODEL_META[settings.model]?.key || "ds";
   document.getElementById("setting-wallpaper").value = wps_norm[curKey] || "";
   document.getElementById("setting-model").value = settings.model || "";
   updateWallpaperPreview(wps_norm[curKey] || "");
-  // 载入当前 zone 的主题
-  var curTheme = loadTheme(curKey);
-  document.getElementById("setting-wallpaper-alpha").value = loadWallpaperAlpha();
-  document.getElementById("wallpaper-alpha-val").textContent = loadWallpaperAlpha();
-  updateThemeCardsUI(curTheme);
   document.getElementById("settings-overlay").classList.add("show");
   document.getElementById("setting-wallpaper").focus();
 });
 
-function updateThemeCardsUI(activeTheme) {
-  var cards = document.querySelectorAll("#theme-cards .theme-card");
-  cards.forEach(function(card) {
-    card.classList.toggle("active", card.dataset.theme === (activeTheme || ""));
+// 设置页 → 打开主题专区
+document.getElementById("settings-theme-link").addEventListener("click", function(e) {
+  e.preventDefault();
+  document.getElementById("settings-overlay").classList.remove("show");
+  showPage("theme-zone");
+});
+
+/* ═══ 主题专区页面 ═══ */
+var themeZonePage = document.getElementById("theme-zone-page");
+var themeCardsTrack = document.getElementById("theme-cards-track");
+var themeAlphaSlider = document.getElementById("theme-alpha-slider");
+var themeAlphaVal = document.getElementById("theme-alpha-val");
+var themeZoneIndicatorName = document.getElementById("theme-zone-name");
+var themeCarouselHint = document.getElementById("theme-carousel-hint");
+
+var carouselScrollTimer = null;
+var carouselRafId = null;
+
+// 渲染主题卡片到轮播轨道
+function renderThemeCards() {
+  if (!themeCardsTrack) return;
+  var curKey = activeZoneKey || "ds";
+  var currentTheme = window.loadZoneTheme(curKey);
+  var themes = window.THEME_REGISTRY;
+
+  var html = "";
+  // 左侧 padding 占位，让第一个卡片也能滑到中间
+  html += '<div class="theme-carousel-spacer"></div>';
+  for (var i = 0; i < themes.length; i++) {
+    var t = themes[i];
+    var isActive = t.id === currentTheme;
+    html += '<div class="theme-card-item' + (isActive ? ' is-focused' : '') + '" data-theme-id="' + t.id + '">';
+    html += '<div class="theme-card-preview" style="background:' + t.preview.bg + ';">';
+    // 模拟聊天气泡预览
+    html += '<div class="theme-card-bubble me" style="background:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.15)' : 'rgba(89,137,185,0.04)') + ';border-color:' + t.preview.accent + '20;"></div>';
+    html += '<div class="theme-card-bubble ke" style="background:' + (t.id === 'midnight' ? '#1e2430' : '#fafaf7') + ';border-color:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.1)' : 'rgba(45,45,45,0.06)') + ';"></div>';
+    html += '<div class="theme-card-bubble me short"></div>';
+    html += '</div>';
+    html += '<span class="theme-card-name">' + t.name + '</span>';
+    if (isActive) html += '<span class="theme-card-check">✓</span>';
+    html += '</div>';
+  }
+  // 「+ 添加」卡片
+  html += '<div class="theme-card-item theme-card-add" id="theme-add-card">';
+  html += '<div class="theme-card-preview add-preview"><span class="add-icon">+</span></div>';
+  html += '<span class="theme-card-name">添加</span>';
+  html += '</div>';
+  // 右侧 padding 占位
+  html += '<div class="theme-carousel-spacer"></div>';
+
+  themeCardsTrack.innerHTML = html;
+
+  // 绑定点击
+  themeCardsTrack.querySelectorAll('.theme-card-item:not(.theme-card-add)').forEach(function(card) {
+    card.addEventListener('click', function() {
+      selectTheme(card.dataset.themeId);
+    });
+  });
+  // 「+ 添加」→ 调参台
+  var addCard = document.getElementById('theme-add-card');
+  if (addCard) {
+    addCard.addEventListener('click', function() {
+      openTweakFromTheme();
+    });
+  }
+
+  // 动态设置 spacers 宽度 (= 容器宽度一半 - 卡片宽度一半)
+  var container = themeCardsTrack.parentElement;
+  if (container) {
+    var spacerW = Math.max(20, container.clientWidth / 2 - 98); // 卡片宽180 + gap16 / 2 ≈ 98
+    var spacers = themeCardsTrack.querySelectorAll('.theme-carousel-spacer');
+    spacers.forEach(function(s) { s.style.width = spacerW + 'px'; });
+  }
+
+  // 滚动到当前选中的卡片
+  requestAnimationFrame(function() {
+    scrollToFocusedCard(false);
   });
 }
 
-/* 主题卡片点击 */
-document.querySelectorAll("#theme-cards .theme-card").forEach(function(card) {
-  card.addEventListener("click", function() {
-    var theme = card.dataset.theme || "";
-    var curKey = MODEL_META[settings.model]?.key || "ds";
-    saveTheme(curKey, theme);
-    applyTheme(curKey, theme);
-    updateThemeCardsUI(theme);
+// 选中主题
+function selectTheme(themeId) {
+  var curKey = activeZoneKey || "ds";
+  window.saveZoneTheme(curKey, themeId);
+  window.applyZoneTheme(curKey, themeId);
+  // 更新卡片状态
+  themeCardsTrack.querySelectorAll('.theme-card-item').forEach(function(c) {
+    c.classList.toggle('is-focused', c.dataset.themeId === themeId);
+    var check = c.querySelector('.theme-card-check');
+    if (check) check.style.display = c.dataset.themeId === themeId ? '' : 'none';
   });
+  scrollToFocusedCard(true);
+}
+
+// 滚动到聚焦卡片（带弹性动画）
+function scrollToFocusedCard(animate) {
+  var focused = themeCardsTrack.querySelector('.theme-card-item.is-focused');
+  if (!focused) { focused = themeCardsTrack.querySelector('.theme-card-item'); }
+  if (!focused) return;
+
+  var trackRect = themeCardsTrack.getBoundingClientRect();
+  var cardRect = focused.getBoundingClientRect();
+  var targetScroll = themeCardsTrack.parentElement.scrollLeft + cardRect.left - trackRect.left - trackRect.width / 2 + cardRect.width / 2;
+
+  if (animate) {
+    // 弹性缓动
+    animateCarouselScroll(targetScroll);
+  } else {
+    themeCardsTrack.parentElement.scrollLeft = targetScroll;
+    updateCardTransforms();
+  }
+}
+
+// 物理弹性滚动动画
+function animateCarouselScroll(targetX) {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  if (carouselRafId) cancelAnimationFrame(carouselRafId);
+
+  var startX = container.scrollLeft;
+  var startTime = performance.now();
+  var duration = 500; // ms
+
+  function spring(t) {
+    // 阻尼弹簧曲线
+    return 1 - Math.exp(-6 * t) * Math.cos(8 * Math.PI * t);
+  }
+
+  function step(now) {
+    var elapsed = now - startTime;
+    var progress = Math.min(elapsed / duration, 1);
+    var eased = spring(progress);
+    container.scrollLeft = startX + (targetX - startX) * eased;
+    updateCardTransforms();
+    if (progress < 1) {
+      carouselRafId = requestAnimationFrame(step);
+    }
+  }
+  carouselRafId = requestAnimationFrame(step);
+}
+
+// 根据卡片离容器中心的距离，动态计算 3D transform
+function updateCardTransforms() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  var containerCenter = container.getBoundingClientRect().left + container.getBoundingClientRect().width / 2;
+  var cards = themeCardsTrack.querySelectorAll('.theme-card-item');
+  cards.forEach(function(card) {
+    var cardCenter = card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2;
+    var dist = (cardCenter - containerCenter) / (container.getBoundingClientRect().width / 2); // -1..1
+    dist = Math.max(-1, Math.min(1, dist));
+    var absDist = Math.abs(dist);
+    var scale = 1 - absDist * 0.12; // 远离中心缩小到 0.88
+    var rotateY = dist * 15; // 3D 倾斜
+    var opacity = 1 - absDist * 0.35;
+    card.style.transform = 'scale(' + scale + ') rotateY(' + rotateY + 'deg)';
+    card.style.opacity = opacity;
+    card.style.zIndex = absDist < 0.3 ? 2 : 1;
+  });
+}
+
+// 监听滚动，松手后自动吸附到最近卡片
+function setupCarouselScroll() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+
+  container.addEventListener('scroll', function() {
+    updateCardTransforms();
+    // 隐藏滑动提示
+    if (themeCarouselHint) themeCarouselHint.style.opacity = '0';
+
+    if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
+    carouselScrollTimer = setTimeout(function() {
+      snapToNearestCard();
+    }, 150);
+  }, { passive: true });
+}
+
+function snapToNearestCard() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  var containerCenter = container.getBoundingClientRect().left + container.getBoundingClientRect().width / 2;
+
+  var bestCard = null;
+  var bestDist = Infinity;
+  var cards = themeCardsTrack.querySelectorAll('.theme-card-item');
+  cards.forEach(function(card) {
+    var cardCenter = card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2;
+    var dist = Math.abs(cardCenter - containerCenter);
+    if (dist < bestDist) { bestDist = dist; bestCard = card; }
+  });
+
+  if (bestCard) {
+    var trackRect = themeCardsTrack.getBoundingClientRect();
+    var cardRect = bestCard.getBoundingClientRect();
+    var targetScroll = container.scrollLeft + cardRect.left - trackRect.left - trackRect.width / 2 + cardRect.width / 2;
+    animateCarouselScroll(targetScroll);
+  }
+}
+
+// 打开主题专区
+function openThemeZone() {
+  var curKey = activeZoneKey || "ds";
+  var zoneName = (MODEL_META && MODEL_META[settings.model]) ? MODEL_META[settings.model].name || curKey : curKey;
+  if (themeZoneIndicatorName) themeZoneIndicatorName.textContent = zoneName;
+
+  // 加载不透明度
+  var alpha = window.loadWallpaperAlpha();
+  if (themeAlphaSlider) themeAlphaSlider.value = Math.round(alpha * 100);
+  if (themeAlphaVal) themeAlphaVal.textContent = Math.round(alpha * 100) + '%';
+
+  renderThemeCards();
+  setupCarouselScroll();
+}
+
+// 不透明度滑条
+if (themeAlphaSlider) {
+  themeAlphaSlider.addEventListener('input', function() {
+    var alpha = parseInt(this.value) / 100;
+    if (themeAlphaVal) themeAlphaVal.textContent = this.value + '%';
+    window.saveWallpaperAlpha(alpha);
+    window.applyWallpaperAlpha(alpha);
+  });
+}
+
+// 从图库选择壁纸
+document.getElementById('theme-gallery-btn').addEventListener('click', function() {
+  document.getElementById('theme-wallpaper-file').click();
+});
+document.getElementById('theme-wallpaper-file').addEventListener('change', function() {
+  var file = this.files && this.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    var dataUrl = reader.result;
+    var curKey = activeZoneKey || "ds";
+    var wps = normalizeWallpaper(settings.wallpaper);
+    wps[curKey] = dataUrl;
+    settings.wallpaper = wps;
+    saveSettings(settings);
+    applySettings(settings);
+    showToast('壁纸已更新');
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
 });
 
-/* 壁纸不透明度滑条 */
-document.getElementById("setting-wallpaper-alpha").addEventListener("input", function() {
-  var alpha = parseFloat(this.value);
-  document.getElementById("wallpaper-alpha-val").textContent = alpha;
-  applyWallpaperAlpha(alpha);
+// 重置壁纸
+document.getElementById('theme-reset-btn').addEventListener('click', function() {
+  var curKey = activeZoneKey || "ds";
+  var wps = normalizeWallpaper(settings.wallpaper);
+  wps[curKey] = '';
+  settings.wallpaper = wps;
+  saveSettings(settings);
+  applySettings(settings);
+  showToast('壁纸已重置');
 });
+
+// 「+ 添加」→ 调参台（卡片翻转过渡）
+function openTweakFromTheme() {
+  // 先缩放「+」卡片，再打开调参台
+  var addCard = document.getElementById('theme-add-card');
+  if (addCard) {
+    addCard.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+    addCard.style.transform = 'scale(1.15)';
+    setTimeout(function() {
+      addCard.style.transform = '';
+      // 打开调参台
+      if (document.getElementById('tweak-overlay')) {
+        document.getElementById('tweak-overlay').classList.add('show');
+        // 触发 tweak.js 的 open 逻辑
+        if (typeof window._tweakOpen === 'function') window._tweakOpen();
+        else document.getElementById('tweak-trigger').click();
+      }
+    }, 300);
+  }
+}
+
+// 返回按钮
+document.getElementById('theme-back-btn').addEventListener('click', function() {
+  showPage('chat');
+});
+
+// 如果 tweak.js 暴露了 open 函数，存下来供主题页调用
+// （tweak.js 在 IIFE 里，我们通过 trigger click 来触发）
 document.getElementById("setting-wallpaper").addEventListener("input", (e) => {
   updateWallpaperPreview(e.target.value.trim());
 });
@@ -2087,10 +2309,6 @@ document.getElementById("settings-save").addEventListener("click", () => {
   const wps = normalizeWallpaper(settings.wallpaper);
   const curKey2 = MODEL_META[settings.model]?.key || "ds";
   wps[curKey2] = document.getElementById("setting-wallpaper").value.trim();
-  // 保存壁纸不透明度
-  var alpha = parseFloat(document.getElementById("setting-wallpaper-alpha").value);
-  saveWallpaperAlpha(alpha);
-  applyWallpaperAlpha(alpha);
   const ns = {
     wallpaper: wps,
     model: document.getElementById("setting-model").value.trim(),
@@ -3303,6 +3521,7 @@ window.updateKe = function () {
 <script src="/js/mcp-playroom.js"></script>
 <script src="/js/page-tokens.js"></script>
 <script src="/js/tweak.js"></script>
+<script src="/js/themes.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
 <script src="/js/chat-ds.js?v=40"></script>
