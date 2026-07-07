@@ -41,6 +41,16 @@ const MODELS = {
     apiModel: "openclaw/default",
     modelName: "openclaw",
   },
+  rism: {
+    type: "api",
+    apiFormat: "anthropic",
+    displayName: "Rism",
+    baseUrl: process.env.CYBERBOSS_RISM_ENDPOINT || process.env.CYBERBOSS_55API_ENDPOINT || "http://156.233.228.80:3000",
+    apiKey: process.env.CYBERBOSS_RISM_KEY || process.env.CYBERBOSS_55API_KEY || "",
+    apiModel: process.env.CYBERBOSS_RISM_MODEL || "claude-opus-4-8",
+    modelName: "claude-opus-4-8",
+    thinking: true,
+  },
   // 以后加新模型：复制上面一段，改 type/apiFormat/baseUrl/apiKey/apiModel/modelName/displayName
 };
 

@@ -182,6 +182,7 @@ function modelToKey(model) {
   if (v === "claude-haiku-4-5") return "haiku";
   if (v === "glm-5.2") return "glm";
   if (v === "openclaw") return "openclaw";
+  if (v === "rism" || v === "claude-opus-4-8") return "rism";
   return "ds";
 }
 
@@ -192,6 +193,7 @@ function modelToDisplayName(model) {
   if (v === "claude-haiku-4-5") return "Haiku 4.5";
   if (v === "glm-5.2") return "GLM 5.2";
   if (v === "openclaw") return "米米子";
+  if (v === "rism" || v === "claude-opus-4-8") return "Rism";
   return "DeepSeek";
 }
 
@@ -231,9 +233,10 @@ function keyToModel(key) {
   if (v === "haiku") return "claude-haiku-4-5";
   if (v === "glm") return "glm-5.2";
   if (v === "openclaw") return "openclaw";
+  if (v === "rism") return "claude-opus-4-8";
   return v;
 }
 
-const ALL_MODEL_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
+const ALL_MODEL_KEYS = ["ds", "opus", "haiku", "glm", "openclaw", "rism"];
 
 module.exports = { readConfig, modelToKey, modelToDisplayName, resolveModelKey, keyToModel, getModelMemoryDir, getModelSessionsFile, getModelWorldbookDir, getModelWorldbookFile, getMemoryModelKeys, ALL_MODEL_KEYS };
