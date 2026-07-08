@@ -3,6 +3,52 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-08 · 贴纸消息持久化 + DS 页贴纸支持 + 缓存版本对齐（3 commits: `69cdf7e` `9abd870` `af45ceb`）
+
+### 背景
+
+toge 报了三个关联问题：
+1. APP 端白屏无法登录
+2. 网页端显示幽灵消息 `[贴纸] 2026-06-11T01:54:40.446Z`（她没发过）
+3. Web 与 APP 消息同步经常不一致
+
+### 诊断过程
+
+系统性排查后发现：
+
+- **幽灵消息**：来自 `ws-server.js:1153` 的 `sticker_send` 广播，6 月 11 日贴纸系统开发时的一次测试广播被浏览器收到，写入 localStorage。服务端 chat-history JSON 里没有这条消息（已 grep 验证）。
+- **核心架构漏洞**：贴纸消息 **完全不经过 `messageStore.save()`**，只有 WebSocket 即时广播。`sticker_send` 和 `sendSticker()` 都只调 `broadcast()` 不调 `save()`。`syncHistoryFromServer()` 读 `/api/messages` → 读 chat-history JSON → 永远拉不到贴纸。
+- **DS 页零贴纸支持**：`chat-ds.js` 的 WS handler 没有 `case "sticker"`，`renderMsg` 不识别 `stickerId`，`handleSync` 过滤 `from !== "ke"`。
+- **缓存版本脱节**：SW 缓存名 `ke-v24` vs CSS `v=34` vs chat-ds.js `v=41` vs SW 注册 `v=39` — 四层版本各自为政。
+
+### 修了什么
+
+| 文件 | 改动 |
+|------|------|
+| `message-store.js` | `save()` 加 `stickerId`/`desc` 字段；`load()` 模型过滤时贴纸无条件通过（贴纸不归属任何模型） |
+| `ws-server.js` | `sticker_send` 处理块在 broadcast 前先 `messageStore.save(from:"you")` |
+| `index.js` | `sendSticker()` 在 broadcast 前先 `messageStore.save(from:"ke")` |
+| `chat-ds.js` | 新增 `renderStickerMsg()` + WS `case "sticker"` + `renderMsg` 识别 `stickerId` + `handleSync` 传递 `stickerId` 和 sticker 专用去重 key |
+| `index.html` | `renderMsg` 识别 `stickerId` 走 `renderStickerMsg`；幽灵贴纸一次性清理（< 07-08 的 sticker 从 localStorage 删除）；`msgDedupKeys` 加 sticker 专用 key；SW 版本对齐 |
+| `sw.js` | `ke-v24` → `ke-v25` |
+
+### 踩坑
+
+- **`Edit` 工具吞了 `loadDay(dateStr)` 行**：改 `message-store.js` 时 `old_string` 匹配了整个 save 函数体，`new_string` 漏了 `const messages = loadDay(dateStr)`，导致 `messages` 未定义。立刻发现并修复。
+- **`renderStickerMsg` 不尊重 `save` 参数**：init 时 `renderMsg(msg, false)` 但 delegate 到 `renderStickerMsg` 时忽略 `false`，每次渲染都写 localStorage。消息多的时候页面加载极慢。修复：加 `save` 参数，init 时不写。
+- **SW `controllerchange` 无防抖**：`ke-v24`→`ke-v25` 时 `skipWaiting()+claim()` 触发 `controllerchange` → `reload()`，无防抖可能在短时间内多次刷新。加了 500ms debounce。
+- **第二轮审查发现 3 个 bug**：`load()` 模型过滤排除贴纸（致命）、`handleSync` 和 `msgDedupKeys` 的 sticker 去重 key 用 `"[贴纸]"` 文本导致不同贴纸误判重复。
+
+### 不做的事
+
+- 不修 `MainActivity.java`（本地无 Android SDK）
+- DS 页不加贴纸面板 UI（上传/标签管理）— 只做接收+渲染
+- DS 页不加 HTTP sync — 见下方遗留
+
+### 遗留
+
+DS 聊天页没有 HTTP sync（`handleSync` 等 WS `type:"sync"` push，但服务端从不推 sync 消息）。DS 页只能靠 localStorage + 实时 WS 广播获取消息，不像主聊天页有 `/api/messages` HTTP pull。贴纸虽然已持久化到服务端，DS 页在离线重连后仍无法从服务端拉回历史贴纸——需要后续给 DS 页补 HTTP sync。
+
 ## 2026-07-08 · APP Bug 修复计划 v2 收尾：砍过度设计 + 清计划债
 
 ### 背景

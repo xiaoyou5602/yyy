@@ -198,6 +198,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 刷新键疑似摆设（07-04 toge 报）— 加了 ↺ 按钮但点击可能没真正触发同步，需排查。**可能与上条同源**：↺ 在主 chat 页 header，而 toge 常驻的 DS 页（chat-ds）没有刷新键，且 DS 页 WS 未建时同步了也不显示——上条修复后请 toge 再试
       `pendingApproval` 仍是同一 requestId → 自动 decline + 聊天页留一条"⏰ 超时自动拒绝（非 toge 主动）"说明（进历史，克跨 session 回顾可见）。被响应/turn 结束/换新审批都会清 pendingApproval，回调天然幂等。时长 2 分钟是 toge 07-04 拍板的
 
+- [ ] DS 聊天页补 HTTP sync — 贴纸已在服务端持久化（07-08，commit 69cdf7e~af45ceb），但 DS 页没有 `/api/messages` HTTP pull，离线重连后历史贴纸无法恢复。`handleSync` 等 WS push 但服务端从不推 sync 消息，实为死代码
+
 ### 后端 / 服务
 
 - [ ] 健康数据 MCP（07-03 立项）— **方案已定稿 → [docs/plans/health-mcp.md](docs/plans/health-mcp.md)**。链路：手环 9Pro → 小米运动健康 → Health Connect → Health Sync 推 webhook → cyberboss `/api/health` → 内部 MCP 工具 + `health.withtoge.us` 标准 remote MCP（官 APP connector 也能接）。阶段 0（后端管道+假数据测试）手环到货前就可做；阶段 1 等手环（toge 操作）。主要风险：国行 app 可能无 HC 同步开关（备选：国际版 Mi Fitness 港区账号，教程已验证可行）
