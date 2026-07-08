@@ -2632,7 +2632,7 @@ function renderMsg(msg, save = true) {
     return div;
   }
   // Sticker entries (from history or sync) — delegate to renderStickerMsg
-  if (msg.stickerId) return renderStickerMsg(msg);
+  if (msg.stickerId) return renderStickerMsg(msg, save);
   // A ke entry carrying a chunks array is one logical message rendered as
   // multiple bubbles (拆分). Storage keeps the single entry; the split is
   // purely a render-time effect, so refresh and live views stay identical.
@@ -2966,7 +2966,8 @@ function patchStickerTag(stickerId, action, tag) {
     .catch(function() {});
 }
 
-function renderStickerMsg(msg) {
+function renderStickerMsg(msg, save) {
+  if (save === undefined) save = true;
   var div = document.createElement("div");
   div.className = "msg " + (msg.from === "you" ? "you" : "ke");
   var msgId = "msg-" + Date.now() + "-" + (++_msgIdx) + "-" + Math.random().toString(36).slice(2,6);
@@ -2980,8 +2981,10 @@ function renderStickerMsg(msg) {
   }
   messagesEl.appendChild(div);
   followScroll();
-  history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
-  saveHistory(history);
+  if (save) {
+    history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
+    saveHistory(history);
+  }
 }
 
 if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
@@ -3409,9 +3412,11 @@ if ("serviceWorker" in navigator) {
     });
   }).catch(() => {});
 
-  // If the controller changes (user updated), reload
+  // If the controller changes (user updated), reload — debounce to prevent loops
+  let _swReloadTimer = null;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    window.location.reload();
+    if (_swReloadTimer) return;
+    _swReloadTimer = setTimeout(() => { window.location.reload(); }, 500);
   });
 }
 

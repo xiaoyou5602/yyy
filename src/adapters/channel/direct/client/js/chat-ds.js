@@ -61,7 +61,7 @@
     }
 
     // ── Sticker entries from history ──
-    if (msg.stickerId) return renderStickerMsg(msg);
+    if (msg.stickerId) return renderStickerMsg(msg, save);
 
     wrap.className = "ds-msg-group " + (msg.from === "you" ? "user" : "ai");
     var bubble = document.createElement("div");
@@ -85,7 +85,8 @@
   }
 
   /* ── Sticker rendering ── */
-  function renderStickerMsg(msg) {
+  function renderStickerMsg(msg, save) {
+    if (save === undefined) save = true;
     var wrap = document.createElement("div");
     wrap.className = "ds-msg-group " + (msg.from === "you" ? "user" : "ai");
     var bubble = document.createElement("div");
@@ -99,8 +100,10 @@
     wrap.appendChild(timeEl);
     chatFlow.appendChild(wrap);
     followScroll();
-    history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
-    saveHistory(history);
+    if (save) {
+      history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
+      saveHistory(history);
+    }
     return wrap;
   }
 

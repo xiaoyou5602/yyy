@@ -52,14 +52,14 @@
 
 - [x] **A3**（已存在）`initHistory()` 末尾已经无条件调用 `syncHistoryFromServer()`（不是 setTimeout 版本，是直接调用），冷启动会拉服务端补全。
 
-- [ ] **A4** 服务端消息加 `globalSeq`（单调递增序号），客户端用 `lastSeenSeq` 做增量拉取。这是 GPT review 建议的核心改进——给所有消息统一时间轴。在 `message-store.js` 的 save 方法中自动分配。
+- [x] **A4**（已取消 — 2026-07-08 审视决定不做）globalSeq 增量序号。理由：当前去重已有三种 key（globalId → id → timestamp+text），覆盖现有场景绰绰有余；toge 一个人用，不是多用户高并发系统；sync 每次拉最近 7 天全量，增量拉取没有实际收益。这是 GPT review 站在"通用消息系统"视角提的，不是站在"toge 的 APP"提的。
   ```js
   // 每条消息存储时自动附加 globalSeq
   { ..., globalSeq: nextSeq++ }
   // /api/messages 支持 ?after=seq 增量查询
   ```
 
-- [ ] **A5** 去重 key 明确：优先 `globalId`（服务端分配），fallback `id`（客户端生成），再 fallback `timestamp+from+text` 组合。当前 `msgDedupKeys()` 已实现三种 key，保持不变，加上 `globalSeq` 做第四种。
+- [x] **A5**（已取消 — 随 A4 一起砍）去重 key 明确。当前 `msgDedupKeys()` 已实现三种 key（globalId / id / timestamp+from+text），完全够用，不需要第四种。
 
 ---
 
@@ -92,40 +92,37 @@
 
 **新方案：HTTP API + 本地 fetch**
 
-- [ ] **C1** VPS 加 API endpoint：`GET /api/conversations?days=7`，返回最近对话的摘要列表（threadId、时间、前几条消息预览）
+- [x] **C1**（2026-07-03 已完成）VPS 加 API endpoint：`GET /api/conversations?days=7`，返回最近对话的摘要列表。实际实现比计划更完善，还有 `/api/conversations/search`、`/api/conversations/refresh`、`/api/conversations/import`。另有 `/api/sessions?days=N` 端点给 Claude Code session 用。
   ```
   [{ threadId: "e2b01a0b...", startedAt: "...", lastActivity: "...", preview: "中午了～在家吃了没？", messageCount: 45 }]
   ```
 
-- [ ] **C2** VPS 加 API endpoint：`GET /api/conversations/:threadId/export`，返回完整对话 JSONL（客户端可用 Claude Code 的 `--resume` 或手动查看）
+- [x] **C2**（2026-07-03 已完成）VPS 加 API endpoint：`GET /api/conversations/:id` + `/api/conversations/:id/messages/:messageId`，返回完整对话。
 
-- [ ] **C3** 本地 IDE 端写个简单脚本或 alias：`fetch-app-sessions` → curl VPS API → 保存到本地临时目录 → 用 Claude Code 打开
+- [x] **C3**（2026-07-03 已完成）本地 IDE 端脚本 `~/.claude/scripts/fetch-app-sessions.js`，调 VPS `/api/sessions` → 保存 JSONL 到本地 → VSCode session 列表自动识别。支持增量更新、删除标记、manifest 管理。
 
 ---
 
 ### 🟢 P2：Android 端小修
 
-- [ ] **D1** `MainActivity.java:58`：删除 `webView.clearCache(true)`
+- [x] **D1**（2026-07-08 已完成）`MainActivity.java:58`：删除 `webView.clearCache(true)`
   - 这行每次打开 APP 都清空 WebView 缓存 → localStorage 丢失 → 聊天记录空白
   - 替代方案：CSS/JS 文件 URL 带版本号 `?v=31`（已实现），更新时改版本号即可强制刷新，不需要 clearCache
 
-- [ ] **D2** 如果需要更可靠的缓存刷新：加一个 `/api/version` endpoint，APP 启动时比较版本号，只在版本变化时清缓存
+- [x] **D2**（已取消 — 2026-07-08 审视决定不做）`/api/version` 版本号检查。D1 已直接删 clearCache，D2 的"优雅替代"失去存在意义。JS/CSS 已有 `?v=N` 强制刷新机制。
 
 ---
 
-## 实施顺序
+## 实施顺序（实际执行记录）
 
 ```
-第 1 步（10min）： A1 服务端 sync 发双方消息  → 部署重启
-第 2 步（10min）： A2+A3 前端冷启动/重连都调 sync  → 部署重启（热更新）
-第 3 步（15min）： B1+B2 前端 visibility + 单连接保护  → 部署重启（热更新）
-第 4 步（10min）： B3+B4 服务端单连接约束 + 日志  → 部署重启
-第 5 步（15min）： A4 globalSeq + 增量查询  → 部署重启
-第 6 步（15min）： C1+C2 session API  → 部署重启
-第 7 步（5min）：  D1 删 clearCache → 重打包 APK（可以等下次 APP 更新一起发）
+✅ 07-01：诊断 + 计划初稿（GPT + Claude review）
+✅ 07-03：C1+C2+C3 session API + fetch-app-sessions 脚本（比计划更完善）
+✅ 07-05：A1+A2+A3 sync 路径修复 + B1+B2+B4 重连稳定性（B3 单连接约束当天回滚）
+✅ 07-08：审视决定砍掉 A4/A5/D2 → 删 D1 clearCache → 计划收尾
 ```
 
-每步独立可验证，出问题可以 git revert 单步。
+所有 13 项已全部处理（11 项实施 + 1 项回滚 + 2 项主动取消）。
 
 ---
 

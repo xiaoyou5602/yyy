@@ -1,9 +1,30 @@
 # withtoge md sync: local CLAUDE.md/WITHTOGE.md <-> git repo <-> VPS
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\sync-md.ps1
+#        Add -Hidden when launched from the scheduled task so it hides its
+#        own console; omit it when running by hand so output stays visible.
 # Design: every change is committed BEFORE any merge/overwrite happens,
 # so nothing can be silently lost. If ~/CLAUDE.md is a symlink (needs admin
 # mklink), the copy steps become no-ops automatically.
 # NOTE: ASCII only - PowerShell 5.1 misparses UTF-8 without BOM.
+param([switch]$Hidden)
+
+# Hide this console window, but only when explicitly launched as a
+# background task (-Hidden). Relying on the caller (wscript / task
+# scheduler) to pass a hidden window style is not reliable - git/ssh child
+# processes can still end up flashing their own visible console, so we hide
+# our own window handle directly. Gated behind -Hidden so running this by
+# hand in an existing terminal doesn't yank that terminal out from under you.
+if ($Hidden) {
+    Add-Type -Name Window -Namespace ConsoleHide -MemberDefinition '
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetConsoleWindow();
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    ' | Out-Null
+    $hwnd = [ConsoleHide.Window]::GetConsoleWindow()
+    if ($hwnd -ne [IntPtr]::Zero) { [ConsoleHide.Window]::ShowWindow($hwnd, 0) | Out-Null }
+}
+
 $repo   = "C:\Users\youzi\withtoge"
 $homeMd = "C:\Users\youzi\CLAUDE.md"
 $repoMd = Join-Path $repo "CLAUDE.md"

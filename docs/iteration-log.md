@@ -3,6 +3,38 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-08 · APP Bug 修复计划 v2 收尾：砍过度设计 + 清计划债
+
+### 背景
+
+toge 发来 `app-bug-fix.md` 计划文档问"做完了嘛？为什么总觉得做了有感觉没做"。排查发现两个问题：
+
+1. **文档没更新**：C1/C2/C3（conversation API + fetch-app-sessions 脚本）07-03 就做好了，计划文档上还挂着 `[ ]`，每次翻到一排未勾选就觉得啥都没动
+2. **过度设计没审视**：A4 globalSeq + A5 去重 key + D2 /api/version 三项目前场景不需要，但一直挂在计划里像欠债
+
+### 逐项审视结论
+
+| # | 内容 | 决策 | 理由 |
+|---|------|------|------|
+| A4 | globalSeq 增量序号 | **取消** | 一个人用，不需要多用户并发增量同步；去重已有三种 key 绰绰有余 |
+| A5 | 去重 key 加 globalSeq | **取消** | 随 A4 一起砍 |
+| D1 | 删 clearCache(true) | **执行** | 就一行代码，每次开 APP 清 localStorage 的元凶 |
+| D2 | /api/version 端点 | **取消** | D1 直接删了 clearCache，D2 没意义了；JS/CSS 已有 `?v=N` |
+
+### D1 执行
+
+`MainActivity.java:58-59` 删 `webView.clearCache(true)` 及注释。替代方案 `?v=N` 版本号机制早已在跑。
+
+### 计划实际完成统计
+
+13 项全部处理：11 项实施 + 1 项回滚（B3 单连接约束，多端互踢） + 2 项主动取消（A4/A5/D2）。
+
+### 教训
+
+- **计划文档会 bit-rot**：做完不改 checkbox，过几天自己都以为没做
+- **GPT review 的建议要二次审视**：globalSeq 在"通用消息系统"里是好建议，在"toge 一个人用的 APP"里是过度设计
+- **迭代日志是计划的另一半**：07-01 诊断、07-03 API、07-05 重连——分散三天做的事，没有一篇迭代日志串起来，toge 只能靠翻 checkbox 判断进度
+
 ## 2026-07-07 · 记忆系统四项改进：证据链 + subtype + 意图搜索 + Episode 候选（commit `7f5b390`）
 
 ### 背景
