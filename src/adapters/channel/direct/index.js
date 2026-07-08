@@ -324,6 +324,14 @@ function createDirectChannelAdapter(config) {
 
     async sendSticker({ stickerId, desc = "" }) {
       if (!wsServer) return;
+      messageStore.save({
+        channel: "direct",
+        from: "ke",
+        text: "[贴纸]",
+        stickerId: String(stickerId),
+        desc: typeof desc === "string" ? desc : "",
+        time: new Date().toISOString(),
+      });
       wsServer.broadcast({ type: "sticker", stickerId, desc, from: "ke", time: new Date().toISOString() });
     },
 

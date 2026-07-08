@@ -2469,6 +2469,22 @@ async function initHistory() {
   try {
     localMsgs = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
   } catch { localMsgs = []; }
+  // One-time: clean ghost stickers from before server-side persistence (2026-07-08)
+  if (!localStorage.getItem("cyberboss-ghost-sticker-clean-v1")) {
+    const STICKER_FIX_DATE = new Date("2026-07-08T00:00:00.000Z");
+    const before = localMsgs.length;
+    localMsgs = localMsgs.filter(function(m) {
+      if (m.stickerId && m.time) {
+        var t = new Date(m.time);
+        if (!isNaN(t.getTime()) && t < STICKER_FIX_DATE) return false;
+      }
+      return true;
+    });
+    if (localMsgs.length < before) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(localMsgs.slice(-500)));
+    }
+    localStorage.setItem("cyberboss-ghost-sticker-clean-v1", "1");
+  }
   // One-time migration from old date-based keys
   if (!localStorage.getItem("cyberboss-chat-migrated")) {
     for (let i = 0; i < 7; i++) {
@@ -2615,6 +2631,8 @@ function renderMsg(msg, save = true) {
     if (save) { history.push(msg); saveHistory(history); }
     return div;
   }
+  // Sticker entries (from history or sync) — delegate to renderStickerMsg
+  if (msg.stickerId) return renderStickerMsg(msg);
   // A ke entry carrying a chunks array is one logical message rendered as
   // multiple bubbles (拆分). Storage keeps the single entry; the split is
   // purely a render-time effect, so refresh and live views stay identical.
@@ -3375,7 +3393,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=39").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=40").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);
@@ -3426,7 +3444,7 @@ window.updateKe = function () {
 <script src="/js/themes.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
-<script src="/js/chat-ds.js?v=41"></script>
+<script src="/js/chat-ds.js?v=42"></script>
 <script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->

@@ -1157,6 +1157,17 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
             from: "you",
             time: new Date().toISOString(),
           });
+          // Persist sticker to server-side chat history so all clients can sync it
+          if (messageStore) {
+            messageStore.save({
+              channel: "direct",
+              from: "you",
+              text: "[贴纸]",
+              stickerId: String(parsed.stickerId),
+              desc: typeof parsed.desc === "string" ? parsed.desc : "",
+              time: new Date().toISOString(),
+            });
+          }
           const snapshot = [...clients];
           for (const client of snapshot) {
             if (client.readyState === 1) client.send(payload);

@@ -60,6 +60,9 @@
       return wrap;
     }
 
+    // ── Sticker entries from history ──
+    if (msg.stickerId) return renderStickerMsg(msg);
+
     wrap.className = "ds-msg-group " + (msg.from === "you" ? "user" : "ai");
     var bubble = document.createElement("div");
     bubble.className = "ds-msg-bubble";
@@ -78,6 +81,26 @@
     chatFlow.appendChild(wrap);
     followScroll();
     if (save) { history.push(msg); saveHistory(history); }
+    return wrap;
+  }
+
+  /* ── Sticker rendering ── */
+  function renderStickerMsg(msg) {
+    var wrap = document.createElement("div");
+    wrap.className = "ds-msg-group " + (msg.from === "you" ? "user" : "ai");
+    var bubble = document.createElement("div");
+    bubble.className = "ds-msg-bubble";
+    var src = "/api/stickers/" + (msg.stickerId || "") + ".gif";
+    bubble.innerHTML = '<img src="' + src + '" alt="贴纸" style="max-width:160px;border-radius:8px;">';
+    wrap.appendChild(bubble);
+    var timeEl = document.createElement("span");
+    timeEl.className = "ds-msg-time";
+    timeEl.textContent = msg.time || now();
+    wrap.appendChild(timeEl);
+    chatFlow.appendChild(wrap);
+    followScroll();
+    history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
+    saveHistory(history);
     return wrap;
   }
 
@@ -281,6 +304,10 @@
             renderMsg({ from: "ke", text: "[错误] " + (msg.text || "") });
             notifyNewMessage();
             break;
+          case "sticker":
+            renderStickerMsg(msg);
+            notifyNewMessage();
+            break;
         }
       } catch (_) {}
     };
@@ -306,11 +333,11 @@
     });
     var added = false;
     messages.forEach(function(m) {
-      if (m.from !== "ke" && m.from !== "thinking") return;
+      if (m.from !== "ke" && m.from !== "thinking" && !m.stickerId) return;
       if (m.globalId && seen[m.globalId]) return;
       var key = m.from === "thinking" && m.turnId
           ? "thinking|" + m.turnId
-          : (m.from || "ke") + "|" + m.text + "|" + (m.time || "");
+          : (m.stickerId ? (m.from || "ke") + "|sticker|" + m.stickerId : (m.from || "ke") + "|" + m.text + "|" + (m.time || ""));
       if (seen[key]) return;
       // Skip partial duplicates: a sync message whose text is a prefix of
       // an already-rendered message (e.g. partial flush vs final flush)
@@ -321,7 +348,7 @@
       seen[key] = true;
       if (m.globalId) seen[m.globalId] = true;
       // Push to history BEFORE rendering, so it survives next refresh
-      var entry = { from: m.from || "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "" };
+      var entry = { from: m.from || "ke", text: m.text, time: m.time || now(), model: m.model || "", globalId: m.globalId || "", stickerId: m.stickerId || undefined };
       history.push(entry);
       renderMsg(entry, false);
       added = true;

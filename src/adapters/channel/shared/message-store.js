@@ -43,9 +43,10 @@ function createMessageStore(stateDir) {
     }
   }
   return {
-    save({ channel, from, text, time, images, model, globalId, turnId }) {
+    save({ channel, from, text, time, images, model, globalId, turnId, stickerId, desc }) {
       const now = new Date();
       const dateStr = formatShanghaiDate(now);
+      if (stickerId && !text) text = "[贴纸]";
       const messages = loadDay(dateStr);
       messages.push({
         id: `msg-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
@@ -58,6 +59,8 @@ function createMessageStore(stateDir) {
         model: typeof model === "string" ? model.trim() : "",
         globalId: globalId || undefined,
         turnId: turnId || undefined,
+        stickerId: stickerId || undefined,
+        desc: typeof desc === "string" ? desc.slice(0, 200) : undefined,
       });
       saveDay(dateStr, messages.slice(-500));
     },
