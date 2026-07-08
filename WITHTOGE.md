@@ -211,6 +211,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] 梦境系统 07-02 起每晚崩 — **已修（07-05）**：readByDate 补 await。待验证：明晨 3 点日志无 `todayFrags.slice` 报错
 - [x] resolveModelKey("glm") 落回 ds — **已修（07-05）**：名单改用 ALL_MODEL_KEYS；scheduler modelKeyToModelName 改用 keyToModel。**新增记忆白名单** `CYBERBOSS_MEMORY_MODELS`（默认只有 ds，设 "all" 恢复全模型），提取和梦境都只对白名单模型跑
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
+- [ ] 记忆碎片时间戳改用北京时间（07-09 toge 报）— 当前 `created`/`lastRecalled` 字段用 UTC，导致写时间轴时容易看错 8 个小时。统一改用 Asia/Shanghai
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
 
 > 华为手机设置 + 生活待办 → 见 [CLAUDE.md](../../CLAUDE.md) "生活待办"
