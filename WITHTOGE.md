@@ -126,7 +126,7 @@ API 直调：`src/core/direct-api-client.js` — SSE 流式客户端，绕过 CC
 | **时间轴**            | MCP 工具读/写/截图                                                                                 | `src/integrations/timeline/`, `src/services/timeline-service.js`                                      |
 | **贴纸系统**          | APP/Web 端贴纸面板（标签编辑 + 上传/删除），API + WS 推送                                          | `src/adapters/channel/direct/ws-server.js`、`src/services/sticker-service.js`                         |
 | **图片识别**          | vision-context，>500KB 自动压缩                                                                    | `src/services/vision-context.js`                                                                      |
-| **记忆系统**          | 碎片提取 + 热度衰减 + 倒排索引 + 梦境整合                                                          | `src/memory/`, `src/services/memory-service.js`                                                       |
+| **记忆系统**          | 碎片提取 + 热度衰减 + 倒排索引 + 梦境整合 + 关键词路由注入(context-routes)                         | `src/memory/`, `src/services/memory-service.js`                                                       |
 | **定位**              | whereabouts MCP 集成                                                                               | `.env` 里 `CYBERBOSS_ENABLE_LOCATION_SERVER=true`                                                     |
 | **闹钟系统**          | 自然语言解析 → HTTP → 手机原生闹钟                                                                 | 见下方"闹钟系统"，详细文档 `docs/alarm-system.md`                                                     |
 | **守护进程**          | VPS systemd 自动守护（cloudflared + cyberboss），崩了自动拉                                        | `/etc/systemd/system/cyberboss.service`                                                               |
