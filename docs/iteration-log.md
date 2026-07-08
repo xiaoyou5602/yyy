@@ -3,6 +3,57 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-08 ② · Checkin Poller 文件锁 + Git Hook 防抖（commit `97c98b2`）
+
+### 背景
+
+toge 发现 APP 端 DS 被唤醒频率极高（7 天 2495 次，日均 ~356 次），怀疑除了梦境之外有别的机制在频繁触发。排查发现两个独立问题叠加：
+
+1. **Poller 增殖**：每次 toge 发消息 spawn Claude Code 子进程，都启动了自己的 checkin poller。下午 17 分钟内冒出 8 个 poller 实例，每个按 3-60min 随机间隔各自触发，DS 被 N 倍轰炸。
+2. **Git hook 频繁重启**：post-receive hook 每次 push 非 md 代码就 `systemctl restart cyberboss`，开发期间一天二三十次。每次重启 poller 计时器重置 + 子进程被杀触发 "Runtime process exited unexpectedly"。
+
+### 诊断过程
+
+- `journalctl` 查到 poller 日志 `checkin poller ready` 在 17 分钟内出现 8 次，每次不同 PID
+- 追踪到 `system-checkin-poller.js`：`runSystemCheckinPoller` 在 `app.js` bridge loop 启动时调用，`startWithCheckin=true` 时每个进程都跑
+- 另一方面 `systemd[1]: Stopping` 日志证实大部分重启来自 git hook 的 `systemctl restart`，不是 crash
+- "Runtime process exited unexpectedly" 是重启的**结果**（SIGTERM → 子进程被杀 → process.close 事件），不是原因
+
+### 修了什么
+
+**1. Poller 机器级文件锁**（`src/app/system-checkin-poller.js`）
+
+- `acquireLock()`：用 `fs.writeFileSync(flag: "wx")` 排他创建锁文件 `/root/.cyberboss/checkin-poller.lock`
+- 锁存在时检查 PID 是否存活：活着 → 跳过（`[checkin-poller] skipped, already running`）；死了 → 回收旧锁重试（stale lock recovery）
+- `releaseLock()` 在 `process.on("exit"/"SIGTERM"/"SIGINT")` 时清理（正常路径优化）
+- 每次 checkin queued 前刷新 `heartbeat` 时间戳
+- **不依赖 exit cleanup 保证正确性**——kill -9 / OOM / VPS 崩溃后新进程通过 PID 检查自动接管
+
+**2. Git hook 5 分钟防抖**（`/opt/git/withtoge.git/hooks/post-receive`）
+
+- 每次 push 写时间戳到 `/tmp/cyberboss-restart-debounce`
+- 后台 `sleep 300` 后检查：时间戳未变 → 执行重启；已变（有新 push）→ 跳过
+- 连续 push 10 次只在最后一次 5 分钟后重启一次
+
+### GPT review 关键建议
+
+- 文件锁不能依赖 `process.on("exit")` 做唯一保障（`kill -9` 不触发）→ 加了 PID 存活检查 + stale lock recovery
+- heartbeat 作为辅助防御（PID 复用极端场景）→ 已加
+- 长期建议：checkin scheduler 独立生命周期，不绑在业务进程上 → 记着，当前不改
+
+### 效果
+
+| 指标 | 修前 | 修后 |
+|------|------|------|
+| 并发 poller | 8 个/17min | 0（锁互斥） |
+| DS 调用（同时段） | 84 次 | 64 次 ↓24% |
+| 开发期间重启 | 每次 push | 5min 防抖合并 |
+
+### 关键文件
+
+- `src/app/system-checkin-poller.js` — 加 acquireLock / refreshHeartbeat / releaseLock
+- `/opt/git/withtoge.git/hooks/post-receive` — 加 debounce 逻辑
+
 ## 2026-07-08 · 贴纸消息持久化 + DS 页贴纸支持 + 缓存版本对齐（3 commits: `69cdf7e` `9abd870` `af45ceb`）
 
 ### 背景
