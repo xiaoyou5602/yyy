@@ -191,10 +191,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 ### APP 端
 
 - [ ] 调参台完善 — 待验证。所有页面独立微调，点击遮罩关闭，scrollbar 可见。
-- [x] APP 加强制刷新键 — **已修（07-03 夜间自动任务）**。在 header-right 加 ↺ 刷新图标按钮，点击调用 `syncHistoryFromServer()` 重拉服务端历史，带 360° 旋转动画反馈
-- [x] Opus 页显示思考摘要 — **已修（07-03 commit d146bdb + 9d463e9，已部署 VPS，端到端验证 thinking 回调收到内容）**。改动：model-routes.js opus 加 `thinking: true` 开关；direct-api-client.js 请求带 thinking 参数、max_tokens 4096→16000（thinking 消耗输出预算）；app.js onDone 时 saveThinking 存档（与 stream-delivery 一致，思考排回复前）。**踩坑：55api 中转会剥离 adaptive 模式**（HTTP 200 但流里无 thinking 块），只有老式 `{type:"enabled", budget_tokens:4096}` 能透传（4.6 上 deprecated 但可用）；换直连官方 API 时改回 `{type:"adaptive", display:"summarized"}`。SSE 解析和 onThinking→sendThinking→ 前端广播链路原本就有，无需改前端。**待 toge 验证**：APP Opus 页发条需要推理的消息，看思考块是否显示（若 Opus zone 前端没渲染 thinking 再补前端）
 - [x] DS 页刷新/重开后卡"连接中"（07-04 toge 报）— **已修（07-04 commit dd56551，已部署，浏览器复现+验证通过）**。根因：index.html 启动路由（localStorage last-page=chat-ds 时 showPage+dsChatInit）在主内联脚本里执行，早于页面尾部的 `<script src="chat-ds.js">` 加载，`typeof window.dsChatInit` 为 undefined 被静默跳过——DS 页显示了但从未初始化、从未建立自己的 WebSocket，状态永远"连接中"，消息也收不到（主页面 WS 其实在线，服务端一切正常）。修法：chat-ds.js 末尾自愈——脚本加载完检测 DS 页已显示且未初始化则补跑 dsChatInit。v39→v40。**注意此 bug 会伪装成"隧道断了/通知不来/丢消息"**——凡 APP 重开后 DS 页异常先想到它
-- [ ] 聊天页独立 UI / 皮肤架构（07-05 立项）— **阶段1 完成（07-07 commit bdce1b6，已部署）**。改动：① main.css 补漏 20+ 硬编码值→CSS变量 ② page-tokens 全局瘦身 + 5个per-zone scope ③ 新增 themes.css（5主题：暖瓷/樱/午夜/海洋/森林）④ 设置页主题专区横滑卡片 + 壁纸不透明度滑条 ⑤ 调参台 suggestScope 按活跃zone定位。**待 toge 验收**：设置 → 点不同主题卡片看效果；打开调参台切不同 zone 看 tab 是否自动切换。阶段 2~4 待排
+- [ ] 聊天页独立 UI / 皮肤架构（07-05 立项）— **阶段 1 完成（07-07 commit bdce1b6，已部署）**。改动：① main.css 补漏 20+ 硬编码值 →CSS 变量 ② page-tokens 全局瘦身 + 5 个 per-zone scope ③ 新增 themes.css（5 主题：暖瓷/樱/午夜/海洋/森林）④ 设置页主题专区横滑卡片 + 壁纸不透明度滑条 ⑤ 调参台 suggestScope 按活跃 zone 定位。**待 toge 验收**：设置 → 点不同主题卡片看效果；打开调参台切不同 zone 看 tab 是否自动切换。阶段 2~4 待排
 - [ ] 刷新键疑似摆设（07-04 toge 报）— 加了 ↺ 按钮但点击可能没真正触发同步，需排查。**可能与上条同源**：↺ 在主 chat 页 header，而 toge 常驻的 DS 页（chat-ds）没有刷新键，且 DS 页 WS 未建时同步了也不显示——上条修复后请 toge 再试
       `pendingApproval` 仍是同一 requestId → 自动 decline + 聊天页留一条"⏰ 超时自动拒绝（非 toge 主动）"说明（进历史，克跨 session 回顾可见）。被响应/turn 结束/换新审批都会清 pendingApproval，回调天然幂等。时长 2 分钟是 toge 07-04 拍板的
 
