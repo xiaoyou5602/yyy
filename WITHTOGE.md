@@ -190,6 +190,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### APP 端
 
+- [ ] 通知栏消息拆分（07-08 toge 报）— 多条消息挤在同一条通知栏弹窗里，需要拆成各自独立的通知
 - [ ] 调参台完善 — 待验证。所有页面独立微调，点击遮罩关闭，scrollbar 可见。
 - [x] DS 页刷新/重开后卡"连接中"（07-04 toge 报）— **已修（07-04 commit dd56551，已部署，浏览器复现+验证通过）**。根因：index.html 启动路由（localStorage last-page=chat-ds 时 showPage+dsChatInit）在主内联脚本里执行，早于页面尾部的 `<script src="chat-ds.js">` 加载，`typeof window.dsChatInit` 为 undefined 被静默跳过——DS 页显示了但从未初始化、从未建立自己的 WebSocket，状态永远"连接中"，消息也收不到（主页面 WS 其实在线，服务端一切正常）。修法：chat-ds.js 末尾自愈——脚本加载完检测 DS 页已显示且未初始化则补跑 dsChatInit。v39→v40。**注意此 bug 会伪装成"隧道断了/通知不来/丢消息"**——凡 APP 重开后 DS 页异常先想到它
 - [ ] 聊天页独立 UI / 皮肤架构（07-05 立项）— **阶段 1 主体完成（07-07 commit 34f890c，v4，已部署）**。改动：main.css 变量补漏 + page-tokens per-zone scope + themes.css 5主题 + data-theme per-zone隔离 + 独立主题专区页 #theme-zone-page（CSS Scroll Snap横滑 + IntersectionObserver聚焦 + 草稿/应用态分离 + 壁纸不透明度 + 从图库选择/重置）。阶段 2~4 待排。
