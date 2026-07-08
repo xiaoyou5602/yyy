@@ -95,9 +95,23 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
           res.end(JSON.stringify({ results: [] }));
           return;
         }
-        const results = searchTranscripts(q);
+        // Primary: clean chat-history (full coverage since May 27)
+        const primary = stateDir ? searchChatHistory(q, stateDir, 40) : [];
+        // Fallback: recent JSONL transcripts (last few files, for freshness)
+        const fallback = searchTranscripts(q, 10);
+
+        // Merge & deduplicate by match-text fingerprint
+        const seen = new Set();
+        const merged = [];
+        for (const r of [...primary, ...fallback]) {
+          const fp = r.context.filter(c => c.isMatch).map(c => c.text).join("|");
+          if (seen.has(fp)) continue;
+          seen.add(fp);
+          merged.push(r);
+        }
+
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ results }));
+        res.end(JSON.stringify({ results: merged }));
       } catch (err) {
         res.writeHead(500);
         res.end(JSON.stringify({ error: err.message }));
@@ -1427,19 +1441,22 @@ function formatShanghaiDate(date) {
 }
 
 // ── Transcript search ──
-function searchTranscripts(query) {
+function searchTranscripts(query, maxResults = 20) {
   const projectsDir = path.join(process.env.HOME || process.env.USERPROFILE, ".claude", "projects", "C--Users-youzi");
   if (!fs.existsSync(projectsDir)) return [];
 
+  // Only scan 3 newest files for the fallback path
   const files = fs.readdirSync(projectsDir)
     .filter(f => f.endsWith(".jsonl"))
-    .map(f => path.join(projectsDir, f));
+    .map(f => ({ path: path.join(projectsDir, f), mtime: fs.statSync(path.join(projectsDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+    .slice(0, 3);
 
   const qLower = query.toLowerCase();
   const allResults = [];
 
-  for (const filePath of files) {
-    const raw = fs.readFileSync(filePath, "utf8");
+  for (const file of files) {
+    const raw = fs.readFileSync(file.path, "utf8");
     const lines = raw.split("\n");
 
     // First pass: extract messages
@@ -1508,14 +1525,79 @@ function searchTranscripts(query) {
 
         allResults.push({
           time: timeLabel,
-          file: path.basename(filePath),
+          file: path.basename(file.path),
           context,
         });
 
-        if (allResults.length >= 20) break;
+        if (allResults.length >= maxResults) break;
       }
     }
-    if (allResults.length >= 20) break;
+    if (allResults.length >= maxResults) break;
+  }
+
+  return allResults;
+}
+
+// ── Search chat-history (primary: clean, de-noised, full coverage since May 27) ──
+function searchChatHistory(query, stateDir, maxResults = 40) {
+  const chatDir = path.join(stateDir, "chat-history");
+  if (!fs.existsSync(chatDir)) return [];
+
+  const qLower = query.toLowerCase();
+  const allResults = [];
+  const ctxSize = 2;
+
+  // Newest first — more relevant results come first
+  const files = fs.readdirSync(chatDir)
+    .filter(f => f.endsWith(".json"))
+    .sort()
+    .reverse();
+
+  for (const file of files) {
+    if (allResults.length >= maxResults) break;
+
+    let messages;
+    try {
+      messages = JSON.parse(fs.readFileSync(path.join(chatDir, file), "utf8"));
+    } catch { continue; }
+    if (!Array.isArray(messages)) continue;
+
+    for (let i = 0; i < messages.length; i++) {
+      if (allResults.length >= maxResults) break;
+
+      const msg = messages[i];
+      const text = (msg.text || "").toLowerCase();
+
+      // Skip thinking fragments — not conversation
+      if (msg.from === "thinking") continue;
+      if (!text.includes(qLower)) continue;
+
+      // Build context window
+      const start = Math.max(0, i - ctxSize);
+      const end = Math.min(messages.length, i + ctxSize + 1);
+      const context = messages.slice(start, end).map((m, idx) => ({
+        role: m.from === "you" ? "user" : (m.from === "ke" ? "assistant" : m.from),
+        text: (m.text || "").slice(0, 300),
+        isMatch: (start + idx) === i,
+      }));
+
+      // Format time from timestamp
+      let timeLabel = "";
+      if (msg.timestamp) {
+        try {
+          const d = new Date(msg.timestamp);
+          const pad = n => String(n).padStart(2, "0");
+          timeLabel = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        } catch {}
+      }
+
+      allResults.push({
+        time: timeLabel,
+        file: file.replace(".json", ""),
+        context,
+        source: "chat-history",
+      });
+    }
   }
 
   return allResults;
