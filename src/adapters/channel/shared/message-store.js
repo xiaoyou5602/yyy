@@ -75,7 +75,8 @@ function createMessageStore(stateDir) {
       all.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
       if (modelFilter !== undefined && modelFilter !== null) {
         const key = typeof modelFilter === "string" ? modelFilter.trim() : "";
-        return all.filter((m) => (m.model || "") === key);
+        // Stickers are visual and not model-specific — always include them
+        return all.filter((m) => m.stickerId || (m.model || "") === key);
       }
       return all;
     },

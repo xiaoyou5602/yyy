@@ -2559,6 +2559,8 @@ function msgDedupKeys(m) {
   // thinking entries: the chat-ds page writes a local copy (no globalId) and the
   // server stores its own (with globalId) — turnId is the only shared identity
   if (m.from === "thinking" && m.turnId) keys.push("thinking|" + m.turnId);
+  // Stickers: stickerId is the authoritative identity, not text content
+  if (m.stickerId) keys.push("sticker|" + m.stickerId);
   // Always include the content fingerprint as cross-source bridge
   keys.push((m.timestamp || "") + "|" + (m.text || "").slice(0, 60));
   return keys;

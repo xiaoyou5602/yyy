@@ -332,6 +332,7 @@
       if (h.from === "thinking" && h.turnId) {
         seen["thinking|" + h.turnId] = true;
       }
+      if (h.stickerId) seen[h.from + "|sticker|" + h.stickerId] = true;
       seen[h.from + "|" + h.text + "|" + h.time] = true;
     });
     var added = false;
