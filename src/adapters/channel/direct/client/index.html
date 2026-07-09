@@ -1941,6 +1941,18 @@ document.getElementById("refresh-btn").addEventListener("click", () => {
   if (icon) { icon.style.transition = "transform 0.6s"; icon.style.transform = "rotate(360deg)"; setTimeout(() => { icon.style.transition = ""; icon.style.transform = ""; }, 700); }
   syncHistoryFromServer();
 });
+// 通用：打开设置面板（chat-ds.js / 各 zone 的设置按钮都用这个）
+function openSettingsPanel() {
+  try {
+    var overlay = document.getElementById("settings-overlay");
+    var modelSelect = document.getElementById("setting-model");
+    if (modelSelect && typeof settings !== 'undefined') {
+      modelSelect.value = settings.model || "";
+    }
+    if (overlay) overlay.classList.add("show");
+  } catch(e) { console.warn("openSettingsPanel error:", e); }
+}
+
 document.getElementById("settings-btn").addEventListener("click", () => {
   const wps_norm = normalizeWallpaper(settings.wallpaper);
   const curKey = MODEL_META[settings.model]?.key || "ds";
