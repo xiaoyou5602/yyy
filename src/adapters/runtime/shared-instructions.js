@@ -4,9 +4,8 @@ const { renderInstructionTemplate } = require("../../core/instructions-template"
 function buildOpeningTurnText(config, userText, provider = "") {
   const instructions = loadWechatInstructions(config);
   const recentContext = provider === "direct" ? loadRecentContext(config) : "";
-  const handoff = provider === "direct" ? loadHandoffContext(config) : "";
   const normalizedText = String(userText || "").trim();
-  if (!instructions && !recentContext && !handoff) {
+  if (!instructions && !recentContext) {
     return normalizedText;
   }
   const parts = [
@@ -28,9 +27,6 @@ function buildOpeningTurnText(config, userText, provider = "") {
       "",
       "请自然地延续最近的对话，不要复述这段回顾。"
     );
-  }
-  if (handoff) {
-    parts.push("", "## 上一段手札（跨 Session 接力）", "", handoff, "", "请自然地延续上一段对话，不要复述这段手札。");
   }
   parts.push("", "Current user message:", normalizedText);
   return parts.join("\n").trim();
@@ -161,24 +157,11 @@ function loadRecentContext(config = {}) {
   }
 }
 
-function loadHandoffContext(config = {}) {
-  try {
-    const path = require("path");
-    const stateDir = config.stateDir;
-    if (!stateDir) return "";
-    const filePath = path.join(stateDir, "ke-handoff.md");
-    if (!fs.existsSync(filePath)) return "";
-    const raw = fs.readFileSync(filePath, "utf8").trim();
-    if (!raw) return "";
-    return raw;
-  } catch {
-    return "";
-  }
-}
-
 module.exports = {
   buildOpeningTurnText,
   buildInstructionRefreshText,
   loadWechatInstructions,
   loadInstructionFile,
+  loadRecentContext,
+  formatNowShanghai,
 };
