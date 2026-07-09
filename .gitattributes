@@ -1,0 +1,2 @@
+# SSE 夹具是字节级测试基准（ds-stream-parser 的输入），禁止换行转换
+test/fixtures/ds-sse/*.sse.txt -text

@@ -213,6 +213,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [x] resolveModelKey("glm") 落回 ds — **已修（07-05）**：名单改用 ALL_MODEL_KEYS；scheduler modelKeyToModelName 改用 keyToModel。**新增记忆白名单** `CYBERBOSS_MEMORY_MODELS`（默认只有 ds，设 "all" 恢复全模型），提取和梦境都只对白名单模型跑
 - [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪，需接到 Claude Code 对话里
 - [ ] 记忆碎片时间戳改用北京时间（07-09 toge 报）— 当前 `created`/`lastRecalled` 字段用 UTC，导致写时间轴时容易看错 8 个小时。统一改用 Asia/Shanghai
+- [ ] turn-gate-store.test.js 两条测试存量失败（07-10 克巡检发现）— `app.js:1899` handleRuntimeEvent 读 `undefined.get` 抛 TypeError，疑测试 mock 缺字段而非产品 bug。干净 HEAD 也挂，与 DS agent loop 改动无关。条目：completed turns flush queued inbound work / failed turns still send error back
 - [ ] 前端组件化 — 记忆/涂鸦/桌宠组件化
 
 > 华为手机设置 + 生活待办 → 见 [CLAUDE.md](../../CLAUDE.md) "生活待办"
