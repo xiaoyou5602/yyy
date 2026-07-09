@@ -130,15 +130,20 @@ function renderSearchResults() {
     `;
 
     div.addEventListener("click", () => {
-      searchOverlay.classList.remove("show");
       // For local hits, scroll to the message in chat
       if (hit.source === "local" && hit.key === (typeof getStorageKey === "function" ? getStorageKey() : STORAGE_KEY)) {
+        searchOverlay.classList.remove("show");
         const msgs = document.querySelectorAll(".msg");
         if (msgs[hit.msgIdx]) {
           msgs[hit.msgIdx].scrollIntoView({ behavior: "smooth", block: "center" });
           msgs[hit.msgIdx].style.outline = "2px solid var(--accent)";
           setTimeout(() => { msgs[hit.msgIdx].style.outline = ""; }, 2000);
         }
+        return;
+      }
+      // For remote hits, open context reading panel
+      if (hit.source === "remote") {
+        openContextPanel(hit.date, hit.file, q);
       }
     });
 
@@ -162,3 +167,62 @@ searchInput.addEventListener("input", () => {
 });
 
 searchMore.addEventListener("click", renderSearchResults);
+
+// ── Context Reading Panel ──
+const ctxOverlay = document.getElementById("context-reading-overlay");
+const ctxDate = document.getElementById("context-reading-date");
+const ctxBody = document.getElementById("context-reading-body");
+const ctxClose = document.getElementById("context-reading-close");
+
+ctxClose.addEventListener("click", () => ctxOverlay.classList.remove("show"));
+ctxOverlay.addEventListener("click", (e) => {
+  if (e.target === ctxOverlay) ctxOverlay.classList.remove("show");
+});
+
+function openContextPanel(hitTime, dateFile, query) {
+  const date = dateFile || "";
+  const time = (hitTime || "").slice(-5); // extract HH:MM from "YYYY-MM-DD HH:MM"
+  if (!date || date.length < 10) return;
+
+  ctxDate.textContent = date + " · 加载中…";
+  ctxBody.innerHTML = `<p class="search-empty" style="padding:40px 0">加载中…</p>`;
+  ctxOverlay.classList.add("show");
+
+  fetch(`/api/chat-history/context?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&around=10`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.messages || data.messages.length === 0) {
+        ctxDate.textContent = date + " · 无数据";
+        ctxBody.innerHTML = `<p class="search-empty">该日期没有找到消息</p>`;
+        return;
+      }
+      ctxDate.textContent = date + " · " + data.messages.length + " 条消息";
+      ctxBody.innerHTML = "";
+      const qLower = (query || "").toLowerCase();
+      for (const m of data.messages) {
+        const div = document.createElement("div");
+        const roleClass = m.role === "user" ? "user" : (m.role === "assistant" ? "assistant" : "thinking");
+        div.className = "ctx-msg " + roleClass + (m.isMatch ? " match" : "");
+
+        let html = "";
+        if (m.time) html += `<div class="ctx-msg-time">${escHtml(m.time)}</div>`;
+        // Highlight query in the matched message
+        if (m.isMatch && qLower) {
+          html += `<div>${escHtml(m.text).replace(new RegExp(escHtml(qLower), "gi"), m => `<em>${m}</em>`)}</div>`;
+        } else {
+          html += `<div>${escHtml(m.text)}</div>`;
+        }
+        div.innerHTML = html;
+        ctxBody.appendChild(div);
+
+        // Scroll the matched message into view
+        if (m.isMatch) {
+          setTimeout(() => div.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+        }
+      }
+    })
+    .catch(() => {
+      ctxDate.textContent = date + " · 加载失败";
+      ctxBody.innerHTML = `<p class="search-empty">加载失败，请重试</p>`;
+    });
+}

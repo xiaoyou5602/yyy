@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=34">
+<link rel="stylesheet" href="/css/main.css?v=35">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -894,6 +894,17 @@
     </div>
     <div id="search-results"><p class="search-empty">输入关键词开始搜索</p></div>
     <div id="search-more">加载更多…</div>
+  </div>
+</div>
+
+<!-- ═══ CONTEXT READING PANEL ═══ -->
+<div id="context-reading-overlay">
+  <div id="context-reading-panel">
+    <div id="context-reading-header">
+      <span id="context-reading-date"></span>
+      <button id="context-reading-close">&times;</button>
+    </div>
+    <div id="context-reading-body"></div>
   </div>
 </div>
 
@@ -3398,7 +3409,7 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
-  navigator.serviceWorker.register("/sw.js?v=40").then((reg) => {
+  navigator.serviceWorker.register("/sw.js?v=41").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
     if (reg.waiting) showUpdateBanner(reg.waiting);

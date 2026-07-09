@@ -119,6 +119,27 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       return;
     }
 
+    // ── API: chat-history context (full messages around a search hit) ──
+    if (urlPath === "/api/chat-history/context") {
+      try {
+        const date = (query.date || "").trim();
+        const matchTime = (query.time || "").trim();
+        const around = parseInt(query.around, 10) || 10;
+        if (!date || !matchTime) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "date and time required" }));
+          return;
+        }
+        const result = readChatContext(stateDir, date, matchTime, around);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // ── API: conversations (chat archive memory) ──
 
     // GET /api/conversations — 会话列表
@@ -1601,6 +1622,41 @@ function searchChatHistory(query, stateDir, maxResults = 40) {
   }
 
   return allResults;
+}
+
+// ── Read full context around a search hit ──
+function readChatContext(stateDir, date, matchTime, around) {
+  const chatDir = path.join(stateDir, "chat-history");
+  const filePath = path.join(chatDir, `${date}.json`);
+  if (!fs.existsSync(filePath)) return { messages: [], matched: -1 };
+
+  let messages;
+  try { messages = JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return { messages: [], matched: -1 }; }
+  if (!Array.isArray(messages)) return { messages: [], matched: -1 };
+
+  // Find closest message to matchTime (HH:MM or HH:MM:SS)
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  const norm = t => t.replace(/^\d{4}-\d{2}-\d{2}[ T]/, "").slice(0, 5); // normalize to HH:MM
+
+  for (let i = 0; i < messages.length; i++) {
+    const mt = (messages[i].time || "").slice(0, 5);
+    const dist = Math.abs(mt.localeCompare(norm(matchTime)));
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+
+  if (bestIdx === -1) return { messages: [], matched: -1 };
+
+  const start = Math.max(0, bestIdx - around);
+  const end = Math.min(messages.length, bestIdx + around + 1);
+  const slice = messages.slice(start, end).map((m, idx) => ({
+    role: m.from === "you" ? "user" : (m.from === "ke" ? "assistant" : m.from),
+    text: m.text || "",
+    time: m.time || "",
+    isMatch: (start + idx) === bestIdx,
+  }));
+
+  return { messages: slice, matched: bestIdx - start, date };
 }
 
 // ── Worldbook helpers ──
