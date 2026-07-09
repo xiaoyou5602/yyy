@@ -3,6 +3,42 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-10 · DS Agent Loop MVP 上线：自建 loop 替换 Claude CLI（commit `8d3e5b1`→`0a34ba8`，已部署）
+
+### 背景与为什么
+
+DS 一直走 Claude CLI 子进程路径：cyberboss spawn `claude`，由 CLI 拼请求发 `api.deepseek.com/anthropic`。问题是 CLI 拼请求时带 Anthropic 官方几万字 agent system prompt——那是写给 Claude 的规范，DS 不需要也不该吃，每轮白烧 token 还可能干扰行为。方案（[plans/ds-agent-loop.md](plans/ds-agent-loop.md)，四轮修订）：自建 `DsAgentClient` 直调 DS API，只带 cyberboss 自己的规范，接口与 `ClaudeCodeProcessClient` 完全对齐，`index.js` 按 modelKey 分流。分工是 toge 拍板的：核心两文件 Fable 亲写，外围可交其他模型（后来配额重置就全程 Fable 了）。
+
+### 关键路径与架构决策
+
+1. **夹具先行（步骤 0）**：写状态机前先 `scripts/capture-ds-sse.js` 抓 DS 端点七场景真实 SSE 流存 `test/fixtures/ds-sse/`。**当场抓出一条官方文档没有的硬约束**：DS thinking 模式下，同轮 tool loop 回传的 assistant 消息必须原样带回 thinking block（含 signature），只回 tool_use 直接 400。原计划伪代码正是这么写的——夹具半小时救掉一次注定的联调翻车。跨 turn 纯文本历史豁免此要求（补测确认），messageStore 重组装方案得以成立。
+2. **persona 走每轮独立 system 参数**，不混进 messages 历史：不占截断窗口、DeepSeek 自动缓存按前缀命中（实测 `cache_read_input_tokens` 384/512 真实生效）。时间锚点放当轮 user 消息不放 system——保前缀缓存。系统轮统一带 system（比"继承 CLI 现状限制"代码更少，顺手修掉 07-04"裸 spawn 系统轮只有 checkin 上下文"的坑）。
+3. **事件粒度对齐 CLI**：SSE delta 内部累积、block 完成才 emit（`events.js` 下游全按完整块处理，emit delta 会把前端打成碎片）。`turn.completed.text` 是聊天气泡唯一来源。
+4. **审批白嫖 app 层**：每个 tool_use 都 emit `approval.requested`，工具名统一带 `mcp__cyberboss_tools__` 前缀 → app 层现有自动批准规则（`["mcp_tool","cyberboss_tools"]`）毫秒放行，弹窗/超时链路零改动复用。
+5. **保险丝全套**（§5.9）：单 turn 工具 15 轮上限、单请求 120s、整 turn 10 分钟（与 turn-gate 对齐）、429/5xx 指数退避重试 2 次、任何不可恢复失败必 emit `process.error`→turn.failed（否则 turn-gate 干等 10 分钟表现为"克不回了"）。`close()` = AbortController 中断一切（cancelTurn 的实现就是 close）。
+6. **应急阀**：`CYBERBOSS_DS_AGENT_LOOP=off` 一键回退 CLI 子进程路径，不用回滚代码。
+
+### 踩坑记录
+
+- **审批 waiter 注册时序**（单测抓到，真实环境必踩）：`emit` 同步调监听器，app 层自动批准在同一调用栈 `sendResponse` 时 waiter 还没注册 → 回应被丢，干等 5 分钟死保险。修法：先注册 waiter 拿 promise，再 emit。
+- **工具名不能赌模型原样回**：夹具里 DS 回的是裸名（抓取时就裸名注册）。client 侧统一规范化成带前缀形态再走审批/展示。
+- **测试断言别写在 onEvent 回调里**：emit 的 try/catch 会把断言异常静默吞掉，表现成超时，极难调试。
+- **git log -3 考古虚惊**：另一条工作线（阶段1皮肤回退）五个 commit 叠顶 + 一次工具故障丢 commit 结果，一度以为提交全没了。reflog 取证：链完整，只有最后一个 commit 真没打上，重打即可。教训还是那条——不确定 = 不存在，用 reflog/ls-tree 取证再下结论。
+- **本地 .env 的 DEEPSEEK_KEY 已失效**（401），有效 key 只在 VPS——抓夹具改在 VPS 跑（scp 到 /tmp + shell 注入 key）。
+- 顺带发现：测试套件全量并发跑有 51 条存量失败（干净 HEAD 基线对照实锤，与本次无关），已记 WITHTOGE 待办。
+
+### 验证（07-10 07:20 部署，VPS 端到端首航）
+
+- 基本对话 ✅（WS 直连发验证消息，thinking 流式 + 回复正常，克口吻在线 = system 注入生效）
+- 工具调用 ✅（`diary_append` 真实落盘 `/root/.cyberboss/diary/2026-07-10.md` 07:22 条目，两段 thinking 夹工具执行 = 多跳 loop 真实跑通）
+- 审批自动放行 ✅（无弹窗）；错误日志扫描 ✅（零 error）
+- 单测：parser 13 + client 8 = 21 项全绿；`claudecode-approval` 存量测试改动前后 40/24/16 零回归
+- 留观察：系统轮静默（下次 checkin）、跨 session 回顾（下次重启）、token 对比（前端看数字）
+
+### 二期（不阻塞）
+
+messageStore 扩 `tool_call`/`tool_result` 落库（完整链路可查）；Claude Code transcript 兼容格式给 VS Code 插件翻 session 用（链路已断供，计划 §5.7/阶段二）。
+
 ## 2026-07-08 ② · Checkin Poller 文件锁 + Git Hook 防抖（commit `97c98b2`）
 
 ### 背景
