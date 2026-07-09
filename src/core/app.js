@@ -58,9 +58,9 @@ const MAX_CONSECUTIVE_FAILURES = 3;
 const MAX_INBOUND_STICKER_IMAGE_BATCH = 10;
 const INBOUND_IMAGE_BATCH_IDLE_MS = 1_500;
 
-function createRuntimeAdapter(config) {
+function createRuntimeAdapter(config, extras = {}) {
   if (config.runtime === "claudecode") {
-    return createClaudeCodeRuntimeAdapter(config);
+    return createClaudeCodeRuntimeAdapter(config, extras);
   }
   if (config.runtime === "external-cli") {
     return createExternalCliRuntimeAdapter(config);
@@ -93,7 +93,16 @@ class CyberbossApp {
     }
     this.projectToolHost = projectTooling.toolHost;
     this.runtimeContextStore = projectTooling.runtimeContextStore;
-    this.runtimeAdapter = createRuntimeAdapter(config);
+    // DS agent loop（docs/plans/ds-agent-loop.md）依赖：工具执行走 ProjectToolHost，
+    // 历史重组装从 messageStore 读（"deepseek-v4-pro" 是 DS 消息落库的 model 值，实测核对过）
+    this.runtimeAdapter = createRuntimeAdapter(config, {
+      toolHost: this.projectToolHost,
+      getRecentMessages: () => {
+        const adapter = this.channelAdapter;
+        if (!adapter || typeof adapter.getRecentMessages !== "function") return [];
+        return adapter.getRecentMessages({ days: 3, model: "deepseek-v4-pro" });
+      },
+    });
     this.threadStateStore = new ThreadStateStore();
     this.systemMessageQueue = new SystemMessageQueueStore({ filePath: config.systemMessageQueueFile });
     this.deferredSystemReplyQueue = new DeferredSystemReplyStore({ filePath: config.deferredSystemReplyQueueFile });

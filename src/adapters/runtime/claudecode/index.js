@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { ClaudeCodeProcessClient } = require("./process-client");
+const { DsAgentClient } = require("./ds-agent-client");
 const { mapClaudeCodeMessageToRuntimeEvent } = require("./events");
 const { ensureClaudeProjectMcpConfig } = require("./project-settings");
 const { SessionStore } = require("../codex/session-store");
@@ -10,8 +11,13 @@ const { ClaudeCodeIpcServer } = require("./ipc-server");
 const { resolveModelKey } = require("../../../core/config");
 const CLAUDE_RESUME_SESSION_TIMEOUT_MS = 8000;
 
-function createClaudeCodeRuntimeAdapter(config) {
+function createClaudeCodeRuntimeAdapter(config, extras = {}) {
   const sessionStore = new SessionStore({ filePath: config.sessionsFile, runtimeId: "claudecode" });
+  // DS 走自建 agent loop（docs/plans/ds-agent-loop.md）。应急阀：CYBERBOSS_DS_AGENT_LOOP=off 一键回退 CLI 子进程
+  const dsAgentLoopEnabled = String(process.env.CYBERBOSS_DS_AGENT_LOOP || "on").toLowerCase() !== "off";
+  function usesDsAgentLoop(modelKey) {
+    return modelKey === "ds" && dsAgentLoopEnabled;
+  }
   const sessionsByWorkspace = new Map();
   const pendingApprovals = new Map();
   const configuredModel = normalizeText(config.claudeModel);
@@ -182,26 +188,46 @@ function createClaudeCodeRuntimeAdapter(config) {
       perModel.delete(modelKey);
     }
 
-    const projectSettings = ensureClaudeProjectMcpConfig({
-      workspaceRoot,
-      cyberbossHome: process.env.CYBERBOSS_HOME || path.resolve(__dirname, "..", "..", "..", ".."),
-    });
-    const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
-    console.log(
-      `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"}`
-    );
-    const client = new ClaudeCodeProcessClient({
-      command: config.claudeCommand || "claude",
-      cwd: workspaceRoot,
-      env: clientEnv,
-      model: resolvedModel,
-      permissionMode: config.claudePermissionMode || "default",
-      disableVerbose: Boolean(config.claudeDisableVerbose),
-      extraArgs: config.claudeExtraArgs || [],
-      mcpConfigPaths: [projectSettings.configPath],
-      ipcServer,
-      workspaceRoot,
-    });
+    let client;
+    if (usesDsAgentLoop(modelKey)) {
+      const route = MODEL_ROUTES["deepseek-v4-pro"];
+      console.log(
+        `[spawn] workspace=${workspaceRoot} model=${route.modelName} modelKey=${modelKey} reason=${reason} mode=ds-agent-loop base_url=${route.baseUrl}`
+      );
+      client = new DsAgentClient({
+        baseUrl: route.baseUrl,
+        apiKey: route.apiKey,
+        apiModel: route.modelName,
+        maxTokens: Number(process.env.CYBERBOSS_DS_MAX_TOKENS) || 0,
+        config,
+        toolHost: extras.toolHost || null,
+        getRecentMessages: extras.getRecentMessages || null,
+        ipcServer,
+        workspaceRoot,
+        runtimeId: modelRuntimeId(modelKey),
+      });
+    } else {
+      const projectSettings = ensureClaudeProjectMcpConfig({
+        workspaceRoot,
+        cyberbossHome: process.env.CYBERBOSS_HOME || path.resolve(__dirname, "..", "..", "..", ".."),
+      });
+      const { env: clientEnv, modelName: resolvedModel } = resolveModelEnv(desiredModel);
+      console.log(
+        `[spawn] workspace=${workspaceRoot} model=${resolvedModel} modelKey=${modelKey} reason=${reason} base_url=${clientEnv.ANTHROPIC_BASE_URL || "(default)"}`
+      );
+      client = new ClaudeCodeProcessClient({
+        command: config.claudeCommand || "claude",
+        cwd: workspaceRoot,
+        env: clientEnv,
+        model: resolvedModel,
+        permissionMode: config.claudePermissionMode || "default",
+        disableVerbose: Boolean(config.claudeDisableVerbose),
+        extraArgs: config.claudeExtraArgs || [],
+        mcpConfigPaths: [projectSettings.configPath],
+        ipcServer,
+        workspaceRoot,
+      });
+    }
     const newEntry = makeSessionEntry(client);
 
     client.onMessage((event, raw) => {
@@ -499,7 +525,11 @@ function createClaudeCodeRuntimeAdapter(config) {
       // 从未有过用户轮的 session 时也强制按 opening 构造
       const priorUserTurn = !!(existingEntry && existingEntry.userTurnSeen);
       const treatAsOpening = openingTurn || !hadExistingSession || (provider !== "system" && !priorUserTurn);
-      const outboundText = (treatAsOpening && provider !== "system") ? buildOpeningTurnText(config, text, provider) : text;
+      // DS agent loop 自己管注入：persona 走每轮独立 system 参数、回顾在 client 首 turn 注入（§5.2/§5.6），
+      // 这里再包 opening 文本会重复注入一份 persona
+      const outboundText = (treatAsOpening && provider !== "system" && !usesDsAgentLoop(modelKey))
+        ? buildOpeningTurnText(config, text, provider)
+        : text;
       const outboundThreadId = activeThreadId || threadId;
       if (outboundThreadId) {
         sessionStore.setThreadIdForWorkspace(bindingKey, workspaceRoot, outboundThreadId, metadata, runtimeId);
