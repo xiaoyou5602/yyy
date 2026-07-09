@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
 <link rel="stylesheet" href="/css/chat-ds.css?v=2">
-<link rel="stylesheet" href="/css/themes.css?v=2">
+<link rel="stylesheet" href="/css/themes.css?v=1">
 </head>
 <body>
 
@@ -960,37 +960,35 @@
 
 <!-- ═══ THEME ZONE PAGE ═══ -->
 <div id="theme-zone-page">
-  <header class="theme-header">
+  <header>
     <button id="theme-back-btn" title="返回">&#8592;</button>
-    <h1 class="theme-title">主题 / 背景</h1>
+    <h1>主题 / 背景</h1>
     <div class="zone-indicator" id="theme-zone-indicator">当前装扮：<span id="theme-zone-name">克</span></div>
   </header>
 
-  <!-- 横滑卡片轮播 — 原生 CSS Scroll Snap -->
+  <!-- 横滑卡片轮播 — 卡片即预览 -->
   <main class="theme-carousel-container">
     <div class="theme-track" id="theme-cards-track">
-      <!-- JS 动态渲染卡片 -->
+      <!-- JS 动态渲染卡片，居中卡片自动 .is-focused -->
     </div>
+    <div class="theme-carousel-hint" id="theme-carousel-hint">← 左右滑动浏览主题 →</div>
   </main>
 
-  <!-- 控制区：卡片化面板 + 独立应用按钮 -->
-  <div class="theme-panel-wrapper">
-    <footer class="theme-control-panel">
-      <div class="theme-slider-wrap">
-        <label for="theme-alpha-slider">不透明度</label>
-        <div class="theme-slider-row">
-          <input type="range" id="theme-alpha-slider" min="0" max="100" value="75">
-          <span class="theme-slider-val" id="theme-alpha-val">75%</span>
-        </div>
+  <!-- 控制栏 -->
+  <footer class="theme-control-panel">
+    <div class="theme-slider-wrap">
+      <label for="theme-alpha-slider">不透明度</label>
+      <div class="theme-slider-row">
+        <input type="range" id="theme-alpha-slider" min="0" max="100" value="75">
+        <span class="theme-slider-val" id="theme-alpha-val">75%</span>
       </div>
-      <div class="theme-actions">
-        <button id="theme-gallery-btn" class="theme-btn theme-btn-secondary">从图库选择</button>
-        <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">重置</button>
-      </div>
-      <input type="file" id="theme-wallpaper-file" accept="image/*" hidden>
-    </footer>
-    <button id="theme-apply-btn" class="theme-apply-main-btn">应用当前装扮</button>
-  </div>
+    </div>
+    <div class="theme-actions">
+      <button id="theme-gallery-btn" class="theme-btn theme-btn-secondary">从图库选择</button>
+      <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">🔄 重置</button>
+    </div>
+    <input type="file" id="theme-wallpaper-file" accept="image/*" hidden>
+  </footer>
 </div>
 
 <script>
@@ -2013,140 +2011,213 @@ document.getElementById("settings-theme-link").addEventListener("click", functio
   showPage("theme-zone");
 });
 
-/* ═══ 主题专区页面（CSS Scroll Snap + IntersectionObserver 重构版） ═══ */
+/* ═══ 主题专区页面 ═══ */
 var themeZonePage = document.getElementById("theme-zone-page");
 var themeCardsTrack = document.getElementById("theme-cards-track");
 var themeAlphaSlider = document.getElementById("theme-alpha-slider");
 var themeAlphaVal = document.getElementById("theme-alpha-val");
 var themeZoneIndicatorName = document.getElementById("theme-zone-name");
+var themeCarouselHint = document.getElementById("theme-carousel-hint");
 
-var draftThemeId = null;
-var cardObserver = null;
+var carouselScrollTimer = null;
+var carouselRafId = null;
 
-// ── 渲染卡片 ──
+// 渲染主题卡片到轮播轨道
 function renderThemeCards() {
   if (!themeCardsTrack) return;
   var curKey = activeZoneKey || "ds";
-  var activeTheme = window.loadZoneTheme(curKey);
-  draftThemeId = activeTheme;
-  var themes = window.THEME_REGISTRY || [];
-  var customThemes = window.loadCustomThemes ? window.loadCustomThemes() : [];
-  var allThemes = themes.concat(customThemes);
+  var currentTheme = window.loadZoneTheme(curKey);
+  var themes = window.THEME_REGISTRY;
 
-  var html = '';
-  for (var i = 0; i < allThemes.length; i++) {
-    var t = allThemes[i];
-    var isActive = t.id === activeTheme;
-    var isCustom = t._custom === true;
-    html += '<div class="theme-card-item' + (isActive ? ' is-active is-focused' : '') + '" data-theme-id="' + t.id + '">';
-    html += '<div class="theme-card-preview" style="background:' + (t.preview && t.preview.bg ? t.preview.bg : '#fafaf9') + ';">';
-    if (isActive) html += '<span class="theme-card-check">✓</span>';
-    if (isCustom) html += '<button class="theme-card-delete" data-theme-id="' + t.id + '">✕</button>';
+  var html = "";
+  // 左侧 padding 占位，让第一个卡片也能滑到中间
+  html += '<div class="theme-carousel-spacer"></div>';
+  for (var i = 0; i < themes.length; i++) {
+    var t = themes[i];
+    var isActive = t.id === currentTheme;
+    html += '<div class="theme-card-item' + (isActive ? ' is-focused' : '') + '" data-theme-id="' + t.id + '">';
+    html += '<div class="theme-card-preview" style="background:' + t.preview.bg + ';">';
+    // 模拟聊天气泡预览
+    html += '<div class="theme-card-bubble me" style="background:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.15)' : 'rgba(89,137,185,0.04)') + ';border-color:' + t.preview.accent + '20;"></div>';
+    html += '<div class="theme-card-bubble ke" style="background:' + (t.id === 'midnight' ? '#1e2430' : '#fafaf7') + ';border-color:' + (t.id === 'midnight' ? 'rgba(120,150,220,0.1)' : 'rgba(45,45,45,0.06)') + ';"></div>';
+    html += '<div class="theme-card-bubble me short"></div>';
     html += '</div>';
     html += '<span class="theme-card-name">' + t.name + '</span>';
+    if (isActive) html += '<span class="theme-card-check">✓</span>';
     html += '</div>';
   }
-  // + 添加
+  // 「+ 添加」卡片
   html += '<div class="theme-card-item theme-card-add" id="theme-add-card">';
-  html += '<div class="theme-card-preview" style="background:#f4f1eb; border:2px dashed #d2cbd4; display:flex; align-items:center; justify-content:center;">';
-  html += '<span class="add-icon">+</span>';
-  html += '</div>';
+  html += '<div class="theme-card-preview add-preview"><span class="add-icon">+</span></div>';
   html += '<span class="theme-card-name">添加</span>';
   html += '</div>';
+  // 右侧 padding 占位
+  html += '<div class="theme-carousel-spacer"></div>';
 
   themeCardsTrack.innerHTML = html;
-  initThemeZoneEvents();
-  setupCardObserver();
-  // 滚动到当前激活卡片
-  setTimeout(function() {
-    var active = themeCardsTrack.querySelector('.theme-card-item.is-active');
-    if (active) active.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
-  }, 50);
-}
 
-// ── IntersectionObserver 替代 scroll 监听（零回流）──
-function setupCardObserver() {
-  if (cardObserver) cardObserver.disconnect();
-  var container = themeCardsTrack.parentElement;
-  cardObserver = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (!entry.isIntersecting) return;
-      var card = entry.target;
-      if (card.classList.contains('theme-card-add')) return;
-      // 进入中心视口 → 聚焦，更新草稿
-      themeCardsTrack.querySelectorAll('.theme-card-item').forEach(function(c) { c.classList.remove('is-focused'); });
-      card.classList.add('is-focused');
-      draftThemeId = card.dataset.themeId;
-    });
-  }, { root: container, threshold: 0.6 });
-  themeCardsTrack.querySelectorAll('.theme-card-item:not(.theme-card-add)').forEach(function(c) { cardObserver.observe(c); });
-}
-
-function initThemeZoneEvents() {
+  // 绑定点击
   themeCardsTrack.querySelectorAll('.theme-card-item:not(.theme-card-add)').forEach(function(card) {
     card.addEventListener('click', function() {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      selectTheme(card.dataset.themeId);
     });
   });
+  // 「+ 添加」→ 调参台
   var addCard = document.getElementById('theme-add-card');
-  if (addCard) addCard.addEventListener('click', openTweakFromTheme);
-  themeCardsTrack.querySelectorAll('.theme-card-delete').forEach(function(btn) {
-    btn.addEventListener('click', function(e) { e.stopPropagation(); deleteCustomTheme(btn.dataset.themeId); });
+  if (addCard) {
+    addCard.addEventListener('click', function() {
+      openTweakFromTheme();
+    });
+  }
+
+  // 动态设置 spacers 宽度 (= 容器宽度一半 - 卡片宽度一半)
+  var container = themeCardsTrack.parentElement;
+  if (container) {
+    var spacerW = Math.max(20, container.clientWidth / 2 - 98); // 卡片宽180 + gap16 / 2 ≈ 98
+    var spacers = themeCardsTrack.querySelectorAll('.theme-carousel-spacer');
+    spacers.forEach(function(s) { s.style.width = spacerW + 'px'; });
+  }
+
+  // 滚动到当前选中的卡片
+  requestAnimationFrame(function() {
+    scrollToFocusedCard(false);
   });
 }
 
-// ── 应用装扮 ──
-function applyDraftTheme() {
-  if (draftThemeId === null) return;
+// 选中主题
+function selectTheme(themeId) {
   var curKey = activeZoneKey || "ds";
-  window.saveZoneTheme(curKey, draftThemeId);
-  window.applyZoneTheme(curKey, draftThemeId);
+  window.saveZoneTheme(curKey, themeId);
+  window.applyZoneTheme(curKey, themeId);
+  // 更新卡片状态
   themeCardsTrack.querySelectorAll('.theme-card-item').forEach(function(c) {
-    c.classList.toggle('is-active', c.dataset.themeId === draftThemeId);
+    c.classList.toggle('is-focused', c.dataset.themeId === themeId);
     var check = c.querySelector('.theme-card-check');
-    if (check) check.style.display = c.dataset.themeId === draftThemeId ? '' : 'none';
+    if (check) check.style.display = c.dataset.themeId === themeId ? '' : 'none';
   });
-  showToast('装扮已应用 ✨');
+  scrollToFocusedCard(true);
 }
 
-// ── 删除自定义主题 ──
-function deleteCustomTheme(themeId) {
-  var themes = window.loadCustomThemes ? window.loadCustomThemes() : [];
-  for (var i = 0; i < themes.length; i++) { if (themes[i].id === themeId) { themes.splice(i, 1); break; } }
-  window.saveCustomThemes ? window.saveCustomThemes(themes) : null;
-  if (draftThemeId === themeId) draftThemeId = '';
-  renderThemeCards();
-  showToast('已删除');
-}
+// 滚动到聚焦卡片（带弹性动画）
+function scrollToFocusedCard(animate) {
+  var focused = themeCardsTrack.querySelector('.theme-card-item.is-focused');
+  if (!focused) { focused = themeCardsTrack.querySelector('.theme-card-item'); }
+  if (!focused) return;
 
-// ── 打开主题专区 ──
-function openThemeZone() {
-  var curKey = (typeof activeZoneKey !== 'undefined' && activeZoneKey) ? activeZoneKey : '';
-  if (!curKey && typeof settings !== 'undefined' && settings.model && typeof MODEL_META !== 'undefined') {
-    curKey = (MODEL_META[settings.model] && MODEL_META[settings.model].key) ? MODEL_META[settings.model].key : '';
+  var trackRect = themeCardsTrack.getBoundingClientRect();
+  var cardRect = focused.getBoundingClientRect();
+  var targetScroll = themeCardsTrack.parentElement.scrollLeft + cardRect.left - trackRect.left - trackRect.width / 2 + cardRect.width / 2;
+
+  if (animate) {
+    // 弹性缓动
+    animateCarouselScroll(targetScroll);
+  } else {
+    themeCardsTrack.parentElement.scrollLeft = targetScroll;
+    updateCardTransforms();
   }
-  if (!curKey) curKey = 'ds';
-  if (themeZoneIndicatorName) {
-    var zoneName = curKey;
-    if (typeof MODEL_META !== 'undefined' && typeof settings !== 'undefined') {
-      zoneName = (MODEL_META[settings.model] && MODEL_META[settings.model].name) ? MODEL_META[settings.model].name : curKey;
+}
+
+// 物理弹性滚动动画
+function animateCarouselScroll(targetX) {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  if (carouselRafId) cancelAnimationFrame(carouselRafId);
+
+  var startX = container.scrollLeft;
+  var startTime = performance.now();
+  var duration = 500; // ms
+
+  function spring(t) {
+    // 阻尼弹簧曲线
+    return 1 - Math.exp(-6 * t) * Math.cos(8 * Math.PI * t);
+  }
+
+  function step(now) {
+    var elapsed = now - startTime;
+    var progress = Math.min(elapsed / duration, 1);
+    var eased = spring(progress);
+    container.scrollLeft = startX + (targetX - startX) * eased;
+    updateCardTransforms();
+    if (progress < 1) {
+      carouselRafId = requestAnimationFrame(step);
     }
-    themeZoneIndicatorName.textContent = zoneName;
   }
-  var alpha = window.loadWallpaperAlpha ? window.loadWallpaperAlpha() : 0.75;
+  carouselRafId = requestAnimationFrame(step);
+}
+
+// 根据卡片离容器中心的距离，动态计算 3D transform
+function updateCardTransforms() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  var containerCenter = container.getBoundingClientRect().left + container.getBoundingClientRect().width / 2;
+  var cards = themeCardsTrack.querySelectorAll('.theme-card-item');
+  cards.forEach(function(card) {
+    var cardCenter = card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2;
+    var dist = (cardCenter - containerCenter) / (container.getBoundingClientRect().width / 2); // -1..1
+    dist = Math.max(-1, Math.min(1, dist));
+    var absDist = Math.abs(dist);
+    var scale = 1 - absDist * 0.12; // 远离中心缩小到 0.88
+    var rotateY = dist * 15; // 3D 倾斜
+    var opacity = 1 - absDist * 0.35;
+    card.style.transform = 'scale(' + scale + ') rotateY(' + rotateY + 'deg)';
+    card.style.opacity = opacity;
+    card.style.zIndex = absDist < 0.3 ? 2 : 1;
+  });
+}
+
+// 监听滚动，松手后自动吸附到最近卡片
+function setupCarouselScroll() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+
+  container.addEventListener('scroll', function() {
+    updateCardTransforms();
+    // 隐藏滑动提示
+    if (themeCarouselHint) themeCarouselHint.style.opacity = '0';
+
+    if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
+    carouselScrollTimer = setTimeout(function() {
+      snapToNearestCard();
+    }, 150);
+  }, { passive: true });
+}
+
+function snapToNearestCard() {
+  var container = themeCardsTrack.parentElement;
+  if (!container) return;
+  var containerCenter = container.getBoundingClientRect().left + container.getBoundingClientRect().width / 2;
+
+  var bestCard = null;
+  var bestDist = Infinity;
+  var cards = themeCardsTrack.querySelectorAll('.theme-card-item');
+  cards.forEach(function(card) {
+    var cardCenter = card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2;
+    var dist = Math.abs(cardCenter - containerCenter);
+    if (dist < bestDist) { bestDist = dist; bestCard = card; }
+  });
+
+  if (bestCard) {
+    var trackRect = themeCardsTrack.getBoundingClientRect();
+    var cardRect = bestCard.getBoundingClientRect();
+    var targetScroll = container.scrollLeft + cardRect.left - trackRect.left - trackRect.width / 2 + cardRect.width / 2;
+    animateCarouselScroll(targetScroll);
+  }
+}
+
+// 打开主题专区
+function openThemeZone() {
+  var curKey = activeZoneKey || "ds";
+  var zoneName = (MODEL_META && MODEL_META[settings.model]) ? MODEL_META[settings.model].name || curKey : curKey;
+  if (themeZoneIndicatorName) themeZoneIndicatorName.textContent = zoneName;
+
+  // 加载不透明度
+  var alpha = window.loadWallpaperAlpha();
   if (themeAlphaSlider) themeAlphaSlider.value = Math.round(alpha * 100);
   if (themeAlphaVal) themeAlphaVal.textContent = Math.round(alpha * 100) + '%';
-  renderThemeCards();
-}
 
-// ── 控制事件 ──
-document.getElementById('theme-apply-btn').addEventListener('click', function() {
-  applyDraftTheme();
-  var btn = this;
-  btn.style.transition = 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
-  btn.style.transform = 'scale(0.95)';
-  setTimeout(function() { btn.style.transform = ''; }, 200);
-});
+  renderThemeCards();
+  setupCarouselScroll();
+}
 
 // 不透明度滑条
 if (themeAlphaSlider) {
