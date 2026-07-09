@@ -181,41 +181,8 @@
       'chat-ds': 'chat-ds'
     };
     var scopeId = map[page] || 'global';
-
-    // 如果在聊天页，进一步检测活跃 zone（阶段1：zone 切换器）
-    if (scopeId === 'chat') {
-      var zoneScope = detectActiveZoneScope();
-      if (zoneScope) return zoneScope;
-    }
-
     if (window._pageTokens && window._pageTokens[scopeId]) return scopeId;
     return 'global';
-  }
-
-  // 检测当前活跃的聊天 zone，返回对应的 page-tokens scope ID
-  function detectActiveZoneScope() {
-    var zoneMap = {
-      'ds': 'chat-ds',
-      'opus': 'chat-opus',
-      'haiku': 'chat-haiku',
-      'glm': 'chat-glm',
-      'openclaw': 'chat-openclaw'
-    };
-    // 方式1：通过全局 activeZoneKey（index.html 维护）
-    if (typeof activeZoneKey !== 'undefined' && activeZoneKey && zoneMap[activeZoneKey]) {
-      var s = zoneMap[activeZoneKey];
-      if (window._pageTokens && window._pageTokens[s]) return s;
-    }
-    // 方式2：检查哪个 chat-zone 可见
-    var zoneKeys = ['ds', 'opus', 'haiku', 'glm', 'openclaw'];
-    for (var i = 0; i < zoneKeys.length; i++) {
-      var zoneEl = document.getElementById('chat-zone-' + zoneKeys[i]);
-      if (zoneEl && zoneEl.style.display !== 'none') {
-        var s2 = zoneMap[zoneKeys[i]];
-        if (window._pageTokens && window._pageTokens[s2]) return s2;
-      }
-    }
-    return null;
   }
 
   // ── Build controls for current scope ──

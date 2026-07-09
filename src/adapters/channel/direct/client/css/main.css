@@ -43,23 +43,6 @@
   --font-body-size: 14.5px;
   --msg-font-size: 14.5px;
   --h1-font-size: 18px;
-  /* ── 阶段1 新增变量（补漏硬编码值）── */
-  --send-btn-bg: #5989b9;
-  --send-btn-color: #fafaf7;
-  --send-btn-shadow: 0 2px 6px rgba(89,137,185,0.15);
-  --send-btn-active-bg: #467099;
-  --input-bg: #f0f0eb;
-  --input-border: rgba(45,45,45,0.06);
-  --input-focus-color: #5989b9;
-  --input-focus-ring: rgba(89,137,185,0.12);
-  --footer-bg: #fafaf7;
-  --footer-border: rgba(45,45,45,0.06);
-  --placeholder-color: rgba(89,137,185,0.50);
-  --image-btn-color: rgba(89,137,185,0.35);
-  --status-on-color: #46a07b;
-  --chat-empty-color: #ccc;
-  --wallpaper-overlay-alpha: 0.75;
-  /* 日历 */
   --cal-page-bg: #f0f0eb;
   --cal-title-grad-1: #5989b9;
   --cal-title-grad-2: #a4c2e6;
@@ -189,7 +172,7 @@ body {
 body.has-wallpaper { background-size: cover; background-position: center; background-attachment: fixed; }
 body.has-wallpaper::before {
   content: ""; position: fixed; inset: 0;
-  background: rgba(255,255,255,var(--wallpaper-overlay-alpha, 0.75));
+  background: rgba(255,255,255,0.75);
   z-index: 0; pointer-events: none;
 }
 body.has-wallpaper header,
@@ -250,14 +233,14 @@ header {
 .header-shell-svg { width: 20px; height: 20px; display: inline-block; vertical-align: middle; }
 .status-indicator { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
 .status-dot {
-  width: 5px; height: 5px; background-color: var(--status-on-color); border-radius: 50%;
+  width: 5px; height: 5px; background-color: #46a07b; border-radius: 50%;
   box-shadow: 0 0 6px rgba(70,160,123,0.2);
 }
 .status-text { font-size: 11px; color: var(--text-muted); font-weight: 500; }
 
 /* Override: our JS uses #status-dot and #status-text IDs */
 #status-dot, .status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
-#status-dot.on { background: var(--status-on-color); box-shadow: 0 0 0 0 rgba(70,160,123,0.5); animation: status-pulse 2s ease-in-out infinite; }
+#status-dot.on { background: #46a07b; box-shadow: 0 0 0 0 rgba(70,160,123,0.5); animation: status-pulse 2s ease-in-out infinite; }
 @keyframes status-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(70,160,123,0.5); }
   50% { box-shadow: 0 0 0 6px rgba(70,160,123,0); }
@@ -280,7 +263,7 @@ header {
 }
 .chat-messages:empty::after {
   content: "跟克说点什么吧";
-  color: var(--chat-empty-color); font-size: 14px;
+  color: #ccc; font-size: 14px;
   display: block; text-align: center; padding-top: 100px;
   animation: fade-in 0.6s ease 0.3s both;
 }
@@ -400,8 +383,8 @@ header {
 /* ── Footer / Input ── */
 footer {
   padding: 12px 24px calc(16px + env(safe-area-inset-bottom)) 24px;
-  background: var(--footer-bg); border: none;
-  border-top: 1px solid var(--footer-border);
+  background: #fafaf7; border: none;
+  border-top: 1px solid rgba(45,45,45,0.06);
   flex-shrink: 0; display: flex; gap: 10px; align-items: flex-end;
   transition: opacity 0.25s, transform 0.25s;
 }
@@ -414,13 +397,13 @@ footer {
   overflow-y: auto; white-space: pre-wrap; word-break: break-all;
 }
 .chat-input:focus { outline: none; }
-.input-container-inner:focus-within { box-shadow: 0 0 0 4px var(--input-focus-ring); border-color: var(--input-focus-color); }
-.chat-input::placeholder { color: var(--placeholder-color); }
+.input-container-inner:focus-within { box-shadow: 0 0 0 4px rgba(89,137,185,0.12); border-color: #5989b9; }
+.chat-input::placeholder { color: rgba(89,137,185,0.50); }
 
 .image-btn {
   position: absolute; right: 10px; bottom: 6px;
   width: 16px; height: 16px; border: none; border-radius: 0;
-  background: transparent; color: var(--image-btn-color); cursor: pointer;
+  background: transparent; color: rgba(89,137,185,0.35); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   transition: opacity 0.2s;
@@ -429,20 +412,20 @@ footer {
 
 .send-btn {
   width: 36px; height: 36px; min-width: 36px; border: none; border-radius: 50%;
-  background: var(--send-btn-bg); color: var(--send-btn-color);
+  background: #5989b9; color: #fafaf7;
   cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--send-btn-shadow);
+  box-shadow: 0 2px 6px rgba(89,137,185,0.15);
   transition: transform 0.2s, background-color 0.2s;
 }
-.send-btn:active { transform: scale(0.92); background: var(--send-btn-active-bg); }
+.send-btn:active { transform: scale(0.92); background: #467099; }
 .send-btn:disabled { background: rgba(45,45,45,0.08); color: rgba(45,45,45,0.25); box-shadow: none; cursor: default; transform: none; }
 
 /* ── Input container (Gemini) ── */
 .input-container-inner {
   flex: 1;
   position: relative;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
+  background: #f0f0eb;
+  border: 1px solid rgba(45,45,45,0.06);
   border-radius: 22px;
   padding: 6px 38px 6px 14px;
   display: flex;
@@ -835,32 +818,6 @@ footer {
 }
 .wallpaper-preview.show { display: block; }
 .setting-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-
-/* ── Theme cards (设置页主题专区) ── */
-.theme-cards {
-  display: flex; gap: 10px; overflow-x: auto;
-  padding: 4px 0; scroll-behavior: smooth;
-  scrollbar-width: none; -ms-overflow-style: none;
-}
-.theme-cards::-webkit-scrollbar { display: none; }
-.theme-card {
-  flex-shrink: 0; width: 68px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  cursor: pointer; padding: 6px; border-radius: var(--radius-sm);
-  border: 2px solid transparent; transition: all 0.2s;
-}
-.theme-card:hover { background: var(--bg); border-color: var(--border); }
-.theme-card.active { border-color: var(--accent); background: var(--accent-soft); }
-.theme-swatch {
-  width: 44px; height: 44px; border-radius: 50%;
-  border: 1px solid var(--border-soft);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.theme-name {
-  font-size: 11px; font-weight: 600; color: var(--text-muted);
-  white-space: nowrap;
-}
-.theme-card.active .theme-name { color: var(--accent); }
 .settings-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
 .settings-actions button {
   min-height: 36px; padding: 8px 18px; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-body);
