@@ -14,7 +14,7 @@
 
 ### 当前假设
 
-- DS 走 CLI（agent 模式），Opus / GLM / 米米子走 API（聊天模式）
+- **DS 走自建 Agent Loop（07-10 上线，不再 spawn Claude CLI）**：`DsAgentClient` 直调 DeepSeek API，工具由 ProjectToolHost 直连（38 个业务工具，无文件系统/shell 能力）。应急阀 `CYBERBOSS_DS_AGENT_LOOP=off` 回退旧 CLI 路径。Opus / GLM / 米米子走 API（聊天模式，无工具）
 - 本地 Windows 节点已关停（2026-06-30），唯一入口 `克.withtoge.us`
 - VPS systemd 守护（cloudflared + cyberboss），崩了自动拉
 
@@ -81,8 +81,8 @@ journalctl -u cyberboss -f              # 看日志
 ## 系统架构
 
 ```
-手机 APK ──→ Cloudflare Tunnel ──→ cyberboss 服务 ──┬── type=cli → Claude CLI → DeepSeek (DS)
-电脑网页 ──→ 127.0.0.1:9726 ──┘                    │
+手机 APK ──→ Cloudflare Tunnel ──→ cyberboss 服务 ──┬── type=cli → DsAgentClient 自建 loop → DeepSeek (DS，带工具)
+电脑网页 ──→ 克.withtoge.us ──┘                     │      （07-10 起不再 spawn Claude CLI；应急阀=off 时才回退 CLI）
                                                     ├── type=api → 直调 HTTP → 55api (Opus)
                                                     ├── type=api → 直调 HTTP → 智谱 (GLM)
                                                     ├── type=api → 直调 HTTP → OpenClaw (米米子)
@@ -94,11 +94,14 @@ journalctl -u cyberboss -f              # 看日志
 
 当前通道：**direct**（网页直连，微信已弃用）
 模型路由：`src/core/model-routes.js` — 加模型 = 加一行（type: cli/api）
-API 直调：`src/core/direct-api-client.js` — SSE 流式客户端，绕过 CCSwitch/VPN
+DS Agent Loop：`src/adapters/runtime/claudecode/ds-agent-client.js` + `ds-stream-parser.js` — HTTP 直调 + tool loop，设计 → [docs/plans/ds-agent-loop.md](docs/plans/ds-agent-loop.md)
+API 直调（无工具聊天模型用）：`src/core/direct-api-client.js` — SSE 流式客户端，绕过 CCSwitch/VPN
 
 ### 加新模型
 
 打开 `src/core/model-routes.js`，在 `MODELS` 表加一行（`type: "api"` 或 `"cli"`），前端自动出现。API key 放 `.env`。
+
+> ⚠️ `type: "cli"` 目前只有 ds 在用，且实际走的是自建 agent loop（`index.js` 按 modelKey 分流，不 spawn CLI）。新加聊天模型一律用 `type: "api"`；新模型想要工具能力 → 参考 ds 的分流方式接 DsAgentClient 同款 loop（真到那天再抽公共层，07-09 toge 拍板过先不预抽象）。
 
 ## 嵌入新页面
 
@@ -119,8 +122,9 @@ API 直调：`src/core/direct-api-client.js` — SSE 流式客户端，绕过 CC
 | **视觉调参台**        | CSS 变量实时调节，13 个页面独立 scope                                                              | `src/adapters/channel/direct/client/js/tweak.js`, `js/page-tokens.js`                                 |
 | **小手机主页**        | Gemini 生成页面集成：实时时钟、天气（杭州萧山 ↔ 余姚）、日历小组件、备忘录、拖拽应用网格、星尘粒子 | `src/adapters/channel/direct/client/index.html`（HTML+JS）、`css/main.css`（phone-home 区段）         |
 | **PWA**               | Service Worker 离线缓存                                                                            | `src/adapters/channel/direct/client/sw.js`, `manifest.json`                                           |
-| **多模型**            | DS(CLI/agent) + Opus(直调 API/聊天) + GLM5.2(API) + 米米子/OpenClaw(API) + 动态加载 + 历史隔离     | `src/core/model-routes.js`, `src/core/app.js`                                                         |
-| **Session 管理**      | claudecode runtime（仅 DS），启动清旧 session                                                      | `src/adapters/runtime/claudecode/`                                                                    |
+| **多模型**            | DS(自建 agent loop/38 工具) + Opus(直调 API/聊天) + GLM5.2(API) + 米米子/OpenClaw(API) + 动态加载 + 历史隔离 | `src/core/model-routes.js`, `src/core/app.js`                                                         |
+| **DS Agent Loop**     | HTTP 直调 DS API + tool loop（07-10 上线替换 Claude CLI）：SSE 状态机、审批复用、messageStore 历史重组装、应急阀回退 | `src/adapters/runtime/claudecode/ds-agent-client.js`, `ds-stream-parser.js`                           |
+| **Session 管理**      | claudecode runtime 适配器（仅 DS 用），启动清旧 session；DS 的 sessionId 现为路由标签（uuid），历史靠 messageStore 不靠 session 文件 | `src/adapters/runtime/claudecode/`                                                                    |
 | **主动问候**          | checkin poller，随机间隔发消息（仅 DS）                                                            | `src/app/system-checkin-poller.js`                                                                    |
 | **日记写入**          | MCP 工具 `cyberboss_diary_append`                                                                  | `src/services/diary-service.js`                                                                       |
 | **时间轴**            | MCP 工具读/写/截图                                                                                 | `src/integrations/timeline/`, `src/services/timeline-service.js`                                      |
@@ -204,7 +208,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### 后端 / 服务
 
-- [ ] DS 删除护栏（07-08 事故驱动）— 借鉴 ShellGuardian 思路，为 CLI runtime 加三层防护：①自定义保护路径（`.claude/`、`withtoge/` 等不可碰）②删除前 dry-run 预览 ③高风险路径直接拒绝。工具层 + 提示词层双管齐下
+- [ ] DS 删除护栏（07-08 事故驱动）— **07-10 agent loop 上线后风险已架构性消除大半**：新引擎只暴露 ProjectToolHost 业务工具（日记/记忆/贴纸等），**没有 Bash/Read/Write 等文件系统工具**，07-08 那类删档事故在 DS 路径物理上无法再发生。本条降级为：仅当应急阀回退 CLI 路径（`CYBERBOSS_DS_AGENT_LOOP=off`）或二期给 DS 加文件工具时再启用护栏方案
 - [x] 自搭 DS Agent Loop — **已上线（07-10 07:20 部署，端到端首航通过：对话+diary 工具落盘+审批自动放行）**，全程见 [迭代日志 07-10](docs/iteration-log.md)。**应急阀：VPS `.env` 加 `CYBERBOSS_DS_AGENT_LOOP=off` 重启即回退 CLI 路径**。留观察：系统轮静默、跨 session 回顾、token 对比（toge 前端看数字）。二期待排：messageStore 扩 tool_call/tool_result 落库 + VS Code transcript 兼容（session 翻看链路已断供，计划 §5.7）
 - [ ] 健康数据 MCP（07-03 立项）— **方案已定稿 → [docs/plans/health-mcp.md](docs/plans/health-mcp.md)**。链路：手环 9Pro → 小米运动健康 → Health Connect → Health Sync 推 webhook → cyberboss `/api/health` → 内部 MCP 工具 + `health.withtoge.us` 标准 remote MCP（官 APP connector 也能接）。阶段 0（后端管道+假数据测试）手环到货前就可做；阶段 1 等手环（toge 操作）。主要风险：国行 app 可能无 HC 同步开关（备选：国际版 Mi Fitness 港区账号，教程已验证可行）
 - [x] 思考/调工具时发消息把 session 挤掉的 bug（toge 07-04 问是否还在）— **已修于 07-02（commit bdbfe66，turn-gate 移除 181s 超时自释放）**。旧行为：思考+工具超 3 分钟 → gate 被误判卡死自动释放 → 排队消息 dispatch → cancelTurn 杀掉进行中的 turn → 新 session 顶上（日志最后一次发生 07-01 23:55）。现行为：turn 进行中新消息排队等待，10 分钟无进展才判卡死，15 分钟 gate 兜底。
