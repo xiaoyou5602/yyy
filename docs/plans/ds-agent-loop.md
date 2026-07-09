@@ -1,6 +1,7 @@
 # Plan：自搭 DS Agent Loop — 替换 Claude CLI
 
-> 状态：📋 计划中（2026-07-09 定稿，经代码验证 + 三轮讨论修订；07-10 第四轮对照 process-client.js/events.js/index.js 逐行核实，补事件协议、失败路径、/compact 等盲区）
+> 状态：🚧 代码侧完成，待部署验证（2026-07-10）。步骤 0~5 全部落地：夹具实测（§5.10）→ ds-stream-parser.js + ds-agent-client.js（21 项单测全绿）→ 集成分流（commit f182ce1）。应急阀 `CYBERBOSS_DS_AGENT_LOOP=off` 回退 CLI。剩：§8 步骤 6 部署 + §9 验证清单 + 二期 messageStore 扩展（§5.7 的 tool_call/tool_result 落库，不阻塞对话）
+> （2026-07-09 定稿，经代码验证 + 三轮讨论修订；07-10 第四轮对照 process-client.js/events.js/index.js 逐行核实，补事件协议、失败路径、/compact 等盲区）
 > 前置阅读：[已完成/session-context-relay.md](已完成/session-context-relay.md)（跨 session 回顾机制，本方案直接复用）
 
 ## 1. 背景与目标
