@@ -2155,31 +2155,68 @@ function mergeHealthData(stateDir, body) {
   const data = body.data || {};
   const now = new Date().toISOString();
 
+  // ── Steps: supports HC Webhook array format [{count, start_time, end_time}] ──
   if (type === "steps" || body.steps !== undefined) {
-    const d = type === "steps" ? data : (body.steps || {});
-    const newTotal = Number(d.total || d.count || d.value || 0);
+    let newTotal = 0;
+    if (Array.isArray(body.steps)) {
+      for (const entry of body.steps) newTotal = Math.max(newTotal, Number(entry.count || 0));
+    } else {
+      const d = type === "steps" ? data : (body.steps || {});
+      newTotal = Number(d.total || d.count || d.value || 0);
+    }
     const prevTotal = current.steps?.total || 0;
     current.steps = { total: Math.max(prevTotal, newTotal), updatedAt: now };
   }
 
+  // ── Heart Rate: supports HC Webhook array format [{bpm, time}] ──
   if (type === "heart_rate" || body.heart_rate !== undefined) {
-    const d = type === "heart_rate" ? data : (body.heart_rate || {});
     if (!current.heart_rate) current.heart_rate = { samples: [] };
     if (!Array.isArray(current.heart_rate.samples)) current.heart_rate.samples = [];
-    const ts = d.timestamp || d.ts || now;
-    const bpm = Number(d.value || d.bpm || 0);
-    if (bpm > 0 && !current.heart_rate.samples.some(s => s.ts === ts)) {
-      current.heart_rate.samples.push({ ts, bpm });
-      current.heart_rate.samples.sort((a, b) => a.ts.localeCompare(b.ts));
+    const hrEntries = Array.isArray(body.heart_rate)
+      ? body.heart_rate
+      : [(type === "heart_rate" ? data : (body.heart_rate || {}))];
+    for (const d of hrEntries) {
+      const ts = d.timestamp || d.ts || d.time || now;
+      const bpm = Number(d.value || d.bpm || 0);
+      if (bpm > 0 && !current.heart_rate.samples.some(s => s.ts === ts)) {
+        current.heart_rate.samples.push({ ts, bpm });
+      }
+      if (d.resting || d.resting_bpm) current.heart_rate.resting = Number(d.resting || d.resting_bpm);
     }
+    // dedup and cap samples at 288 (48h × 6 samples/h)
+    if (current.heart_rate.samples.length > 288) current.heart_rate.samples = current.heart_rate.samples.slice(-288);
+    current.heart_rate.samples.sort((a, b) => a.ts.localeCompare(b.ts));
     const bpms = current.heart_rate.samples.map(s => s.bpm).filter(b => b > 0);
     if (bpms.length) current.heart_rate.avg = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
-    if (d.resting || d.resting_bpm) current.heart_rate.resting = Number(d.resting || d.resting_bpm);
     current.heart_rate.updatedAt = now;
   }
 
+  // ── Sleep: supports HC Webhook array format [{stages, duration_seconds, session_end_time}] ──
   if (type === "sleep" || body.sleep !== undefined) {
-    const d = type === "sleep" ? data : (body.sleep || {});
+    let d;
+    if (Array.isArray(body.sleep)) {
+      const session = body.sleep[0] || {};
+      d = {
+        duration: Math.round((session.duration_seconds || 0) / 60),
+        start: session.session_start_time || "",
+        end: session.session_end_time || "",
+        score: Number(session.score || 0),
+      };
+      if (Array.isArray(session.stages)) {
+        let deep = 0, light = 0, rem = 0, awake = 0;
+        for (const stage of session.stages) {
+          const min = Math.round((stage.duration_seconds || 0) / 60);
+          const name = (stage.stage || "").toLowerCase();
+          if (name.includes("deep")) deep += min;
+          else if (name.includes("light")) light += min;
+          else if (name.includes("rem")) rem += min;
+          else if (name.includes("awake")) awake += min;
+        }
+        d.deep = deep; d.light = light; d.rem = rem; d.awake = awake;
+      }
+    } else {
+      d = type === "sleep" ? data : (body.sleep || {});
+    }
     current.sleep = {
       duration_min: Number(d.duration_min || d.duration || 0),
       deep_min: Number(d.deep_min || d.deep || 0),
