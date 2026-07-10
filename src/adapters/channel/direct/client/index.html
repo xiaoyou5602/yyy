@@ -1441,6 +1441,10 @@ function selectSidebarModel(el) {
   if (targetMeta && targetMeta.key === "ds") {
     if (currentPage === "chat-ds") { closeSidebar(); return; }
     settings.model = model; saveSettings(settings);
+    // 同步 refs/activeZoneKey 到 ds——不同步的话，下次从暖瓷页切非 DS 模型时
+    // 历史保存会拿旧 zone 的 history 写进 DS 的 storage key（正是暖瓷页硬编码
+    // 读的那个 key，等于用别的模型的消息覆盖 DS 本地历史）
+    activateZone("ds");
     closeSidebar(); showPage("chat-ds"); return;
   }
 
@@ -1464,6 +1468,11 @@ function selectSidebarModel(el) {
   activateZone(key);
   applyModelTheme(model);
   syncHeaderFromWorldbook(model);
+  closeSidebar();
+  // 从暖瓷 DS 页切非 DS 模型：主聊天页还压在暖瓷页底下，必须揭出来——
+  // 否则屏幕停在暖瓷页，看起来就是"点了没反应、主题还是 DS 那套"
+  // （showPage 内部有 chat-ds→chat 滑动转场 + dsChatDestroy，直接调安全）
+  if (currentPage !== "chat") showPage("chat");
 
   // Load history for this zone if first time
   if (!zones[key].historyLoaded) {
