@@ -1,0 +1,171 @@
+/* ═══ ChatNest 皮肤样式 — 仿 Claude 官方 APP（来源：ugui3u/chatnest 设计系统）═══ */
+/* 全部选择器带 .skin-chatnest 前缀。色板来自 chatnest design-system.css 的官端取色。 */
+/* 层级：主题(data-theme) > 皮肤默认(.skin-chatnest 的变量重定义) > 全局默认(:root)。  */
+/* 字体：Anthropic Serif/Sans（skins/chatnest-fonts.css，远程+内嵌 Source Serif 4，  */
+/* 拉不到时 fallback Georgia/PingFang，观感仍成立）。                                  */
+
+.skin-chatnest {
+  /* —— 官端色板落到主题变量：挂 data-theme 时主题赢，不挂时官端赢 —— */
+  --zone-bg: #F8F8F6;                       /* 奶油纸张 */
+  --bubble-you: #EEEEEC;                    /* 用户气泡 */
+  --bubble-you-text: #1F1E1D;
+  --bubble-you-border: transparent;
+  --bubble-ke: transparent;                 /* Claude 无气泡 */
+  --bubble-ke-text: #1F1E1D;
+  --bubble-ke-border: transparent;
+  --msg-gap: 28px;                          /* 官端呼吸感 */
+  --input-bg: #F6F6F4;
+  --input-border: #FFFFFF;
+  --input-focus-color: rgba(31,30,29,0.18);
+  --input-focus-ring: rgba(31,30,29,0.04);
+  --send-btn-bg: #1F1E1D;                   /* 黑底圆钮；有内容时橙（下方 :not(:disabled)） */
+  --send-btn-color: #F8F8F6;
+  --send-btn-active-bg: #C96846;
+  --send-btn-shadow: none;
+  --footer-bg: #F8F8F6;
+  --footer-border: transparent;
+  --placeholder-color: #A6A39A;
+  --chat-empty-color: #A6A39A;
+  --image-btn-color: #6E6D66;
+  /* 皮肤私有 */
+  --cn-accent: #DA7756;
+  --cn-text-secondary: #6E6D66;
+  --cn-sunken: #E6E6E4;
+  --cn-serif: 'Anthropic Serif', 'Source Serif 4', ui-serif, Georgia, 'PingFang SC', 'Microsoft YaHei', serif;
+}
+
+/* ── 消息流：官端排版 ── */
+.skin-chatnest .chat-messages { padding: 24px 16px 32px; }
+.skin-chatnest .msg { max-width: 100%; animation: none; }
+
+/* Claude 消息：无气泡，serif 直接落纸 */
+.skin-chatnest .msg.ke { background: transparent; }
+.skin-chatnest .msg.ke .msg-bubble {
+  background: none; border: none; box-shadow: none;
+  padding: 0; max-width: 100%;
+  font-family: var(--cn-serif);
+  font-size: 16px; line-height: 1.65;
+  color: var(--bubble-ke-text);
+}
+.skin-chatnest .msg.ke + .msg.ke .msg-bubble { border-radius: 0; }
+
+/* 用户消息：serif 气泡，右对齐，22px 圆角 */
+.skin-chatnest .msg.you {
+  align-self: stretch; display: flex; flex-direction: column; align-items: flex-end;
+  width: auto; background: none; border: none; padding: 0; border-radius: 0; box-shadow: none;
+}
+.skin-chatnest .msg.you .msg-bubble {
+  width: fit-content; max-width: 85%;
+  background: var(--bubble-you); color: var(--bubble-you-text);
+  border: none; border-radius: 22px;
+  padding: 12px 18px;
+  font-family: var(--cn-serif);
+  font-size: 16px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* 官端不显示消息时间（数据留在 DOM 里，供指纹/排序等引擎逻辑） */
+.skin-chatnest .msg .time { display: none; }
+
+/* ── 消息操作排（复制）── */
+.skin-chatnest .message-actions {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 12px; color: var(--cn-text-secondary);
+}
+.skin-chatnest .action-button {
+  width: 20px; height: 34px; display: grid; place-items: center;
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: inherit; border-radius: 999px;
+}
+.skin-chatnest .action-button:active { color: var(--cn-accent); }
+
+/* ── thinking：官端 trace-row（时钟 + 灰摘要 + chevron）── */
+.skin-chatnest .thinking-inline { margin: 6px 0 4px; }
+.skin-chatnest .thinking-row { display: flex; align-items: center; gap: 8px; }
+.skin-chatnest .thinking-avatar {
+  width: 16px; height: 16px; flex: none;
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cn-text-secondary);
+}
+.skin-chatnest .thinking-avatar svg { width: 15px; height: 15px; color: var(--cn-text-secondary); }
+.skin-chatnest .thinking-inline-header {
+  display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+  cursor: pointer; user-select: none;
+  color: var(--cn-text-secondary);
+  font-family: var(--font-body, -apple-system, sans-serif);
+  font-size: 15px; font-weight: 400; letter-spacing: 0;
+}
+.skin-chatnest .thinking-inline-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.skin-chatnest .thinking-inline-arrow {
+  margin-left: auto; font-size: 10px; min-width: 10px; opacity: 0.55;
+  color: var(--cn-text-secondary);
+}
+.skin-chatnest .thinking-dot { background: var(--cn-text-secondary); }
+.skin-chatnest .thinking-inline-body {
+  margin: 10px 0 0 24px; padding: 0 0 0 12px;
+  border-left: 2px solid var(--cn-sunken);
+  color: var(--cn-text-secondary);
+  font-size: 14px; line-height: 1.55;
+  max-height: 240px; overflow-y: auto;
+  white-space: pre-wrap; word-break: break-word;
+}
+.skin-chatnest .thinking-inline.thinking-tool-active .thinking-inline-body { border-left-color: var(--cn-accent); }
+
+/* ── footer：官端 composer（大圆角悬浮盒 + 黑/橙圆形发送钮）── */
+.skin-chatnest footer {
+  background: var(--footer-bg); border-top: none;
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+}
+.skin-chatnest .input-container-inner,
+.skin-chatnest footer .chat-input {
+  font-size: 17px;
+}
+.skin-chatnest .input-container-inner {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 28px;
+  padding: 10px 40px 10px 18px;
+  box-shadow: 0 0 18px rgba(0,0,0,0.045), 0 8px 22px rgba(0,0,0,0.045);
+}
+/* 直排式 footer（非 ds 结构）：整个 footer 画成 composer 盒 */
+.skin-chatnest footer:not(:has(.input-container-inner)) {
+  margin: 0 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 28px;
+  padding: 10px 12px 10px 18px;
+  box-shadow: 0 0 18px rgba(0,0,0,0.045), 0 8px 22px rgba(0,0,0,0.045);
+}
+.skin-chatnest .send-btn {
+  background: var(--send-btn-bg); color: var(--send-btn-color);
+  box-shadow: none;
+}
+.skin-chatnest .send-btn:not(:disabled) { background: var(--cn-accent); color: #fff; }
+.skin-chatnest .send-btn:disabled { background: var(--send-btn-bg); color: var(--send-btn-color); opacity: 0.35; box-shadow: none; }
+
+/* 图片附件：官端圆角卡 */
+.skin-chatnest .img-wrap img { border-radius: 14px; max-height: 180px; }
+
+/* ── 暗色模式（官端深色板；系统级自动跟随，挂 data-theme 主题时主题优先）── */
+@media (prefers-color-scheme: dark) {
+  .skin-chatnest {
+    --zone-bg: #20201F;
+    --bubble-you: #111111;
+    --bubble-you-text: #ECEAE4;
+    --bubble-ke-text: #ECEAE4;
+    --input-bg: #181818;
+    --input-border: rgba(236,234,228,0.10);
+    --send-btn-bg: #ECEAE4;
+    --send-btn-color: #20201F;
+    --footer-bg: #20201F;
+    --placeholder-color: #6E6D66;
+    --chat-empty-color: #6E6D66;
+    --cn-text-secondary: #A6A39A;
+    --cn-sunken: #2A2A28;
+  }
+  .skin-chatnest .input-container-inner,
+  .skin-chatnest footer:not(:has(.input-container-inner)) { box-shadow: none; }
+}

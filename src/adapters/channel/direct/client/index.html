@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="/css/main.css?v=34">
 <link rel="stylesheet" href="/css/themes.css?v=1">
 <link rel="stylesheet" href="/skins/ceramic.css?v=1">
+<link rel="stylesheet" href="/skins/chatnest-fonts.css?v=1">
+<link rel="stylesheet" href="/skins/chatnest.css?v=1">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -930,6 +932,7 @@
 <script src="/js/themes.js?v=1"></script>
 <script src="/js/skins.js?v=1"></script>
 <script src="/skins/ceramic.js?v=1"></script>
+<script src="/skins/chatnest.js?v=1"></script>
 <script>
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -997,6 +1000,11 @@ const headerTitle = document.getElementById("header-title");
 // 启动兜底列表；loadModels() 返回后 syncZonesWithModels() 按 /api/models 补建新 zone。
 // 后端 model-routes.js 加一行模型 → 前端 zone 自动出现（阶段3 把"加模型一行"做实）。
 let ZONE_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
+// per-zone 渲染皮肤分配（不在表里的 = default）。skins/*.js 注册，skins/*.css 带 .skin-{name} 前缀
+const ZONE_SKINS = {
+  ds: "ceramic",      // 阶段4：暖瓷回收皮肤，DS 接回主引擎
+  opus: "chatnest",   // Rism 试穿仿官端（toge 07-10 拍板）
+};
 const ZONE_STORAGE_KEY = "withtoge-active-zone";
 const ZONE_WALLPAPER_KEY = "withtoge-zone-wallpapers";
 const zones = {};
@@ -1063,6 +1071,16 @@ function bindZoneEvents(k) {
     var arrow = header.querySelector(".thinking-inline-arrow");
     if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
   });
+  // 消息操作：复制（通用委托——任何皮肤画了 .msg-action-copy 按钮即生效）
+  z.messagesEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".msg-action-copy");
+    if (!btn) return;
+    const msg = btn.closest(".msg");
+    const bubble = msg && msg.querySelector(".msg-bubble");
+    const text = bubble ? bubble.textContent.trim() : "";
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => showToast("已复制")).catch(() => {});
+  });
   // 滚动：回底按钮显隐 + 未读清除
   z.messagesEl.addEventListener("scroll", () => {
     updateScrollToBottomBtn();
@@ -1115,6 +1133,8 @@ function createZone(key) {
   if (!document.getElementById(`chat-zone-${key}`)) {
     chatPage.insertAdjacentHTML("beforeend", zoneTemplate(key, key === "ds"));
   }
+  const skinName = ZONE_SKINS[key] || "default";
+  document.getElementById(`chat-zone-${key}`).classList.add("skin-" + skinName);
   zones[key] = {
     messagesEl:   document.getElementById(`messages-${key}`),
     typingEl:     document.getElementById(`typing-indicator-${key}`),
@@ -1132,11 +1152,9 @@ function createZone(key) {
     inputText:    "",
     historyLoaded: false,
     unreadCount:  0,
-    // 渲染皮肤（阶段2 查表转发；阶段4 起 DS 用回收的暖瓷皮肤）
-    skin:         key === "ds" ? "ceramic" : "default",
+    // 渲染皮肤（阶段2 查表转发；分配见 ZONE_SKINS，样式作用域 = zone 上的 skin-<name> class）
+    skin:         skinName,
   };
-  // 皮肤样式作用域：ceramic.css 等按 .skin-<name> 前缀写规则，只染自己的 zone
-  document.getElementById(`chat-zone-${key}`).classList.add("skin-" + zones[key].skin);
   bindZoneEvents(key);
 }
 

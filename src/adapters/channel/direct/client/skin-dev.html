@@ -84,6 +84,14 @@
     return window._skins[skinSel.value] || window._skins["default"];
   }
 
+  // 皮肤 CSS 按 .skin-{name} 前缀作用域——切皮肤时同步 zone 的 class（引擎里由 createZone 挂）
+  function applySkinClass(name) {
+    Array.from(zoneEl.classList).forEach(function(c) {
+      if (c.indexOf("skin-") === 0) zoneEl.classList.remove(c);
+    });
+    zoneEl.classList.add("skin-" + name);
+  }
+
   /* 引擎策略复刻：chunks 拆分成多气泡（与 index.html renderMsg 的策略一致） */
   function renderEntry(msg) {
     var skin = getSkin();
@@ -109,6 +117,7 @@
 
   function renderStatic() {
     clearAll();
+    applySkinClass(skinSel.value || "default");
     FIXTURES.forEach(renderEntry);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
