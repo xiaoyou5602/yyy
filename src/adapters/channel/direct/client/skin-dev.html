@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>皮肤沙盒 · skin-dev</title>
+<link rel="stylesheet" href="/css/main.css">
+<link rel="stylesheet" href="/css/themes.css">
+<style>
+  /* 沙盒专属：控制条 + 预览框架，不污染皮肤样式 */
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+  #dev-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: 10px 14px; background: #2d2d2d; color: #eee;
+    font-size: 13px; flex-shrink: 0; z-index: 50;
+  }
+  #dev-bar select, #dev-bar button {
+    font-size: 13px; padding: 4px 10px; border-radius: 8px; border: none; cursor: pointer;
+  }
+  #dev-bar .dev-label { opacity: 0.6; font-size: 12px; }
+  #dev-bar button { background: #5989b9; color: #fff; }
+  #dev-bar button:active { opacity: 0.8; }
+  #dev-hint { font-size: 11px; opacity: 0.45; margin-left: auto; }
+  /* 预览区复用真页面的骨架 class，皮肤/主题在这套骨架上工作 */
+  #chat-page { flex: 1; display: flex !important; }
+</style>
+</head>
+<body>
+
+<div id="dev-bar">
+  <span class="dev-label">皮肤</span>
+  <select id="dev-skin"></select>
+  <span class="dev-label">主题</span>
+  <select id="dev-theme"></select>
+  <button id="dev-static">静态全家桶</button>
+  <button id="dev-stream">流式模拟</button>
+  <button id="dev-clear">清空</button>
+  <span id="dev-hint">?skin=xxx 加载 /skins/xxx.js + /skins/xxx.css 热预览</span>
+</div>
+
+<!-- 预览骨架：与 index.html 的 zone 结构同 class，皮肤画出的 DOM 落在这里 -->
+<div id="chat-page" class="show">
+  <div class="chat-zone" id="chat-zone-sandbox" data-model-key="sandbox">
+    <div class="chat-messages" id="sandbox-messages"></div>
+    <footer>
+      <div class="input-container-inner">
+        <textarea class="chat-input" rows="1" placeholder="沙盒输入栏（仅样式预览）"></textarea>
+      </div>
+      <button class="send-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translateX(1px)"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+    </footer>
+  </div>
+</div>
+
+<script src="/js/themes.js"></script>
+<script src="/js/skins.js"></script>
+<script>
+/* ═══ 沙盒 driver ═══
+   只用皮肤公开接口渲染（renderMessage/renderSticker/buildThinking/
+   createStreamContainer/ensureBubble），不复制引擎。引擎的 chunks 拆分策略
+   在 renderEntry 里复刻一份（拆分属于引擎语义，皮肤永远只收单条）。 */
+(function() {
+  var messagesEl = document.getElementById("sandbox-messages");
+  var zoneEl = document.getElementById("chat-zone-sandbox");
+  var skinSel = document.getElementById("dev-skin");
+  var themeSel = document.getElementById("dev-theme");
+  var streamTimer = null;
+
+  var PNG_ORANGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+
+  /* ── 假消息全家桶：长文/图片/thinking/拆分/贴纸 ── */
+  var FIXTURES = [
+    { from: "you", text: "在吗？给你看个好玩的", time: "21:00" },
+    { from: "ke", text: "在呀，什么好玩的？", time: "21:00" },
+    { from: "thinking", text: "toge 说有好玩的东西要给我看。她的语气很轻快，应该是发现了什么有意思的。我等她发过来，先不急着猜。", turnId: "fx-1", time: "21:01" },
+    { from: "you", text: "看图！", images: [{ data: PNG_ORANGE.slice(22), contentType: "image/png" }], time: "21:01" },
+    { from: "ke", text: "收到图片～这是一张非常极简主义的作品（一个像素的橙色，很有态度）。", images: [{ data: PNG_ORANGE.slice(22), contentType: "image/png" }], time: "21:02" },
+    { from: "ke", text: "长文本测试：设计系统里最重要的不是组件本身，而是约束。约束让一百个人写出来的界面看起来像一个人做的。皮肤系统也是一样——接口就是约束，DOM 契约就是约束，铁律「只拿数据画 DOM」还是约束。守住约束，连接层的 bug 就永远只用修一次；破坏约束，chat-ds 接入期的那些坑就会全部回来。所以这段话故意写得很长，用来测试气泡的换行、行高、最大宽度，以及在不同主题下的可读性。", time: "21:03" },
+    { from: "ke", text: "第一段回复。第二段回复，拆分渲染测试。", chunks: ["第一段回复。", "第二段回复，拆分渲染测试。"], time: "21:04" },
+    { from: "sticker-demo" },
+    { from: "you", text: "好耶！", time: "21:05" }
+  ];
+
+  function getSkin() {
+    return window._skins[skinSel.value] || window._skins["default"];
+  }
+
+  /* 引擎策略复刻：chunks 拆分成多气泡（与 index.html renderMsg 的策略一致） */
+  function renderEntry(msg) {
+    var skin = getSkin();
+    if (msg.from === "sticker-demo") {
+      messagesEl.appendChild(skin.renderSticker({ from: "ke", stickerId: "sandbox-demo", desc: "沙盒贴纸（404 占位正常）", time: "21:04" }));
+      return;
+    }
+    if (msg.from !== "you" && Array.isArray(msg.chunks) && msg.chunks.length > 1) {
+      msg.chunks.forEach(function(c, i) {
+        var part = { from: msg.from, text: c, time: msg.time };
+        if (i === msg.chunks.length - 1 && msg.images) part.images = msg.images;
+        messagesEl.appendChild(skin.renderMessage(part));
+      });
+      return;
+    }
+    messagesEl.appendChild(skin.renderMessage(msg));
+  }
+
+  function clearAll() {
+    if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
+    messagesEl.innerHTML = "";
+  }
+
+  function renderStatic() {
+    clearAll();
+    FIXTURES.forEach(renderEntry);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  /* ── 流式模拟：按引擎的真实调用序列走一遍 ──
+     createStreamContainer → thinking body 增量 → 工具态 → ensureBubble → 已思考 N 秒 */
+  function simulateStream() {
+    if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
+    var skin = getSkin();
+    var turnId = "live-" + Date.now();
+    var container = skin.createStreamContainer(turnId, { phase: "thinking", text: "" });
+    messagesEl.appendChild(container);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    var THINK_TEXT = "toge 在沙盒里点了流式模拟按钮。这段思考文本会一段一段地追加进来，模拟真实聊天时 thinking 增量到达的样子。皮肤需要保证 .thinking-inline-body 更新时布局不跳、滚动跟手。接下来我会切换到工具调用状态，然后开始吐正文。";
+    var pos = 0, phase = "thinking", start = Date.now();
+    var inline = container.querySelector(".thinking-inline");
+    var label = container.querySelector(".thinking-inline-label");
+    var body = container.querySelector(".thinking-inline-body");
+
+    streamTimer = setInterval(function() {
+      if (phase === "thinking") {
+        pos += 12;
+        if (body) body.textContent = THINK_TEXT.slice(0, pos);
+        if (label) label.textContent = "思考中 (" + Math.floor((Date.now() - start) / 1000) + "秒)...";
+        if (pos >= THINK_TEXT.length) {
+          phase = "tooling";
+          if (inline) inline.classList.add("thinking-tool-active");
+          if (label) label.textContent = "正在调用工具...";
+        }
+      } else if (phase === "tooling") {
+        phase = "answer";
+        if (inline) inline.classList.remove("thinking-tool-active");
+        if (label) label.textContent = "已思考 " + Math.floor((Date.now() - start) / 1000) + " 秒";
+        var arrow = container.querySelector(".thinking-inline-arrow");
+        if (arrow) arrow.style.display = "";
+        container.querySelectorAll(".thinking-dot").forEach(function(d) { d.style.display = "none"; });
+        skin.ensureBubble(container, "流式正文来了：这一条是 ensureBubble 在 thinking 容器里补出来的气泡，真实聊天里首块 text 消息就是这么渲染的。");
+      } else {
+        clearInterval(streamTimer); streamTimer = null;
+      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }, 400);
+  }
+
+  /* ── 控制条初始化 ── */
+  function fillSkinOptions() {
+    skinSel.innerHTML = Object.keys(window._skins).map(function(n) {
+      return '<option value="' + n + '">' + n + "</option>";
+    }).join("");
+  }
+  fillSkinOptions();
+
+  themeSel.innerHTML = (window.THEME_REGISTRY || []).map(function(t) {
+    return '<option value="' + t.id + '">' + (t.name || "默认") + "</option>";
+  }).join("");
+  themeSel.addEventListener("change", function() {
+    if (themeSel.value) zoneEl.dataset.theme = themeSel.value;
+    else delete zoneEl.dataset.theme;
+  });
+  skinSel.addEventListener("change", renderStatic);
+
+  document.getElementById("dev-static").addEventListener("click", renderStatic);
+  document.getElementById("dev-stream").addEventListener("click", simulateStream);
+  document.getElementById("dev-clear").addEventListener("click", clearAll);
+
+  /* ── ?skin=xxx 热加载开发中皮肤（/skins/xxx.js + /skins/xxx.css）── */
+  var devSkin = new URLSearchParams(location.search).get("skin");
+  if (devSkin && /^[\w-]+$/.test(devSkin)) {
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/skins/" + devSkin + ".css";
+    document.head.appendChild(link);
+    var s = document.createElement("script");
+    s.src = "/skins/" + devSkin + ".js";
+    s.onload = function() {
+      fillSkinOptions();
+      if (window._skins[devSkin]) skinSel.value = devSkin;
+      renderStatic();
+    };
+    s.onerror = function() { alert("皮肤加载失败：/skins/" + devSkin + ".js"); };
+    document.body.appendChild(s);
+  }
+
+  renderStatic();
+})();
+</script>
+</body>
+</html>

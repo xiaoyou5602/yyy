@@ -151,75 +151,7 @@
         </button>
       </div>
     </header>
-
-  <!-- ═══ Chat zones (one per model) ═══ -->
-  <div class="chat-zone" id="chat-zone-ds" data-model-key="ds">
-    <div class="chat-messages" id="messages-ds"></div>
-    <div class="typing-indicator" id="typing-indicator-ds"><span class="typing-dots"><span></span><span></span><span></span></span></div>
-    <div class="image-preview" id="image-preview-ds"></div>
-    <div class="desk-pet" id="desk-pet-ds"><div class="desk-pet-body" id="desk-pet-body-ds"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-ds" title="回到最新"><span class="unread-badge" id="unread-badge-ds"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-    <footer>
-      <div class="input-container-inner">
-        <textarea class="chat-input" id="input-ds" rows="1" placeholder="说点什么…"></textarea>
-        <input type="file" class="file-input" id="file-input-ds" multiple hidden>
-        <button class="image-btn" id="image-btn-ds" title="添加图片或文件"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
-      </div>
-      <button class="send-btn" id="send-btn-ds" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translateX(1px)"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
-    </footer>
-  </div>
-  <div class="chat-zone" id="chat-zone-opus" data-model-key="opus" style="display:none;">
-    <div class="chat-messages" id="messages-opus"></div>
-    <div class="typing-indicator" id="typing-indicator-opus"><span class="typing-dots"><span></span><span></span><span></span></span></div>
-    <div class="image-preview" id="image-preview-opus"></div>
-    <div class="desk-pet" id="desk-pet-opus"><div class="desk-pet-body" id="desk-pet-body-opus"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-opus" title="回到最新"><span class="unread-badge" id="unread-badge-opus"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-    <footer>
-      <textarea class="chat-input" id="input-opus" rows="1" placeholder="说点什么…"></textarea>
-      <input type="file" class="file-input" id="file-input-opus" multiple hidden>
-      <button class="image-btn" id="image-btn-opus" title="添加图片或文件"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
-      <button class="send-btn" id="send-btn-opus" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
-    </footer>
-  </div>
-  <div class="chat-zone" id="chat-zone-haiku" data-model-key="haiku" style="display:none;">
-    <div class="chat-messages" id="messages-haiku"></div>
-    <div class="typing-indicator" id="typing-indicator-haiku"><span class="typing-dots"><span></span><span></span><span></span></span></div>
-    <div class="image-preview" id="image-preview-haiku"></div>
-    <div class="desk-pet" id="desk-pet-haiku"><div class="desk-pet-body" id="desk-pet-body-haiku"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-haiku" title="回到最新"><span class="unread-badge" id="unread-badge-haiku"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-    <footer>
-      <textarea class="chat-input" id="input-haiku" rows="1" placeholder="说点什么…"></textarea>
-      <input type="file" class="file-input" id="file-input-haiku" multiple hidden>
-      <button class="image-btn" id="image-btn-haiku" title="添加图片或文件"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
-      <button class="send-btn" id="send-btn-haiku" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
-    </footer>
-  </div>
-  <div class="chat-zone" id="chat-zone-glm" data-model-key="glm" style="display:none;">
-    <div class="chat-messages" id="messages-glm"></div>
-    <div class="typing-indicator" id="typing-indicator-glm"><span class="typing-dots"><span></span><span></span><span></span></span></div>
-    <div class="image-preview" id="image-preview-glm"></div>
-    <div class="desk-pet" id="desk-pet-glm"><div class="desk-pet-body" id="desk-pet-body-glm"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-glm" title="回到最新"><span class="unread-badge" id="unread-badge-glm"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-    <footer>
-      <textarea class="chat-input" id="input-glm" rows="1" placeholder="说点什么…"></textarea>
-      <input type="file" class="file-input" id="file-input-glm" multiple hidden>
-      <button class="image-btn" id="image-btn-glm" title="添加图片或文件"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
-      <button class="send-btn" id="send-btn-glm" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
-    </footer>
-  </div>
-  <div class="chat-zone" id="chat-zone-openclaw" data-model-key="openclaw" style="display:none;">
-    <div class="chat-messages" id="messages-openclaw"></div>
-    <div class="typing-indicator" id="typing-indicator-openclaw"><span class="typing-dots"><span></span><span></span><span></span></span></div>
-    <div class="image-preview" id="image-preview-openclaw"></div>
-    <div class="desk-pet" id="desk-pet-openclaw"><div class="desk-pet-body" id="desk-pet-body-openclaw"></div><div class="desk-pet-shadow"></div></div>
-    <button class="scroll-bottom-btn" id="scroll-bottom-btn-openclaw" title="回到最新"><span class="unread-badge" id="unread-badge-openclaw"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-    <footer>
-      <textarea class="chat-input" id="input-openclaw" rows="1" placeholder="说点什么…"></textarea>
-      <input type="file" class="file-input" id="file-input-openclaw" multiple hidden>
-      <button class="image-btn" id="image-btn-openclaw" title="添加图片或文件"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
-      <button class="send-btn" id="send-btn-openclaw" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
-    </footer>
-  </div>
+  <!-- ═══ Chat zones: createZone() 循环生成（阶段3 模板化），模板见内联脚本 zoneTemplate() ═══ -->
 
   <!-- Selection bar (shared, created dynamically) -->
   <div id="selection-bar"></div>
@@ -1057,7 +989,9 @@ const statusText = document.getElementById("status-text");
 const headerTitle = document.getElementById("header-title");
 
 /* ── Multi-zone chat ── */
-const ZONE_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
+// 启动兜底列表；loadModels() 返回后 syncZonesWithModels() 按 /api/models 补建新 zone。
+// 后端 model-routes.js 加一行模型 → 前端 zone 自动出现（阶段3 把"加模型一行"做实）。
+let ZONE_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
 const ZONE_STORAGE_KEY = "withtoge-active-zone";
 const ZONE_WALLPAPER_KEY = "withtoge-zone-wallpapers";
 const zones = {};
@@ -1066,28 +1000,149 @@ let history = [];
 let pendingFiles = [];
 let activeZoneKey = null;
 
-function initZones() {
-  for (const key of ZONE_KEYS) {
-    zones[key] = {
-      messagesEl:   document.getElementById(`messages-${key}`),
-      typingEl:     document.getElementById(`typing-indicator-${key}`),
-      inputEl:      document.getElementById(`input-${key}`),
-      sendBtn:      document.getElementById(`send-btn-${key}`),
-      imageBtn:     document.getElementById(`image-btn-${key}`),
-      fileInput:    document.getElementById(`file-input-${key}`),
-      imagePreview: document.getElementById(`image-preview-${key}`),
-      scrollBottomBtn: document.getElementById(`scroll-bottom-btn-${key}`),
-      unreadBadgeEl: document.getElementById(`unread-badge-${key}`),
-      deskPet:      document.getElementById(`desk-pet-${key}`),
-      history:      [],
-      pendingFiles: [],
-      scrollTop:    0,
-      inputText:    "",
-      historyLoaded: false,
-      unreadCount:  0,
-      skin:         "default",   // 渲染皮肤（阶段2：查表转发，见 js/skins.js）
-    };
+/* ── Zone 模板（阶段3：五段复制粘贴的静态 HTML 收拢成生成函数）──
+   两种 footer 结构逐字节复刻原静态 HTML：ds=容器式（input-container-inner+纸飞机），
+   其他=直排式（实心发送钮）。新模型默认直排式。 */
+const _SVG_CHEVRON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>';
+const _SVG_PLUS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"/><line x1="7" y1="12" x2="17" y2="12"/></svg>';
+function zoneTemplate(key, visible) {
+  const common =
+    `<div class="chat-messages" id="messages-${key}"></div>` +
+    `<div class="typing-indicator" id="typing-indicator-${key}"><span class="typing-dots"><span></span><span></span><span></span></span></div>` +
+    `<div class="image-preview" id="image-preview-${key}"></div>` +
+    `<div class="desk-pet" id="desk-pet-${key}"><div class="desk-pet-body" id="desk-pet-body-${key}"></div><div class="desk-pet-shadow"></div></div>` +
+    `<button class="scroll-bottom-btn" id="scroll-bottom-btn-${key}" title="回到最新"><span class="unread-badge" id="unread-badge-${key}"></span>${_SVG_CHEVRON}</button>`;
+  const inputBits =
+    `<textarea class="chat-input" id="input-${key}" rows="1" placeholder="说点什么…"></textarea>` +
+    `<input type="file" class="file-input" id="file-input-${key}" multiple hidden>` +
+    `<button class="image-btn" id="image-btn-${key}" title="添加图片或文件">${_SVG_PLUS}</button>`;
+  const footer = key === "ds"
+    ? `<footer><div class="input-container-inner">${inputBits}</div>` +
+      `<button class="send-btn" id="send-btn-${key}" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translateX(1px)"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></footer>`
+    : `<footer>${inputBits}` +
+      `<button class="send-btn" id="send-btn-${key}" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button></footer>`;
+  return `<div class="chat-zone" id="chat-zone-${key}" data-model-key="${key}"${visible ? "" : ' style="display:none;"'}>${common}${footer}</div>`;
+}
+
+// 单个 zone 的全部事件绑定（阶段3 从七处散落的 ZONE_KEYS 循环收拢至此）。
+// 回调都是惰性执行，引用的函数（send/enterSelectMode/addPendingFile 等）靠声明提升，
+// 在 createZone 早于它们的文本位置调用也安全。监听器注册顺序保持与原七处循环一致。
+function bindZoneEvents(k) {
+  const z = zones[k];
+  // 双击进入/退出多选（手机和电脑都用双击）
+  z.messagesEl.addEventListener("dblclick", (e) => {
+    const msg = e.target.closest(".msg");
+    if (!msg) return;
+    const msgId = msg.getAttribute("data-msg-id");
+    if (!msgId) return;
+    if (selecting) { exitSelectMode(); return; }
+    enterSelectMode(msgId);
+  });
+  // Click to toggle in select mode, click empty space to exit
+  z.messagesEl.addEventListener("click", (e) => {
+    if (!selecting) return;
+    const msg = e.target.closest(".msg");
+    if (!msg) { exitSelectMode(); return; }
+    const msgId = msg.getAttribute("data-msg-id");
+    if (msgId) toggleMsgSelection(msgId);
+  });
+  // Thinking inline 点击：事件委托，永不失效
+  z.messagesEl.addEventListener("click", function(e) {
+    var header = e.target.closest(".thinking-inline-header");
+    if (!header) return;
+    var inline = header.closest(".thinking-inline");
+    if (!inline) return;
+    var body = inline.querySelector(".thinking-inline-body");
+    if (!body) return;
+    var collapsed = body.classList.toggle("thinking-collapsed");
+    var arrow = header.querySelector(".thinking-inline-arrow");
+    if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
+  });
+  // 滚动：回底按钮显隐 + 未读清除
+  z.messagesEl.addEventListener("scroll", () => {
+    updateScrollToBottomBtn();
+    if (isAtBottom()) clearUnread();
+  });
+  if (z.scrollBottomBtn) z.scrollBottomBtn.addEventListener("click", scrollToBottom);
+  // 图片/文件按钮
+  if (z.imageBtn && z.fileInput) {
+    z.imageBtn.addEventListener("click", async () => {
+      if (activeZoneKey !== k) activateZone(k);
+      if (window.showOpenFilePicker) {
+        try {
+          const handles = await window.showOpenFilePicker({ multiple: true });
+          for (const handle of handles) {
+            const file = await handle.getFile();
+            addPendingFile(file);
+          }
+          return;
+        } catch (err) {
+          if (err.name === "AbortError") return;
+        }
+      }
+      z.fileInput.click();
+    });
+    z.fileInput.addEventListener("change", () => {
+      if (activeZoneKey !== k) activateZone(k);
+      for (const file of z.fileInput.files) addPendingFile(file);
+      z.fileInput.value = "";
+    });
   }
+  // 拖拽发图
+  z.messagesEl.addEventListener("dragover", (e) => { e.preventDefault(); z.messagesEl.classList.add("drag-over"); });
+  z.messagesEl.addEventListener("dragleave", () => { z.messagesEl.classList.remove("drag-over"); });
+  z.messagesEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (activeZoneKey !== k) activateZone(k);
+    z.messagesEl.classList.remove("drag-over");
+    for (const file of e.dataTransfer.files) addPendingFile(file);
+  });
+  // 输入框 + 发送
+  const inp = z.inputEl;
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+  inp.addEventListener("input", () => { inp.style.height = "auto"; inp.style.height = Math.min(inp.scrollHeight, 130) + "px"; });
+  z.sendBtn.addEventListener("click", send);
+}
+
+// 建一个 zone：DOM + 状态条目 + 事件绑定。幂等，随时可为新模型补建。
+function createZone(key) {
+  if (zones[key]) return;
+  if (!document.getElementById(`chat-zone-${key}`)) {
+    chatPage.insertAdjacentHTML("beforeend", zoneTemplate(key, key === "ds"));
+  }
+  zones[key] = {
+    messagesEl:   document.getElementById(`messages-${key}`),
+    typingEl:     document.getElementById(`typing-indicator-${key}`),
+    inputEl:      document.getElementById(`input-${key}`),
+    sendBtn:      document.getElementById(`send-btn-${key}`),
+    imageBtn:     document.getElementById(`image-btn-${key}`),
+    fileInput:    document.getElementById(`file-input-${key}`),
+    imagePreview: document.getElementById(`image-preview-${key}`),
+    scrollBottomBtn: document.getElementById(`scroll-bottom-btn-${key}`),
+    unreadBadgeEl: document.getElementById(`unread-badge-${key}`),
+    deskPet:      document.getElementById(`desk-pet-${key}`),
+    history:      [],
+    pendingFiles: [],
+    scrollTop:    0,
+    inputText:    "",
+    historyLoaded: false,
+    unreadCount:  0,
+    skin:         "default",   // 渲染皮肤（阶段2：查表转发，见 js/skins.js）
+  };
+  bindZoneEvents(key);
+}
+
+// loadModels() 拿到真实模型表后补建缺失 zone（模型下架的 zone 留着不删，历史还在里面）
+function syncZonesWithModels(list) {
+  for (const m of list) {
+    if (!m.key || zones[m.key]) continue;
+    createZone(m.key);
+    ZONE_KEYS.push(m.key);
+  }
+}
+
+function initZones() {
+  for (const key of ZONE_KEYS) createZone(key);
 }
 
 function activateZone(key) {
@@ -1370,9 +1425,11 @@ function normalizeWallpaper(wp) {
   // Migrate old single-string wallpaper to per-key object
   if (!wp || typeof wp === "string") {
     const oldUrl = (typeof wp === "string" && wp.trim()) ? wp.trim() : "";
-    return { ds: oldUrl, opus: "", haiku: "" };
+    return { ds: oldUrl };
   }
-  return { ds: wp.ds || "", opus: wp.opus || "", haiku: wp.haiku || "" };
+  // 原样保留所有 zone 的 key——老实现只挑 ds/opus/haiku 三个，glm/openclaw
+  // 的壁纸设置后刷新就被剪掉（阶段3 顺手修）
+  return Object.assign({}, wp);
 }
 
 function applyZoneWallpapers(wp) {
@@ -1516,6 +1573,8 @@ async function loadModels() {
     // 更新元数据表
     for (const m of list) MODEL_META[m.modelName] = m;
     window._modelList = list;
+    // 服务端有兜底列表之外的新模型 → 补建 zone（加模型一行的前端半边）
+    syncZonesWithModels(list);
 
     // 构建侧边栏
     const sidebar = document.getElementById("sidebar-models");
@@ -1812,42 +1871,12 @@ async function fetchPendingApprovals() {
   } catch {}
 }
 
-// 双击进入/退出多选（手机和电脑都用双击）
-for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("dblclick", (e) => {
-  const msg = e.target.closest(".msg");
-  if (!msg) return;
-  const msgId = msg.getAttribute("data-msg-id");
-  if (!msgId) return;
-  if (selecting) { exitSelectMode(); return; }
-  enterSelectMode(msgId);
-});
-
-// Click to toggle in select mode, click empty space to exit
-for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", (e) => {
-  if (!selecting) return;
-  const msg = e.target.closest(".msg");
-  if (!msg) { exitSelectMode(); return; }
-  const msgId = msg.getAttribute("data-msg-id");
-  if (msgId) toggleMsgSelection(msgId);
-});
+// per-zone 交互绑定（多选/thinking 折叠等）→ bindZoneEvents()，createZone 时挂上
 
 // Escape key to exit select mode
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && selecting) exitSelectMode();
 });
-
-// Thinking inline 点击：事件委托，永不失效
-for (const k of ZONE_KEYS) zones[k].messagesEl.addEventListener("click", function(e) {
-  var header = e.target.closest(".thinking-inline-header");
-  if (!header) return;
-  var inline = header.closest(".thinking-inline");
-  if (!inline) return;
-  var body = inline.querySelector(".thinking-inline-body");
-  if (!body) return;
-  var collapsed = body.classList.toggle("thinking-collapsed");
-  var arrow = header.querySelector(".thinking-inline-arrow");
-  if (arrow) arrow.textContent = collapsed ? "▶" : "▼";
-  });
 
 let currentBookmarkId = null;
 
@@ -1979,13 +2008,7 @@ function scrollToBottom() {
   clearUnread();
 }
 
-for (const k of ZONE_KEYS) {
-  zones[k].messagesEl.addEventListener("scroll", () => {
-    updateScrollToBottomBtn();
-    if (isAtBottom()) clearUnread();
-  });
-  if (zones[k].scrollBottomBtn) zones[k].scrollBottomBtn.addEventListener("click", scrollToBottom);
-}
+// per-zone 滚动/回底按钮绑定 → bindZoneEvents()
 
 // Check on page switch too (for when "跳转对话" is used)
 window.addEventListener("page-changed", function(e) {
@@ -2275,31 +2298,7 @@ document.getElementById("mcp-cam-btn").addEventListener("click", () => showPage(
 // settings-tweak-link handled in tweak.js (loaded after this script)
 
 /* ── image handling ── */
-for (const k of ZONE_KEYS) {
-  const z = zones[k];
-  if (!z || !z.imageBtn || !z.fileInput) continue;
-  z.imageBtn.addEventListener("click", async () => {
-    if (activeZoneKey !== k) activateZone(k);
-    if (window.showOpenFilePicker) {
-      try {
-        const handles = await window.showOpenFilePicker({ multiple: true });
-        for (const handle of handles) {
-          const file = await handle.getFile();
-          addPendingFile(file);
-        }
-        return;
-      } catch (err) {
-        if (err.name === "AbortError") return;
-      }
-    }
-    z.fileInput.click();
-  });
-  z.fileInput.addEventListener("change", () => {
-    if (activeZoneKey !== k) activateZone(k);
-    for (const file of z.fileInput.files) addPendingFile(file);
-    z.fileInput.value = "";
-  });
-}
+// per-zone 图片/文件按钮绑定 → bindZoneEvents()
 
 async function addPendingFile(file) {
   if (file.type.startsWith("image/")) {
@@ -2361,18 +2360,7 @@ document.addEventListener("paste", (e) => {
 });
 
 /* ── drag & drop ── */
-for (const k of ZONE_KEYS) {
-  const zoneMessagesEl = zones[k].messagesEl;
-  if (!zoneMessagesEl) continue;
-  zoneMessagesEl.addEventListener("dragover", (e) => { e.preventDefault(); zoneMessagesEl.classList.add("drag-over"); });
-  zoneMessagesEl.addEventListener("dragleave", () => { zoneMessagesEl.classList.remove("drag-over"); });
-  zoneMessagesEl.addEventListener("drop", (e) => {
-    e.preventDefault();
-    if (activeZoneKey !== k) activateZone(k);
-    zoneMessagesEl.classList.remove("drag-over");
-    for (const file of e.dataTransfer.files) addPendingFile(file);
-  });
-}
+// per-zone 拖拽发图绑定 → bindZoneEvents()
 
 /* ── history ── */
 let initHistoryDone = false;
@@ -2780,12 +2768,7 @@ function send() {
   showTyping();
 }
 
-for (const k of ZONE_KEYS) {
-    const inp = zones[k].inputEl;
-    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-    inp.addEventListener("input", () => { inp.style.height = "auto"; inp.style.height = Math.min(inp.scrollHeight, 130) + "px"; });
-    zones[k].sendBtn.addEventListener("click", send);
-  }
+// per-zone 输入框/发送按钮绑定 → bindZoneEvents()
 
 /* ── Sticker ── */
 var stickerPanel = document.getElementById("sticker-panel");
