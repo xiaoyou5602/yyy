@@ -11,6 +11,7 @@
 <meta name="theme-color" content="#F7F4EF">
 <link rel="stylesheet" href="/css/main.css?v=34">
 <link rel="stylesheet" href="/css/themes.css?v=1">
+<link rel="stylesheet" href="/skins/ceramic.css?v=1">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -346,6 +347,9 @@
     </div>
     <div class="setting-row" style="text-align:center;margin-top:8px;">
       <a href="#" id="settings-worldbook-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#128214; 编辑世界书（人设）</a>
+    </div>
+    <div class="setting-row" style="text-align:center;margin-top:4px;">
+      <a href="#" id="settings-ds-legacy-link" style="font-size:11px;color:var(--text-subtle);text-decoration:none;">DS 引擎切换</a>
     </div>
     <div class="setting-row" style="text-align:center;margin-top:4px;">
       <a href="#" id="settings-tweak-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#127912; 打开视觉调参台</a>
@@ -925,6 +929,7 @@
 
 <script src="/js/themes.js?v=1"></script>
 <script src="/js/skins.js?v=1"></script>
+<script src="/skins/ceramic.js?v=1"></script>
 <script>
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -1127,8 +1132,11 @@ function createZone(key) {
     inputText:    "",
     historyLoaded: false,
     unreadCount:  0,
-    skin:         "default",   // 渲染皮肤（阶段2：查表转发，见 js/skins.js）
+    // 渲染皮肤（阶段2 查表转发；阶段4 起 DS 用回收的暖瓷皮肤）
+    skin:         key === "ds" ? "ceramic" : "default",
   };
+  // 皮肤样式作用域：ceramic.css 等按 .skin-<name> 前缀写规则，只染自己的 zone
+  document.getElementById(`chat-zone-${key}`).classList.add("skin-" + zones[key].skin);
   bindZoneEvents(key);
 }
 
@@ -1215,7 +1223,23 @@ var streamingText = "";
 var chunkBuf = {};
 
 /* ── Page switching ── */
-let currentPage = (function(){ try { var lp = localStorage.getItem("withtoge-last-page"); if (lp === "chat-ds") return lp; } catch {} return "chat"; })();
+// 阶段4：DS 默认并入主聊天页（ceramic 皮肤 + 主引擎），暖瓷独立页保留为应急阀，
+// localStorage withtoge-ds-legacy=1 时走旧路径。出问题设置页一键切回。
+function dsLegacyMode() {
+  try { return localStorage.getItem("withtoge-ds-legacy") === "1"; } catch { return false; }
+}
+let currentPage = (function(){
+  try {
+    var lp = localStorage.getItem("withtoge-last-page");
+    if (lp === "chat-ds") {
+      if (localStorage.getItem("withtoge-ds-legacy") === "1") return lp;
+      // 新引擎：上次停在暖瓷页 → 恢复到主聊天页的 DS zone
+      localStorage.setItem("withtoge-active-zone", "ds");
+      return "chat";
+    }
+  } catch {}
+  return "chat";
+})();
 function showPage(page) {
   var prevPage = currentPage;
   currentPage = page;
@@ -1495,9 +1519,9 @@ function selectSidebarModel(el) {
   const model = (el.dataset.model || "").trim();
   const oldModel = (settings.model || "").trim();
 
-  // DS → dedicated Gemini page
+  // DS legacy 应急阀：跳暖瓷独立页（默认关；阶段4 起 DS 走下方主引擎通用路径）
   const targetMeta = MODEL_META[model];
-  if (targetMeta && targetMeta.key === "ds") {
+  if (targetMeta && targetMeta.key === "ds" && dsLegacyMode()) {
     if (currentPage === "chat-ds") { closeSidebar(); return; }
     settings.model = model; saveSettings(settings);
     // 同步 refs/activeZoneKey 到 ds——不同步的话，下次从暖瓷页切非 DS 模型时
@@ -2087,6 +2111,25 @@ document.getElementById("settings-worldbook-link").addEventListener("click", (e)
   document.getElementById("settings-overlay").classList.remove("show");
   showPage("worldbook");
 });
+
+// DS 引擎应急阀：新引擎（主页 zone + ceramic 皮肤）⇄ 旧暖瓷独立页
+(function() {
+  var link = document.getElementById("settings-ds-legacy-link");
+  if (!link) return;
+  function refreshLabel() {
+    link.textContent = dsLegacyMode()
+      ? "DS：旧版暖瓷页 → 点击切回新引擎（皮肤版）"
+      : "DS：新引擎（皮肤版）→ 点击切回旧版暖瓷页";
+  }
+  refreshLabel();
+  link.addEventListener("click", function(e) {
+    e.preventDefault();
+    var toLegacy = !dsLegacyMode();
+    if (!confirm(toLegacy ? "切回旧版暖瓷 DS 页？（刷新生效）" : "切到 DS 新引擎（皮肤版）？（刷新生效）")) return;
+    try { localStorage.setItem("withtoge-ds-legacy", toLegacy ? "1" : "0"); } catch {}
+    location.reload();
+  });
+})();
 
 /* ═══ 主题专区页面 ═══ */
 // 装扮的目标 zone 在进入时锁定（themeZoneZoneKey），期间所有操作都作用于它；

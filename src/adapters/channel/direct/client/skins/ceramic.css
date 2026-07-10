@@ -1,0 +1,59 @@
+/* ═══ Ceramic 皮肤样式 — 暖瓷观感（阶段4，从 chat-ds.css 消息区回收）═══ */
+/* 全部选择器带 .skin-ceramic 前缀（挂在 zone 容器上），不渗透其他 zone。      */
+/* 颜色走主题通用变量（--bubble-* 等）：无主题 = :root 暖瓷默认值，零变化；     */
+/* 挂主题 = 自动跟随。--ds-* 专属变量到此为止，不再新增消费。                   */
+
+/* ── 消息组：气泡 + 外置时间戳（暖瓷辨识度细节，时间挂气泡下方外侧）── */
+.skin-ceramic .msg {
+  max-width: 100%;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.skin-ceramic .msg.ke { align-items: flex-start; }
+.skin-ceramic .msg.you {
+  /* main.css 把 .msg.you 自身当气泡（底色/边框/内距都在根上）——ceramic 的
+     气泡在内层 .msg-bubble，根上的样式全部卸掉 */
+  align-self: stretch; align-items: flex-end;
+  width: auto; background: none; border: none;
+  padding: 0; border-radius: 0; box-shadow: none;
+}
+.skin-ceramic .msg.you .msg-bubble {
+  width: fit-content; max-width: var(--bubble-max-w, 85%);
+  background: var(--bubble-you); color: var(--bubble-you-text);
+  border: 1px solid var(--bubble-you-border, rgba(89,137,185,0.12));
+  border-radius: 16px 4px 16px 16px;
+  padding: 11px 15px;
+  font-size: var(--msg-font-size, 14.5px); line-height: 1.55;
+  word-wrap: break-word;
+}
+.skin-ceramic .msg.ke .msg-bubble {
+  max-width: var(--bubble-max-w, 85%);
+}
+/* 连续气泡的圆角软化（与暖瓷页 :not(:first-child) 规则等效） */
+.skin-ceramic .msg.you + .msg.you .msg-bubble { border-radius: 16px 12px 16px 16px; }
+.skin-ceramic .msg.ke + .msg.ke .msg-bubble { border-radius: 12px 16px 16px 16px; }
+
+/* 外置时间戳 */
+.skin-ceramic .msg .time {
+  font-size: 10px; color: rgba(45,45,45,0.3);
+  margin-top: 0; padding: 0 4px; font-weight: 400;
+}
+/* 壁纸上时间戳可读性兜底（外置时间没有气泡底衬） */
+.chat-zone.has-wallpaper.skin-ceramic .msg .time {
+  text-shadow: 0 0 4px rgba(255,255,255,0.8);
+}
+
+/* 有壁纸时的毛玻璃兜底要落在内层气泡上（main.css 那条落在 .msg.you 根上） */
+body.has-wallpaper .skin-ceramic .msg.you { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.has-wallpaper .skin-ceramic .msg.you .msg-bubble {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+
+/* ── 暖瓷细节：细滚动条 + thinking 限高滚动（回收自 chat-ds.css）── */
+.skin-ceramic .chat-messages { scrollbar-width: thin; }
+.skin-ceramic .chat-messages::-webkit-scrollbar { width: 4px; }
+.skin-ceramic .chat-messages::-webkit-scrollbar-thumb { background: rgba(45,45,45,0.05); border-radius: 10px; }
+.skin-ceramic .thinking-inline-body { max-height: 200px; overflow-y: auto; }
+
+/* 选择模式的勾选框在 you 侧要跟着内层气泡走 */
+body.selecting .skin-ceramic .msg.you .msg-bubble { position: relative; }
