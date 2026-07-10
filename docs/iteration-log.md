@@ -28,7 +28,7 @@
 
 ### 验证（本地静态服务器端到端，全过）
 
-①opus 挂樱、ds 零污染 ②header 随 zone 切换变色/回落 ③inline 残留被主题切换清除、脱主题回默认 ④DS 暖瓷页 `--ds-*` 桥接跟主题（ocean：bg/blue/orange 全翻译）、脱主题回原值 ⑤主题专区选卡→应用→持久化→暖瓷页同步 ⑥「+」→调参台定位 zone scope→调色→存卡→无缝接管→列表刷新。版本：main.css v34、themes.css/themes.js v1、chat-ds.js v41、SW ke-v26。**待 toge 实机验收**。
+①opus 挂樱、ds 零污染 ②header 随 zone 切换变色/回落 ③inline 残留被主题切换清除、脱主题回默认 ④DS 暖瓷页 `--ds-*` 桥接跟主题（ocean：bg/blue/orange 全翻译）、脱主题回原值 ⑤主题专区选卡→应用→持久化→暖瓷页同步 ⑥「+」→调参台定位 zone scope→调色→存卡→无缝接管→列表刷新。版本：main.css v34、themes.css/themes.js v1、chat-ds.js v41、SW ke-v26。
 
 ### 上线后 toge 实测踩出两个既有 bug（当天修复，commit `1312832`）
 
@@ -37,7 +37,7 @@ toge 玩主题时在模型间来回切（GLM→DS→GLM），报"卡住、主题
 1. **暖瓷页切非 DS 模型不揭幕**：`selectSidebarModel` 的 Non-DS 分支只 `activateZone`（作用在被盖住的 `#chat-page` 里）从不 `showPage("chat")`——页面永远停在暖瓷页。修：补 `closeSidebar()` + `currentPage !== "chat"` 时 `showPage("chat")`（showPage 内部本就有 chat-ds→chat 滑动转场+dsChatDestroy，直接调安全）。
 2. **DS 历史交叉污染**：DS 分支跳暖瓷页时不调 `activateZone("ds")`，refs/activeZoneKey 停在旧 zone；下次从暖瓷页切非 DS 模型时"保存旧模型历史"逻辑拿着**旧 zone 的 history** 写进 **DS 的 storage key**（`withtoge-chat-history-deepseek-v4-pro`，恰是暖瓷页硬编码读的 key，且暖瓷页无 HTTP 拉取兜底——等于旧 zone 消息覆盖 DS 本地历史）。修：DS 分支补 `activateZone("ds")` 同步 refs。toge 这次 GLM zone 若无历史则未实际污染（`history.length > 0` 才写）。
 
-复现验证（本地 mock MODEL_META 走完整三步序列）：切回 GLM 时 page=chat、zone=glm、主题=sakura、DS key 干净，全过。
+复现验证（本地 mock MODEL_META 走完整三步序列）：切回 GLM 时 page=chat、zone=glm、主题=sakura、DS key 干净，全过。**toge 当天实机验证通过——阶段 1 + 两个切模型修复一并验收 ✅**
 
 ## 2026-07-10 · DS Agent Loop MVP 上线：自建 loop 替换 Claude CLI（commit `8d3e5b1`→`0a34ba8`，已部署）
 
