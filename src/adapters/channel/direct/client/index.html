@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=33">
+<link rel="stylesheet" href="/css/main.css?v=34">
+<link rel="stylesheet" href="/css/themes.css?v=1">
 <link rel="stylesheet" href="/components/calendar/calendar.css?v=21">
 <link rel="stylesheet" href="/components/bubbletea/bubbletea.css?v=21">
 <link rel="stylesheet" href="/css/games.css?v=1">
@@ -409,6 +410,9 @@
       <div class="setting-hint">切换克背后的大模型，下次对话生效</div>
     </div>
     <div class="setting-row" style="text-align:center;margin-top:8px;">
+      <a href="#" id="settings-theme-link" style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:600;">&#127912; 打开主题 / 背景专区 →</a>
+    </div>
+    <div class="setting-row" style="text-align:center;margin-top:8px;">
       <a href="#" id="settings-worldbook-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#128214; 编辑世界书（人设）</a>
     </div>
     <div class="setting-row" style="text-align:center;margin-top:4px;">
@@ -437,6 +441,41 @@
   </div>
 </div>
 <button id="tweak-trigger" title="视觉调参台" style="display:none;">&#127912;</button>
+
+<!-- ═══ THEME ZONE PAGE ═══ -->
+<div id="theme-zone-page">
+  <header class="theme-header">
+    <button id="theme-back-btn" title="返回">&#8592;</button>
+    <h1 class="theme-title">主题 / 背景</h1>
+    <div class="zone-indicator" id="theme-zone-indicator">当前装扮：<span id="theme-zone-name">克</span></div>
+  </header>
+
+  <!-- 横滑卡片轮播 — 原生 CSS Scroll Snap -->
+  <main class="theme-carousel-container">
+    <div class="theme-track" id="theme-cards-track">
+      <!-- JS 动态渲染卡片 -->
+    </div>
+  </main>
+
+  <!-- 控制区：卡片化面板 + 独立应用按钮 -->
+  <div class="theme-panel-wrapper">
+    <footer class="theme-control-panel">
+      <div class="theme-slider-wrap">
+        <label for="theme-alpha-slider">壁纸遮罩浓度</label>
+        <div class="theme-slider-row">
+          <input type="range" id="theme-alpha-slider" min="0" max="100" value="75">
+          <span class="theme-slider-val" id="theme-alpha-val">75%</span>
+        </div>
+      </div>
+      <div class="theme-actions">
+        <button id="theme-gallery-btn" class="theme-btn theme-btn-secondary">从图库选择</button>
+        <button id="theme-reset-btn" class="theme-btn theme-btn-ghost">重置壁纸</button>
+      </div>
+      <input type="file" id="theme-wallpaper-file" accept="image/*" hidden>
+    </footer>
+    <button id="theme-apply-btn" class="theme-apply-main-btn">应用当前装扮</button>
+  </div>
+</div>
 
 <!-- ═══ WORLDBOOK PAGE ═══ -->
 <div id="worldbook-page">
@@ -952,6 +991,7 @@
   </div>
 </div>
 
+<script src="/js/themes.js?v=1"></script>
 <script>
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -1087,6 +1127,8 @@ function activateZone(key) {
   updateUnreadBadge();
   activeZoneKey = key;
   try { localStorage.setItem(ZONE_STORAGE_KEY, key); } catch {}
+  // 共享 header 的主题跟活跃 zone 走（themes.css 依赖这个同步不变量）
+  if (typeof window.syncPageTheme === "function") window.syncPageTheme(key);
   // Reset streaming state (chunkBuf is per-model, keep it across zone switches)
   streamingMsgEl = null; streamingText = "";
   // Exit select mode if active
@@ -1100,6 +1142,10 @@ function getSavedZoneKey() {
   return "ds";
 }
 initZones();
+// 主题：先注入自定义主题规则，再给各 zone 挂 data-theme（activateZone 会同步 header）
+if (typeof window.injectCustomThemeStyles === "function") window.injectCustomThemeStyles();
+if (typeof window.applyAllZoneThemes === "function") window.applyAllZoneThemes();
+if (typeof window.applyWallpaperAlpha === "function") window.applyWallpaperAlpha(window.loadWallpaperAlpha());
 activateZone(getSavedZoneKey());
 
 var ws = null;
@@ -1149,6 +1195,10 @@ function showPage(page) {
   if (page === "camera") initCamera();
   mcpPage.classList.toggle("show", page === "mcp");
   if (page === "mcp") initMcpPlayroom();
+  // 主题专区（getElementById 直取——本函数会在专区 JS 声明前被启动路径调用）
+  var tzPage = document.getElementById("theme-zone-page");
+  if (tzPage) tzPage.classList.toggle("show", page === "theme-zone");
+  if (page === "theme-zone" && typeof window.openThemeZone === "function") window.openThemeZone(prevPage);
   if (page === "bubbletea" && window._componentRegistry) {
     window._componentRegistry.switchTo("bubbletea");
   } else {
@@ -2002,6 +2052,209 @@ document.getElementById("settings-worldbook-link").addEventListener("click", (e)
   e.preventDefault();
   document.getElementById("settings-overlay").classList.remove("show");
   showPage("worldbook");
+});
+
+/* ═══ 主题专区页面 ═══ */
+// 装扮的目标 zone 在进入时锁定（themeZoneZoneKey），期间所有操作都作用于它；
+// 从暖瓷 DS 页进来 → 锁 ds，从主聊天页进来 → 锁当前活跃 zone。
+document.getElementById("settings-theme-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("settings-overlay").classList.remove("show");
+  showPage("theme-zone");
+});
+
+var themeCardsTrack = document.getElementById("theme-cards-track");
+var themeAlphaSlider = document.getElementById("theme-alpha-slider");
+var themeAlphaVal = document.getElementById("theme-alpha-val");
+var themeZoneNameEl = document.getElementById("theme-zone-name");
+
+var themeZoneZoneKey = "ds";      // 本次装扮的目标 zone
+var themeZoneReturnPage = "chat"; // 返回键去处
+var draftThemeId = null;          // 草稿态：聚焦但未应用的主题
+var cardObserver = null;
+
+function openThemeZone(fromPage) {
+  themeZoneReturnPage = (fromPage === "chat-ds") ? "chat-ds" : "chat";
+  themeZoneZoneKey = (fromPage === "chat-ds") ? "ds"
+    : ((typeof activeZoneKey !== "undefined" && activeZoneKey) ? activeZoneKey : "ds");
+  if (themeZoneNameEl) {
+    var zoneName = themeZoneZoneKey;
+    try {
+      var meta = Object.values(MODEL_META || {}).find(m => m.key === themeZoneZoneKey);
+      if (meta && meta.name) zoneName = meta.name;
+    } catch {}
+    themeZoneNameEl.textContent = zoneName;
+  }
+  var alpha = window.loadWallpaperAlpha();
+  if (themeAlphaSlider) themeAlphaSlider.value = Math.round(alpha * 100);
+  if (themeAlphaVal) themeAlphaVal.textContent = Math.round(alpha * 100) + "%";
+  renderThemeCards();
+}
+window.openThemeZone = openThemeZone;
+
+function renderThemeCards() {
+  if (!themeCardsTrack) return;
+  var activeTheme = window.loadZoneTheme(themeZoneZoneKey);
+  draftThemeId = activeTheme;
+  var allThemes = (window.THEME_REGISTRY || []).concat(window.loadCustomThemes());
+
+  var html = "";
+  for (var i = 0; i < allThemes.length; i++) {
+    var t = allThemes[i];
+    var isActive = t.id === activeTheme;
+    var isCustom = /^custom-/.test(t.id);
+    html += '<div class="theme-card-item' + (isActive ? ' is-active is-focused' : '') + '" data-theme-id="' + t.id + '">';
+    html += '<div class="theme-card-preview" style="background:' + ((t.preview && t.preview.bg) ? t.preview.bg : '#fafaf9') + ';">';
+    if (isActive) html += '<span class="theme-card-check">✓</span>';
+    if (isCustom) html += '<button class="theme-card-delete" data-theme-id="' + t.id + '">✕</button>';
+    html += '</div>';
+    html += '<span class="theme-card-name">' + t.name + '</span>';
+    html += '</div>';
+  }
+  html += '<div class="theme-card-item theme-card-add" id="theme-add-card">';
+  html += '<div class="theme-card-preview"><span class="add-icon">+</span></div>';
+  html += '<span class="theme-card-name">添加</span>';
+  html += '</div>';
+
+  themeCardsTrack.innerHTML = html;
+  initThemeZoneEvents();
+  setupCardObserver();
+  setTimeout(function() {
+    var active = themeCardsTrack.querySelector(".theme-card-item.is-active");
+    if (active) active.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+  }, 50);
+}
+
+// IntersectionObserver 做中心聚焦（零 scroll 监听回流）
+function setupCardObserver() {
+  if (cardObserver) cardObserver.disconnect();
+  var container = themeCardsTrack.parentElement;
+  cardObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var card = entry.target;
+      if (card.classList.contains("theme-card-add")) return;
+      themeCardsTrack.querySelectorAll(".theme-card-item").forEach(function(c) { c.classList.remove("is-focused"); });
+      card.classList.add("is-focused");
+      draftThemeId = card.dataset.themeId;
+    });
+  }, { root: container, threshold: 0.6 });
+  themeCardsTrack.querySelectorAll(".theme-card-item:not(.theme-card-add)").forEach(function(c) { cardObserver.observe(c); });
+}
+
+function initThemeZoneEvents() {
+  themeCardsTrack.querySelectorAll(".theme-card-item:not(.theme-card-add)").forEach(function(card) {
+    card.addEventListener("click", function() {
+      card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+  });
+  var addCard = document.getElementById("theme-add-card");
+  if (addCard) addCard.addEventListener("click", openTweakFromTheme);
+  themeCardsTrack.querySelectorAll(".theme-card-delete").forEach(function(btn) {
+    btn.addEventListener("click", function(e) { e.stopPropagation(); deleteCustomTheme(btn.dataset.themeId); });
+  });
+}
+
+// 应用 = 草稿态落地（data-theme + localStorage；tweak 分桶由 applyZoneTheme 钩子处理）
+document.getElementById("theme-apply-btn").addEventListener("click", function() {
+  if (draftThemeId === null) return;
+  window.saveZoneTheme(themeZoneZoneKey, draftThemeId);
+  window.applyZoneTheme(themeZoneZoneKey, draftThemeId);
+  themeCardsTrack.querySelectorAll(".theme-card-item:not(.theme-card-add)").forEach(function(c) {
+    var on = c.dataset.themeId === draftThemeId;
+    c.classList.toggle("is-active", on);
+    var check = c.querySelector(".theme-card-check");
+    if (on && !check) {
+      var span = document.createElement("span");
+      span.className = "theme-card-check";
+      span.textContent = "✓";
+      c.querySelector(".theme-card-preview").appendChild(span);
+    } else if (!on && check) {
+      check.remove();
+    }
+  });
+  showToast("装扮已应用 ✨");
+});
+
+function deleteCustomTheme(themeId) {
+  if (!confirm("删除这张主题卡片？")) return;
+  var list = window.loadCustomThemes().filter(function(t) { return t.id !== themeId; });
+  window.saveCustomThemes(list);
+  // 有 zone 正在穿这套的，脱下换回默认
+  ZONE_KEYS.forEach(function(k) {
+    if (window.loadZoneTheme(k) === themeId) {
+      window.saveZoneTheme(k, "");
+      window.applyZoneTheme(k, "");
+    }
+  });
+  if (draftThemeId === themeId) draftThemeId = "";
+  renderThemeCards();
+  showToast("已删除");
+}
+
+// 壁纸遮罩浓度（全局一个值；同步 tweak 面板内存防两处显示打架）
+if (themeAlphaSlider) {
+  themeAlphaSlider.addEventListener("input", function() {
+    var alpha = parseInt(this.value, 10) / 100;
+    if (themeAlphaVal) themeAlphaVal.textContent = this.value + "%";
+    window.saveWallpaperAlpha(alpha);
+    window.applyWallpaperAlpha(alpha);
+    if (typeof window._tweakSyncToken === "function") window._tweakSyncToken("global", "--wallpaper-overlay-alpha", alpha);
+  });
+}
+
+// 从图库选择壁纸（目标 = 锁定的 zone）
+document.getElementById("theme-gallery-btn").addEventListener("click", function() {
+  document.getElementById("theme-wallpaper-file").click();
+});
+document.getElementById("theme-wallpaper-file").addEventListener("change", function() {
+  var file = this.files && this.files[0];
+  var input = this;
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    var wps = normalizeWallpaper(settings.wallpaper);
+    wps[themeZoneZoneKey] = reader.result;
+    settings.wallpaper = wps;
+    saveSettings(settings);
+    applySettings(settings);
+    showToast("壁纸已更新");
+    input.value = "";
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("theme-reset-btn").addEventListener("click", function() {
+  var wps = normalizeWallpaper(settings.wallpaper);
+  wps[themeZoneZoneKey] = "";
+  settings.wallpaper = wps;
+  saveSettings(settings);
+  applySettings(settings);
+  showToast("壁纸已重置");
+});
+
+// 「+ 添加」→ 打开调参台并定位到该 zone 的 scope，调完「存为主题卡片」收进列表
+function openTweakFromTheme() {
+  var addCard = document.getElementById("theme-add-card");
+  if (addCard) {
+    addCard.style.transition = "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)";
+    addCard.style.transform = "scale(1.15)";
+    setTimeout(function() { addCard.style.transform = ""; }, 300);
+  }
+  if (typeof window._tweakOpen === "function") window._tweakOpen("zone-" + themeZoneZoneKey);
+}
+
+document.getElementById("theme-back-btn").addEventListener("click", function() {
+  showPage(themeZoneReturnPage || "chat");
+});
+
+// 调参台关闭时主题专区还开着 → 刷新卡片列表（「存为主题卡片」的新卡要出现）
+["tweak-done", "tweak-close"].forEach(function(id) {
+  var btn = document.getElementById(id);
+  if (btn) btn.addEventListener("click", function() {
+    var tz = document.getElementById("theme-zone-page");
+    if (tz && tz.classList.contains("show")) renderThemeCards();
+  });
 });
 document.getElementById("wb-back-btn").addEventListener("click", () => showPage("chat"));
 document.getElementById("gift-back-btn").addEventListener("click", () => showPage("chat"));
@@ -3202,7 +3455,7 @@ window.updateKe = function () {
 <script src="/js/tweak.js"></script>
 <script src="/components/bubbletea/bubbletea.js"></script>
 <script src="/js/games.js"></script>
-<script src="/js/chat-ds.js?v=40"></script>
+<script src="/js/chat-ds.js?v=41"></script>
 <script src="/js/conversation-memory.js"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->

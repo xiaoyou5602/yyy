@@ -440,6 +440,7 @@
       // Header buttons (only once, guarded by _dsInited)
     var menuBtn = document.getElementById("ds-menu-btn");
     var settingsBtn = document.getElementById("ds-settings-btn");
+    var searchBtn = document.getElementById("ds-search-btn");
     if (menuBtn) menuBtn.addEventListener("click", function() { if (typeof toggleSidebar === "function") toggleSidebar(); });
     // DS 页设置按钮 → 打开真正的设置面板（不是侧栏）
     if (settingsBtn) settingsBtn.addEventListener("click", function() {

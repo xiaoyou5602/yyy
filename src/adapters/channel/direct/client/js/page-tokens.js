@@ -1,13 +1,15 @@
 /* ── Page Token Registry ── */
 // Each page gets its own scope. Tokens defined here are the defaults;
 // the tweak panel binds them to page containers, not :root.
+// 双向对齐铁律：注册表里每个 token 必须有真实 CSS 消费者（var() 引用），
+// 每个 zone 用户可见的外观值必须有对应 token。加 token 前先接好消费端。
 window._pageTokens = {
 
   global: {
     label: '全局',
     selector: null,  // null = document.documentElement
     tokens: [
-      // 色彩
+      // 色彩（全站共享设计系统）
       { key:'--bg',              label:'背景色',      section:'色彩', type:'color' },
       { key:'--surface',         label:'卡片底色',    section:'色彩', type:'color' },
       { key:'--text',            label:'正文色',      section:'色彩', type:'color' },
@@ -17,47 +19,26 @@ window._pageTokens = {
       { key:'--accent-soft',     label:'主题浅底',    section:'色彩', type:'color' },
       { key:'--accent-cool',     label:'冷调强调',    section:'色彩', type:'color' },
       { key:'--accent-cool-soft',label:'冷调浅底',    section:'色彩', type:'color' },
-      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
-      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
-      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
-      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
       { key:'--border',          label:'边框色',      section:'色彩', type:'color' },
       { key:'--border-soft',     label:'浅边框',      section:'色彩', type:'color' },
-      // 圆角
+      { key:'--status-on-color', label:'在线状态色',  section:'色彩', type:'color' },
+      // 圆角（全站共享）
       { key:'--radius-xs', label:'小圆角',   section:'圆角', type:'range', min:2, max:18, step:1, unit:'px' },
       { key:'--radius-sm', label:'中小圆角', section:'圆角', type:'range', min:4, max:26, step:1, unit:'px' },
       { key:'--radius',    label:'默认圆角', section:'圆角', type:'range', min:6, max:36, step:1, unit:'px' },
       { key:'--radius-lg', label:'大圆角',   section:'圆角', type:'range', min:8, max:48, step:1, unit:'px' },
-      // 间距
-      { key:'--msg-gap',       label:'消息间距',   section:'间距', type:'range', min:2, max:28, step:1, unit:'px' },
-      { key:'--msg-padding-x', label:'消息内边距', section:'间距', type:'range', min:6, max:28, step:1, unit:'px' },
+      // 布局（全站共享）
+      { key:'--body-max-w',    label:'页面最大宽', section:'间距', type:'range', min:400, max:900, step:10, unit:'px' },
       { key:'--header-pt',     label:'头部上距',   section:'间距', type:'range', min:4, max:28, step:1, unit:'px' },
       { key:'--header-pb',     label:'头部下距',   section:'间距', type:'range', min:4, max:28, step:1, unit:'px' },
-      { key:'--body-max-w',    label:'页面最大宽', section:'间距', type:'range', min:400, max:900, step:10, unit:'px' },
-      { key:'--input-min-h',   label:'输入栏高度', section:'间距', type:'range', min:34, max:60, step:1, unit:'px' },
-      { key:'--send-btn-size', label:'发送按钮',   section:'间距', type:'range', min:32, max:56, step:1, unit:'px' },
-      { key:'--pet-size',      label:'小螃蟹大小', section:'间距', type:'range', min:32, max:80, step:2, unit:'px' },
-      { key:'--bubble-max-w',  label:'气泡最大宽', section:'间距', type:'range', min:60, max:95, step:1, unit:'%' },
-      { key:'--footer-pb',     label:'底部安全距', section:'间距', type:'range', min:0, max:24, step:1, unit:'px' },
-      // 字体
+      // 字体（全站共享）
       { key:'--font-body-size', label:'正文字号', section:'字体', type:'range', min:12, max:19, step:0.5, unit:'px' },
-      { key:'--msg-font-size',  label:'消息字号', section:'字体', type:'range', min:13, max:18, step:0.5, unit:'px' },
-      { key:'--h1-font-size',   label:'标题字号', section:'字体', type:'range', min:14, max:26, step:0.5, unit:'px' },
+      // 壁纸
+      { key:'--wallpaper-overlay-alpha', label:'壁纸遮罩浓度', section:'壁纸', type:'range', min:0, max:1, step:0.05, unit:'', default:0.75 },
     ]
   },
 
-  // ── 聊天页 ──
-  chat: {
-    label: '聊天',
-    selector: '#chat-page',
-    tokens: [
-      { key:'--chat-bg', label:'页面背景', section:'页面', type:'color', default:'#fafaf9' },
-      { key:'--header-bg', label:'头部底色', section:'头部', type:'color', default:'transparent' },
-      { key:'--footer-bg', label:'底部栏底色', section:'底部栏', type:'color', default:'transparent' },
-    ]
-  },
-
-  // ── DS 聊天页 ──
+  // ── DS 暖瓷独立页（--ds-* 专属体系；切主题时由 themes.css 桥接接管）──
   'chat-ds': {
     label: 'DS聊天',
     selector: '#chat-ds-page',
@@ -259,3 +240,49 @@ window._pageTokens = {
   }
 
 };
+
+/* ── 聊天 zone scope（per-zone，token 落在 #chat-zone-{key} 容器上）──
+   注意：不存在「聊天共享」scope——#chat-page 不是任何 token 的落点，
+   调参写到父容器会漏到全部 zone（07-10 回退的根因 1），别再加回去。
+   scope id 用 zone- 前缀，chat-ds 这个名字已被暖瓷独立页占用。 */
+(function() {
+  var ZONE_DEFS = [
+    { key: 'ds',       label: 'DS区' },
+    { key: 'opus',     label: 'Opus区' },
+    { key: 'haiku',    label: 'Haiku区' },
+    { key: 'glm',      label: 'GLM区' },
+    { key: 'openclaw', label: '米米子区' },
+  ];
+  // 与 themes.css 主题变量包同一批 key——调参台调的和主题包供的是同一组变量
+  function zoneTokens() {
+    return [
+      { key:'--zone-bg',         label:'聊天背景',    section:'页面', type:'color' },
+      { key:'--bubble-you',      label:'你的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-you-text', label:'你的字色',    section:'气泡', type:'color' },
+      { key:'--bubble-ke',       label:'克的气泡',    section:'气泡', type:'color' },
+      { key:'--bubble-ke-text',  label:'克的字色',    section:'气泡', type:'color' },
+      { key:'--msg-gap',         label:'消息间距',   section:'间距', type:'range', min:2, max:28, step:1, unit:'px' },
+      { key:'--msg-padding-x',   label:'消息区左右距', section:'间距', type:'range', min:6, max:28, step:1, unit:'px' },
+      { key:'--bubble-max-w',    label:'气泡最大宽', section:'间距', type:'range', min:60, max:95, step:1, unit:'%' },
+      { key:'--footer-pb',       label:'底部安全距', section:'间距', type:'range', min:0, max:24, step:1, unit:'px' },
+      { key:'--msg-font-size',   label:'消息字号',   section:'字体', type:'range', min:13, max:18, step:0.5, unit:'px' },
+      { key:'--input-bg',          label:'输入区底色', section:'输入区', type:'color' },
+      { key:'--input-border',      label:'输入区边框', section:'输入区', type:'color' },
+      { key:'--input-focus-color', label:'输入聚焦色', section:'输入区', type:'color' },
+      { key:'--send-btn-bg',        label:'发送钮底色', section:'发送', type:'color' },
+      { key:'--send-btn-color',     label:'发送钮图标', section:'发送', type:'color' },
+      { key:'--send-btn-active-bg', label:'发送钮按下', section:'发送', type:'color' },
+      { key:'--footer-bg',         label:'底部栏底色', section:'底部栏', type:'color' },
+      { key:'--placeholder-color', label:'占位文字色', section:'其他', type:'color' },
+      { key:'--chat-empty-color',  label:'空态提示色', section:'其他', type:'color' },
+    ];
+  }
+  ZONE_DEFS.forEach(function(z) {
+    window._pageTokens['zone-' + z.key] = {
+      label: z.label,
+      selector: '#chat-zone-' + z.key,
+      zoneKey: z.key,   // tweak.js 靠这个字段识别 zone scope → 主题分桶
+      tokens: zoneTokens()
+    };
+  });
+})();

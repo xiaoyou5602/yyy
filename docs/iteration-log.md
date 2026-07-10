@@ -3,6 +3,33 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-10 · 皮肤架构阶段 1 二次实现：修三根因重做主题系统（Fable 接手）
+
+### 背景
+
+首次实现（07-07 `34f890c` 链）07-10 凌晨被 toge 回退（`740c89b`→`86efbd7`→`9268e44`）：主题切换牵连其他 zone。回退时在 [plans/zone-skin-architecture.md](plans/zone-skin-architecture.md) 顶部记了三架构问题，Fable 接手对根因逐条重做，**不是 revert 回来改改**——现 HEAD 上已有阶段 1 之后的新功能（会话记忆 Context Reading Panel 等），旧代码只作参考，全部在现 HEAD 重新拼接。
+
+### 三根因 → 三修正
+
+1. **调参台 scope 绑错父容器**（`chat` scope 落 `#chat-page`，调 token 漏全 zone）→ 共享 scope 删除，5 个 `zone-*` scope 工厂生成、直绑 `#chat-zone-*`；「全局」瘦身只留全站设计 token。顺手消灭一批死变量（`--chat-bg` 挂在 `#chat-page` 上但消费者在平级页面、`--msg-gap`/`--header-pt/pb`/`--send-btn-size` 等零消费——有主题价值的接活消费端并把 `:root` 值对齐原硬编码保零变化，没价值的删注册表）。
+2. **tweak inline style 碾压主题 CSS**（调过参主题就失效）→ 持久化按 (scope×主题) 分桶 `{scope:{bucket:{key:val}}}` + 旧格式一次性迁移；`applyZoneTheme` 经 `_tweakReapplyZone` 钩子清 inline → 重算 defaults（computed 跟主题变）→ 应用新桶。inline 语义从「永久覆盖」变「当前主题的微调补丁」。「重置」也改为清 inline 回 CSS 本色而非把默认值写回 inline。
+3. **DS 暖瓷页变量体系游离**（`--ds-*` 不吃主题变量，`#chat-ds-page` 无 chat-zone class 选择器匹配不到）→ 纯 CSS 桥接：主题块选择器三落点（`.chat-zone[data-theme]` / `#chat-page[data-theme]` / `#chat-ds-page[data-theme]`），桥接规则 `#chat-ds-page[data-theme] { --ds-bg: var(--zone-bg,…) … }` 以 (1,1,0) 压过原 (1,0,0) 定义；无主题不带属性零变化。不碰 chat-ds.js 一行 JS（引擎稳定告诫仍有效）。header 是五 zone 共享的，跟活跃 zone 走：`activateZone` 同步 data-theme 到 `#chat-page`（合并选择器安全性的不变量）。
+
+### 关键决策
+
+- **自定义主题走 `<style>` 注入**而非 inline：调参台「存为主题卡片」把 19 个 token 全量快照成 `{id,name,vars}`，`injectCustomThemeStyles` 生成与内置主题完全同机制的规则。存卡后 zone 直接切新主题——inline 被清、注入规则接管，视觉零跳变。这补全了旧实现「+ 添加」打开调参台却没有出口的死胡同。
+- **主题专区 UI 大体复用旧 v4**（toge 用过、后续诉求是视觉优化不是功能）：CSS Scroll Snap 轮播 + IntersectionObserver 聚焦 + 草稿/应用态分离。改进：zone 进入时锁定（`themeZoneZoneKey`，暖瓷页进来锁 ds）、返回键记来源页、删自定义卡带确认框并给正在穿的 zone 脱下、壁纸浓度滑条与调参台内存互同步（`_tweakSyncToken`）。
+- 旧版 `showPage` 引用两千行外声明的 `themeZonePage` 变量（启动路径 last-page=chat-ds 时 TypeError 隐患）→ 新版 `getElementById` 直取。
+
+### 踩坑与顺手修
+
+- **revert 遗留活 bug**：`86efbd7` 把 chat-ds.js 的 `var searchBtn` 声明带走了，但 `if (searchBtn)` 引用还在——`dsChatInit` 必抛 ReferenceError，后面 thinking 折叠点击绑定全跳过（09268e44 补 `openSettingsPanel` 时漏了这个）。已补声明，chat-ds.js v40→v41。
+- 死变量接活时值必须对齐消费端原硬编码而不是 `:root` 旧值（`--msg-gap` :root 写 6px 但 `.chat-messages` gap 实际 16px、`--send-btn-size` 40px vs 实际 36px）——照抄 :root 会悄悄改版面。
+
+### 验证（本地静态服务器端到端，全过）
+
+①opus 挂樱、ds 零污染 ②header 随 zone 切换变色/回落 ③inline 残留被主题切换清除、脱主题回默认 ④DS 暖瓷页 `--ds-*` 桥接跟主题（ocean：bg/blue/orange 全翻译）、脱主题回原值 ⑤主题专区选卡→应用→持久化→暖瓷页同步 ⑥「+」→调参台定位 zone scope→调色→存卡→无缝接管→列表刷新。版本：main.css v34、themes.css/themes.js v1、chat-ds.js v41、SW ke-v26。**待 toge 实机验收**。
+
 ## 2026-07-10 · DS Agent Loop MVP 上线：自建 loop 替换 Claude CLI（commit `8d3e5b1`→`0a34ba8`，已部署）
 
 ### 背景与为什么

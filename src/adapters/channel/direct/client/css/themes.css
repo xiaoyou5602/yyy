@@ -1,0 +1,172 @@
+/* ═══ Themes — 聊天 zone 主题系统 ═══ */
+/* 一个主题 = 一段 CSS 变量覆盖。选择器三落点：                              */
+/*   .chat-zone[data-theme]    zone 容器（气泡/输入栏/背景，互不影响的核心） */
+/*   #chat-page[data-theme]    共享 header + 页面底色（跟活跃 zone 同步，    */
+/*                             由 activateZone/applyZoneTheme 维护这个不变量）*/
+/*   #chat-ds-page[data-theme] DS 暖瓷独立页（变量经下方桥接翻译成 --ds-*）  */
+/*                                                                          */
+/* 切换：applyZoneTheme(key, id)（themes.js）；持久化 withtoge-theme-{key}  */
+/* 默认暖瓷 = 不带 data-theme = main.css 既定外观，零覆盖                    */
+
+/* ── DS 暖瓷页桥接：有主题时把通用变量翻译成 --ds-* ── */
+/* specificity (1,1,0) 压过 chat-ds.css 里 #chat-ds-page (1,0,0) 的原始定义；*/
+/* 无主题时不带 data-theme 属性，本规则不匹配，DS 页保持原暖瓷外观零变化      */
+#chat-ds-page[data-theme] {
+  --ds-bg: var(--zone-bg, #f0f0eb);
+  --ds-bg-light: var(--bg-light, #fafaf7);
+  --ds-blue: var(--accent, #5989b9);
+  --ds-orange: var(--accent-warm, #cc7b5c);
+  --ds-slate: var(--text, #2d2d2d);
+  --ds-text-muted: var(--text-muted, rgba(45,45,45,0.45));
+  --ds-border: var(--border, rgba(45,45,45,0.06));
+}
+
+/* ── 樱 Sakura ── */
+.chat-zone[data-theme="sakura"], #chat-page[data-theme="sakura"], #chat-ds-page[data-theme="sakura"] {
+  --zone-bg: #faf5f7;
+  --bg: #faf5f7;
+  --bg-light: #fef9fb;
+  --surface: #fff;
+  --accent: #e8a0b4;
+  --accent-soft: rgba(232,160,180,0.08);
+  --accent-warm: #d48598;
+  --bubble-you: #ffe3ec;
+  --bubble-you-text: #5c3a45;
+  --bubble-you-border: rgba(232,160,180,0.15);
+  --bubble-ke: #fff5f7;
+  --bubble-ke-text: #5c3a45;
+  --bubble-ke-border: rgba(232,160,180,0.12);
+  --radius: 20px;
+  --msg-gap: 10px;
+  --send-btn-bg: #e8a0b4;
+  --send-btn-color: #fff;
+  --send-btn-active-bg: #d48598;
+  --send-btn-shadow: 0 2px 8px rgba(232,160,180,0.2);
+  --input-bg: #fff5f7;
+  --input-border: rgba(232,160,180,0.15);
+  --input-focus-color: #e8a0b4;
+  --input-focus-ring: rgba(232,160,180,0.15);
+  --footer-bg: #fff5f7;
+  --footer-border: rgba(232,160,180,0.1);
+  --placeholder-color: rgba(232,160,180,0.5);
+  --image-btn-color: rgba(232,160,180,0.4);
+  --chat-empty-color: #e8c4d0;
+  --model-header-bg: #fef9fb;
+  --model-header-border: rgba(232,160,180,0.1);
+  --model-accent: #e8a0b4;
+}
+
+/* ── 午夜 Midnight ── */
+.chat-zone[data-theme="midnight"], #chat-page[data-theme="midnight"], #chat-ds-page[data-theme="midnight"] {
+  --zone-bg: #1a1d28;
+  --bg: #1a1d28;
+  --bg-light: #1e2430;
+  --surface: #242a38;
+  --text: #d0d8e8;
+  --text-muted: rgba(200,210,230,0.45);
+  --text-subtle: rgba(200,210,230,0.3);
+  --border: rgba(120,150,220,0.1);
+  --border-soft: rgba(120,150,220,0.06);
+  --accent: #7b9cd8;
+  --accent-soft: rgba(120,150,220,0.1);
+  --accent-warm: #c88a6a;
+  --bubble-you: rgba(120,150,220,0.15);
+  --bubble-you-text: #c8d8f0;
+  --bubble-you-border: rgba(120,150,220,0.15);
+  --bubble-ke: #1e2430;
+  --bubble-ke-text: #c8d8f0;
+  --bubble-ke-border: rgba(120,150,220,0.1);
+  --radius: 14px;
+  --msg-gap: 8px;
+  --send-btn-bg: #7b9cd8;
+  --send-btn-color: #1a1d28;
+  --send-btn-active-bg: #5f82c0;
+  --send-btn-shadow: 0 2px 8px rgba(120,150,220,0.2);
+  --input-bg: #1e2430;
+  --input-border: rgba(120,150,220,0.12);
+  --input-focus-color: #7b9cd8;
+  --input-focus-ring: rgba(120,150,220,0.15);
+  --footer-bg: #1a1d28;
+  --footer-border: rgba(120,150,220,0.08);
+  --placeholder-color: rgba(180,200,230,0.35);
+  --image-btn-color: rgba(180,200,230,0.3);
+  --chat-empty-color: #3a4050;
+  --model-header-bg: #1e2430;
+  --model-header-border: rgba(120,150,220,0.08);
+  --model-accent: #7b9cd8;
+}
+/* 深色主题下 main.css 硬编码的浅色前景补丁 */
+.chat-zone[data-theme="midnight"] .msg .time { color: rgba(200,210,230,0.35); }
+.chat-zone[data-theme="midnight"] .msg.ke .time { color: rgba(200,210,230,0.35); }
+#chat-page[data-theme="midnight"] .icon-btn { color: rgba(200,210,230,0.55); }
+#chat-page[data-theme="midnight"] .icon-btn:active { background-color: rgba(200,210,230,0.08); }
+
+/* ── 海洋 Ocean ── */
+.chat-zone[data-theme="ocean"], #chat-page[data-theme="ocean"], #chat-ds-page[data-theme="ocean"] {
+  --zone-bg: #e8f2f6;
+  --bg: #e8f2f6;
+  --bg-light: #f0f7fa;
+  --surface: #fff;
+  --accent: #4696b4;
+  --accent-soft: rgba(70,150,180,0.06);
+  --accent-warm: #c98a5e;
+  --bubble-you: rgba(70,150,180,0.08);
+  --bubble-you-text: #1a3a4a;
+  --bubble-you-border: rgba(70,150,180,0.12);
+  --bubble-ke: #f0f7fa;
+  --bubble-ke-text: #1a3a4a;
+  --bubble-ke-border: rgba(70,150,180,0.08);
+  --radius: 18px;
+  --msg-gap: 8px;
+  --send-btn-bg: #4696b4;
+  --send-btn-color: #fff;
+  --send-btn-active-bg: #357a94;
+  --send-btn-shadow: 0 2px 8px rgba(70,150,180,0.2);
+  --input-bg: #f0f7fa;
+  --input-border: rgba(70,150,180,0.12);
+  --input-focus-color: #4696b4;
+  --input-focus-ring: rgba(70,150,180,0.12);
+  --footer-bg: #f0f7fa;
+  --footer-border: rgba(70,150,180,0.08);
+  --placeholder-color: rgba(70,150,180,0.45);
+  --image-btn-color: rgba(70,150,180,0.3);
+  --chat-empty-color: #b0d4e0;
+  --model-header-bg: #f0f7fa;
+  --model-header-border: rgba(70,150,180,0.08);
+  --model-accent: #4696b4;
+}
+
+/* ── 森林 Forest ── */
+.chat-zone[data-theme="forest"], #chat-page[data-theme="forest"], #chat-ds-page[data-theme="forest"] {
+  --zone-bg: #eaf5ed;
+  --bg: #eaf5ed;
+  --bg-light: #f5faf6;
+  --surface: #fff;
+  --accent: #5a9a6a;
+  --accent-soft: rgba(90,154,106,0.06);
+  --accent-warm: #b98a5a;
+  --bubble-you: rgba(100,160,120,0.08);
+  --bubble-you-text: #1a3a2a;
+  --bubble-you-border: rgba(90,154,106,0.12);
+  --bubble-ke: #f5faf6;
+  --bubble-ke-text: #1a3a2a;
+  --bubble-ke-border: rgba(90,154,106,0.08);
+  --radius: 16px;
+  --msg-gap: 7px;
+  --send-btn-bg: #5a9a6a;
+  --send-btn-color: #fff;
+  --send-btn-active-bg: #4a8058;
+  --send-btn-shadow: 0 2px 8px rgba(90,154,106,0.2);
+  --input-bg: #f0f5f1;
+  --input-border: rgba(90,154,106,0.12);
+  --input-focus-color: #5a9a6a;
+  --input-focus-ring: rgba(90,154,106,0.12);
+  --footer-bg: #f5faf6;
+  --footer-border: rgba(90,154,106,0.08);
+  --placeholder-color: rgba(90,154,106,0.45);
+  --image-btn-color: rgba(90,154,106,0.3);
+  --chat-empty-color: #b8d4be;
+  --model-header-bg: #f5faf6;
+  --model-header-border: rgba(90,154,106,0.08);
+  --model-accent: #5a9a6a;
+}
