@@ -992,6 +992,7 @@
 </div>
 
 <script src="/js/themes.js?v=1"></script>
+<script src="/js/skins.js?v=1"></script>
 <script>
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -1084,6 +1085,7 @@ function initZones() {
       inputText:    "",
       historyLoaded: false,
       unreadCount:  0,
+      skin:         "default",   // 渲染皮肤（阶段2：查表转发，见 js/skins.js）
     };
   }
 }
@@ -2630,25 +2632,19 @@ function saveHistory(h) { try { localStorage.setItem(getStorageKey(), JSON.strin
 initHistory();
 
 let _msgIdx = 0;
+// 当前活跃 zone 的皮肤（阶段2起 DOM 生成全在皮肤里，引擎只管插入/滚动/history/id）
+function _getSkin() {
+  const key = (typeof activeZoneKey !== "undefined" && activeZoneKey) ? activeZoneKey : "ds";
+  const name = (zones[key] && zones[key].skin) || "default";
+  return (window._skins && (window._skins[name] || window._skins["default"])) || null;
+}
+
 function renderMsg(msg, save = true) {
   // Completed COT entries (written by the chat-ds page and by the server's
   // /api/messages) render as a static collapsible thinking block, not a bubble
   if (msg.from === "thinking") {
-    const div = document.createElement("div");
-    div.className = "msg ke";
+    const div = _getSkin().renderMessage(msg);
     div.setAttribute("data-msg-id", msg.globalId || msg.id || `msg-${Date.now()}-${_msgIdx++}`);
-    const inline = document.createElement("div");
-    inline.className = "thinking-inline";
-    if (msg.turnId) inline.dataset.turnId = msg.turnId;
-    inline.innerHTML = '<div class="thinking-row">'
-      + '<div class="thinking-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>'
-      + '<div class="thinking-inline-header"><span class="thinking-inline-arrow">▼</span> <span class="thinking-inline-label">已思考完毕</span></div>'
-      + '</div>';
-    const body = document.createElement("div");
-    body.className = "thinking-inline-body";
-    body.textContent = msg.text || "";
-    inline.appendChild(body);
-    div.appendChild(inline);
     messagesEl.appendChild(div);
     followScroll();
     if (save) { history.push(msg); saveHistory(history); }
@@ -2657,6 +2653,7 @@ function renderMsg(msg, save = true) {
   // A ke entry carrying a chunks array is one logical message rendered as
   // multiple bubbles (拆分). Storage keeps the single entry; the split is
   // purely a render-time effect, so refresh and live views stay identical.
+  // 拆分是引擎策略——皮肤永远只收单条消息。
   if (msg.from !== "you" && Array.isArray(msg.chunks) && msg.chunks.length > 1) {
     let firstDiv = null;
     for (let ci = 0; ci < msg.chunks.length; ci++) {
@@ -2669,37 +2666,14 @@ function renderMsg(msg, save = true) {
     if (save) { history.push(msg); saveHistory(history); }
     return firstDiv;
   }
-  const div = document.createElement("div");
-  div.className = `msg ${msg.from === "you" ? "you" : "ke"}`;
+  const div = _getSkin().renderMessage(msg);
   const msgId = msg.globalId || msg.id || `msg-${Date.now()}-${_msgIdx++}-${Math.random().toString(36).slice(2,6)}`;
   div.setAttribute("data-msg-id", msgId);
   if (!msg.id) msg.id = msgId;
-  if (msg.from === "ke") {
-    let html = `<div class="msg-inner">
-      <div class="avatar-sm"><img src="/icon.png" alt="克"></div>
-      <div class="msg-bubble">${esc(msg.text)}`;
-    if (msg.images && msg.images.length > 0) html += renderImageTags(msg.images, msg.from);
-    html += `<div class="time">${msg.time || now()}</div></div></div>`;
-    div.innerHTML = html;
-  } else {
-    let html = esc(msg.text);
-    if (msg.images && msg.images.length > 0) html += renderImageTags(msg.images, msg.from);
-    html += `<div class="time">${msg.time || now()}</div>`;
-    div.innerHTML = html;
-  }
   messagesEl.appendChild(div);
   followScroll();
   if (save) { history.push(msg); saveHistory(history); }
   return div;
-}
-
-function renderImageTags(images, from) {
-  if (!images || !images.length) return "";
-  const cls = images.length === 1 ? "single" : "";
-  return `<div class="img-wrap">${images.map((img) => {
-    const src = img.thumb || (img.path ? `/api/media/${img.path}` : "") || (img.data ? `data:${img.contentType || "image/png"};base64,${img.data}` : "");
-    return src ? `<img src="${src}" class="${cls}" alt="图片" loading="lazy">` : "";
-  }).join("")}</div>`;
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML.replace(/\n/g, "<br>"); }
@@ -2988,17 +2962,9 @@ function patchStickerTag(stickerId, action, tag) {
 }
 
 function renderStickerMsg(msg) {
-  var div = document.createElement("div");
-  div.className = "msg " + (msg.from === "you" ? "you" : "ke");
+  var div = _getSkin().renderSticker(msg);
   var msgId = "msg-" + Date.now() + "-" + (++_msgIdx) + "-" + Math.random().toString(36).slice(2,6);
   div.setAttribute("data-msg-id", msgId);
-  var src = "/api/stickers/" + escAttr(msg.stickerId) + ".gif";
-  var desc = escAttr(msg.desc || "");
-  if (msg.from === "ke") {
-    div.innerHTML = '<div class="msg-inner"><div class="avatar-sm"><img src="/icon.png" alt="克"></div><div class="msg-bubble sticker-bubble"><img src="' + src + '" alt="' + desc + '" class="sticker-gif"><div class="time">' + (msg.time || now()) + '</div></div></div>';
-  } else {
-    div.innerHTML = '<img src="' + src + '" alt="' + desc + '" class="sticker-gif"><div class="time">' + (msg.time || now()) + '</div>';
-  }
   messagesEl.appendChild(div);
   followScroll();
   history.push({ from: msg.from, text: "[贴纸]", stickerId: msg.stickerId, time: msg.time || now() });
@@ -3142,38 +3108,8 @@ function loadCachedThinking() {
 function buildInlineThinking(turnId) {
   var store = thinkingStore.turns[turnId];
   if (!store) return null;
-
-  var inline = document.createElement("div");
-  inline.className = "thinking-inline";
-  inline.dataset.turnId = turnId;
-  if (store.phase === "tooling") inline.classList.add("thinking-tool-active");
-
-  // Row: avatar + header side by side
-  var row = document.createElement("div");
-  row.className = "thinking-row";
-
-  var avatar = document.createElement("div");
-  avatar.className = "thinking-avatar";
-  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
-
-  var header = document.createElement("div");
-  header.className = "thinking-inline-header";
-  // Arrow hidden during thinking, shown when final (for collapse/expand)
-  var isFinal = (store.phase === "final");
-  var labelText = store.phase === "tooling" ? "正在调用工具..." : (isFinal ? "已思考完毕" : "思考中...");
-  header.innerHTML = '<span class="thinking-inline-arrow"' + (isFinal ? '' : ' style="display:none"') + '>▼</span> <span class="thinking-inline-label">' + labelText + '</span>' + (isFinal ? '' : ' <span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>');
-
-  row.appendChild(avatar);
-  row.appendChild(header);
-  inline.appendChild(row);
-
-  // COT body
-  var body = document.createElement("div");
-  body.className = "thinking-inline-body";
-  body.textContent = store.text || "";
-
-  inline.appendChild(body);
-  return inline;
+  // 引擎读 store，皮肤只拿数据画 DOM
+  return _getSkin().buildThinking(turnId, { phase: store.phase, text: store.text });
 }
 function findActiveThinkingTurnId() {
   var best = null;
@@ -3224,17 +3160,10 @@ function updateInlineThinkingLabel(turnId, labelText) {
 }
 
 function createThinkingPlaceholder(turnId) {
-  var div = document.createElement("div");
-  div.className = "msg ke";
+  var store = thinkingStore.turns[turnId];
+  var div = _getSkin().createStreamContainer(turnId, store ? { phase: store.phase, text: store.text } : null);
   var msgId = "msg-" + Date.now() + "-" + (_msgIdx++) + "-" + Math.random().toString(36).slice(2,6);
   div.setAttribute("data-msg-id", msgId);
-
-  var inline = buildInlineThinking(turnId);
-  var inner = document.createElement("div");
-  inner.className = "msg-inner";
-  div.appendChild(inner);
-  if (inline) div.insertBefore(inline, inner);
-
   messagesEl.appendChild(div);
   followScroll();
   return div;
@@ -3243,13 +3172,7 @@ function createThinkingPlaceholder(turnId) {
 function ensureBubbleInStreaming(msgText) {
   if (!streamingMsgEl) return false;
   if (streamingMsgEl.querySelector(".msg-bubble")) return true;
-  var inner = streamingMsgEl.querySelector(".msg-inner");
-  if (!inner) return false;
-  var bubble = document.createElement("div");
-  bubble.className = "msg-bubble";
-  bubble.innerHTML = esc(msgText) + '<div class="time">' + now() + '</div>';
-  inner.appendChild(bubble);
-  return true;
+  return _getSkin().ensureBubble(streamingMsgEl, msgText);
 }
 
 function updateThinkingForStreaming(msg) {
