@@ -5,7 +5,7 @@
 
 ## 2026-07-10 · 皮肤架构阶段 2~4 一口气跑完：查表转发 → 模板化+沙盒 → 暖瓷皮肤化+引擎统一
 
-toge 验收完阶段 1 后拍板"把后面的几个阶段也跑了"（她还翻到一个开源聊天前端想做皮肤，链接待发——沙盒和皮肤接口已为此就绪，做新皮肤=两个文件+注册一行）。三个阶段三个 commit：`04e9b3f`（阶段2）→ `ef2e1da`（阶段3）→ `2a78cd5`（阶段4）。
+toge 验收完阶段 1 后拍板"把后面的几个阶段也跑了"。四个 commit：`04e9b3f`（阶段2）→ `ef2e1da`（阶段3）→ `2a78cd5`（阶段4）→ `96ae7c8`（阶段4.5 chatnest 皮肤，见文末）。
 
 ### 阶段 2：五个 DOM 生成点抽成 default 皮肤（界面零变化）
 
@@ -22,6 +22,10 @@ renderMsg/renderStickerMsg/buildInlineThinking/createThinkingPlaceholder/ensureB
 DS zone 默认挂 ceramic + 走主引擎：一个 WS、一套 history（localStorage key 与暖瓷页本就相同，`withtoge-chat-history-deepseek-v4-pro`，历史无缝衔接）、主页全套能力（桌宠/拖拽/多选/搜索/审批弹窗）。**暖瓷独立页整页保留作应急阀**：设置页「DS 引擎切换」开关（withtoge-ds-legacy），legacy/main 双向切换 + last-page 启动恢复均验证通过；main 模式下确认旧引擎干净不启动（_dsInited=false）。
 
 **验收注意（toge）**：①多段回复新引擎按 chunk 拆气泡（暖瓷是整段）②thinking 刷新恢复走服务端 sync③出任何问题设置页一键切回旧版。版本：SW ke-v27，skins/ceramic v1。
+
+### 阶段 4.5：chatnest 仿官端皮肤给 Rism 试穿（commit `96ae7c8`）
+
+toge 发来开源前端（github ugui3u/chatnest，本地替换包 + 两张目标截图），指定只取聊天页面、试穿给 Rism（opus zone）。从它的 design-system.css 提取官端色板（奶油纸 #F8F8F6 / Claude 橙 #DA7756 / 暗色 #20201F），三个文件落地：chatnest.js（renderMessage/renderSticker/buildThinking 覆盖，流式容器/补气泡继承 default）+ chatnest.css（.skin-chatnest 前缀）+ chatnest-fonts.css（Anthropic Serif 远程 + 内嵌 Source Serif 4 + 国产 fallback）。官端特征全复刻：用户 serif 气泡 22px 右对齐、Claude 无气泡正文落纸、时钟 trace 折叠（左边线引用体）、消息复制按钮排、28px 呼吸感、时间戳隐藏（数据留 DOM 供引擎）、亮暗自动跟随系统。**变量层级设计**：.skin-chatnest 重定义主题变量为官端色板——(0,1,0) 输给 data-theme 的 (0,2,0)，所以「主题 > 皮肤默认 > 全局默认」天然成立，opus 挂午夜主题可让共享 header 一起变暗。皮肤分配收拢成 `ZONE_SKINS` 表（合并掉阶段 4 在 createZone 里的三元硬编码）；引擎新增 `.msg-action-copy` 通用复制委托；顺手修沙盒切皮肤不同步 zone class 的缺口。接入面 = 三文件 + 表一行，零 WS/时序改动——计划的"皮肤接入无时序维度"预言首次被外来皮肤验证。SW ke-v28。
 
 ## 2026-07-10 · 皮肤架构阶段 1 二次实现：修三根因重做主题系统（Fable 接手）
 
