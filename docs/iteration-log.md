@@ -3,6 +3,26 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-10 · 皮肤架构阶段 2~4 一口气跑完：查表转发 → 模板化+沙盒 → 暖瓷皮肤化+引擎统一
+
+toge 验收完阶段 1 后拍板"把后面的几个阶段也跑了"（她还翻到一个开源聊天前端想做皮肤，链接待发——沙盒和皮肤接口已为此就绪，做新皮肤=两个文件+注册一行）。三个阶段三个 commit：`04e9b3f`（阶段2）→ `ef2e1da`（阶段3）→ `2a78cd5`（阶段4）。
+
+### 阶段 2：五个 DOM 生成点抽成 default 皮肤（界面零变化）
+
+renderMsg/renderStickerMsg/buildInlineThinking/createThinkingPlaceholder/ensureBubbleInStreaming 的 DOM 生成全部搬进 js/skins.js 的 default 皮肤，引擎只留插入/滚动/history/data-msg-id。**接口按现实定义而非计划伪代码**——真实渲染面比计划的三函数宽（贴纸、流式容器、补气泡都是独立生成点）。引擎对 `.msg-bubble`/`.thinking-inline` 等 class 有查询耦合，作为「DOM 契约」固化进 skins.js 注释：换结构的皮肤必须保住锚点，否则流式更新/搜索/收藏失明。静态 6 项+流式 7 项验证全过。
+
+### 阶段 3：zone 模板化 + skin-dev 沙盒
+
+五段复制粘贴的 zone HTML 收拢成 zoneTemplate（ds 容器式/其他直排式两种 footer 逐字节复刻），createZone 幂等建 zone（DOM+状态+绑定），七处 `for ZONE_KEYS` 事件绑定循环合并进 bindZoneEvents。loadModels 后 syncZonesWithModels 对列表里没 zone 的 key 补建——"加模型一行"的前端半边落地。skin-dev.html 沙盒：假数据全家桶 + 流式模拟 + 主题/皮肤热切换 + `?skin=xxx` 热加载。顺手修 normalizeWallpaper 剪掉 glm/openclaw 壁纸的 bug。
+
+### 阶段 4：暖瓷回收成 ceramic 皮肤，DS 接回主引擎
+
+**考古发现大幅简化了这一刀**：暖瓷页和主页面的气泡/thinking 样式 06/29 就统一成同一套数值了，真实视觉差异只有三处（时间戳外置、4px 细滚条、thinking 限高 200px）。所以 ceramic 皮肤只覆盖 renderMessage/renderSticker（时间外置结构），thinking/流式容器/补气泡直接 `Object.assign` 继承 default；ceramic.css 全部 `.skin-ceramic` 前缀作用域，气泡色走主题通用变量——**ceramic 天然吃阶段 1 的主题系统**（沙盒实测樱主题气泡变 #ffe3ec）。
+
+DS zone 默认挂 ceramic + 走主引擎：一个 WS、一套 history（localStorage key 与暖瓷页本就相同，`withtoge-chat-history-deepseek-v4-pro`，历史无缝衔接）、主页全套能力（桌宠/拖拽/多选/搜索/审批弹窗）。**暖瓷独立页整页保留作应急阀**：设置页「DS 引擎切换」开关（withtoge-ds-legacy），legacy/main 双向切换 + last-page 启动恢复均验证通过；main 模式下确认旧引擎干净不启动（_dsInited=false）。
+
+**验收注意（toge）**：①多段回复新引擎按 chunk 拆气泡（暖瓷是整段）②thinking 刷新恢复走服务端 sync③出任何问题设置页一键切回旧版。版本：SW ke-v27，skins/ceramic v1。
+
 ## 2026-07-10 · 皮肤架构阶段 1 二次实现：修三根因重做主题系统（Fable 接手）
 
 ### 背景
