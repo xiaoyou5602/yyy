@@ -353,6 +353,9 @@
     <div class="setting-row" style="text-align:center;margin-top:4px;">
       <a href="#" id="settings-ds-legacy-link" style="font-size:11px;color:var(--text-subtle);text-decoration:none;">DS 引擎切换</a>
     </div>
+    <div class="setting-row" style="text-align:center;margin-top:2px;">
+      <span id="settings-build" style="font-size:10px;color:var(--text-subtle);opacity:0.7;">build …</span>
+    </div>
     <div class="setting-row" style="text-align:center;margin-top:4px;">
       <a href="#" id="settings-tweak-link" style="font-size:12px;color:var(--text-muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:1px;">&#127912; 打开视觉调参台</a>
     </div>
@@ -934,6 +937,10 @@
 <script src="/skins/ceramic.js?v=1"></script>
 <script src="/skins/chatnest.js?v=1"></script>
 <script>
+// 部署版本标识（跟 sw.js 的 CACHE 一起 bump）——设置面板底部可见，
+// 排查"部署了但用户看到旧版"时先对这个号
+const APP_BUILD = "ke-v29 · 2026-07-10";
+try { document.getElementById("settings-build").textContent = "build " + APP_BUILD; } catch {}
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
 function getStorageKey() {
@@ -3381,6 +3388,14 @@ connect();
 /* ── Service Worker ── */
 if ("serviceWorker" in navigator) {
   let swReg = null;
+  // 长驻页面（APP 切后台再回来、网页 tab 常开）永远不导航 → 浏览器永远不主动查 SW 更新，
+  // 部署了新版两端还是"老样子"。回前台时主动 update()，配合 SW 的 skipWaiting+claim+
+  // controllerchange reload，切回来几秒内自动换新。
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      navigator.serviceWorker.getRegistration().then((reg) => { if (reg) reg.update().catch(() => {}); }).catch(() => {});
+    }
+  });
   navigator.serviceWorker.register("/sw.js?v=39").then((reg) => {
     swReg = reg;
     // Check if there's already a new worker waiting
@@ -3415,24 +3430,26 @@ window.updateKe = function () {
   }
 };
 </script>
-<script src="/js/component-registry.js"></script>
-<script src="/components/calendar/calendar.js"></script>
-<script src="/js/pet.js"></script>
-<script src="/js/memory.js"></script>
-<script src="/js/calendar.js"></script>
-<script src="/js/meditation.js"></script>
-<script src="/js/graffiti.js"></script>
-<script src="/js/search.js"></script>
-<script src="/js/worldbook.js"></script>
-<script src="/js/gifts.js"></script>
-<script src="/js/camera.js"></script>
-<script src="/js/mcp-playroom.js"></script>
-<script src="/js/page-tokens.js"></script>
-<script src="/js/tweak.js"></script>
-<script src="/components/bubbletea/bubbletea.js"></script>
-<script src="/js/games.js"></script>
+<!-- 全部脚本带 ?v：CF 会给 .js 盖 4 小时浏览器缓存（Browser Cache TTL 覆盖源站 no-cache），
+     裸 URL 改了内容拿不到新版。改文件必 bump 对应 v。 -->
+<script src="/js/component-registry.js?v=1"></script>
+<script src="/components/calendar/calendar.js?v=1"></script>
+<script src="/js/pet.js?v=1"></script>
+<script src="/js/memory.js?v=1"></script>
+<script src="/js/calendar.js?v=1"></script>
+<script src="/js/meditation.js?v=1"></script>
+<script src="/js/graffiti.js?v=1"></script>
+<script src="/js/search.js?v=1"></script>
+<script src="/js/worldbook.js?v=1"></script>
+<script src="/js/gifts.js?v=1"></script>
+<script src="/js/camera.js?v=1"></script>
+<script src="/js/mcp-playroom.js?v=1"></script>
+<script src="/js/page-tokens.js?v=2"></script>
+<script src="/js/tweak.js?v=2"></script>
+<script src="/components/bubbletea/bubbletea.js?v=1"></script>
+<script src="/js/games.js?v=1"></script>
 <script src="/js/chat-ds.js?v=41"></script>
-<script src="/js/conversation-memory.js"></script>
+<script src="/js/conversation-memory.js?v=1"></script>
 
 <!-- ═══ Phone Home Page JS ═══ -->
 <script>
