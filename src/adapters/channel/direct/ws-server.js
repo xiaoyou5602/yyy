@@ -5,6 +5,7 @@ const { WebSocketServer } = require("ws");
 const { createMessageStore } = require("../shared/message-store");
 const { resolveModelKey, modelToDisplayName, ALL_MODEL_KEYS } = require("../../../core/config");
 const { parseArchive, combineConversations, getConversationMessages, searchMessages, ARCHIVE_BASE } = require("../../../services/chat-archive-parser");
+const { handleBridgeRequest } = require("./bridge-api");
 
 function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir, memoryDir, stateDir }) {
   let wss = null;
@@ -41,6 +42,11 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
   const serverInstance = http.createServer((req, res) => {
     const urlPath = decodeURIComponent(req.url.split("?")[0]);
     const query = parseQuery(req.url);
+
+    // ── API: bridge (橘瓣 Rism 插件的 VPS 运维入口) ──
+    if (handleBridgeRequest(req, res, urlPath, query)) {
+      return;
+    }
 
     // ── API: messages (shared chat history) ──
     if (urlPath === "/api/messages") {

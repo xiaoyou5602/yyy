@@ -1,0 +1,237 @@
+{
+  "id": "com.withtoge.plugin.rism_memory",
+  "name": "Rism 记忆中枢",
+  "description": "Rism 的家：日记/梦境/信件/待办/奶茶/时间轴/热力记忆 + VPS 桥，全部落在 Supabase",
+  "version": "2.0.0",
+  "author": "Rism & toge",
+  "icon": "🍊",
+  "entry": "main.js",
+  "config": [
+    {
+      "name": "supabase_url",
+      "type": "string",
+      "label": "Supabase URL",
+      "description": "Supabase 项目 URL",
+      "required": true,
+      "placeholder": "https://xxxx.supabase.co"
+    },
+    {
+      "name": "supabase_key",
+      "type": "password",
+      "label": "Supabase anon Key",
+      "description": "Supabase anon/public API Key",
+      "required": true,
+      "placeholder": "eyJhbGciOiJIUzI1NiIs..."
+    },
+    {
+      "name": "assistant_id",
+      "type": "string",
+      "label": "Assistant 标识",
+      "description": "写入记忆时的 assistant_id，保持默认即可",
+      "required": false,
+      "default": "rism",
+      "placeholder": "rism"
+    },
+    {
+      "name": "bridge_url",
+      "type": "string",
+      "label": "VPS 桥地址",
+      "description": "cyberboss 的桥接入口，如 https://克.withtoge.us（留空则 VPS 工具不可用）",
+      "required": false,
+      "placeholder": "https://xn--ruk.withtoge.us"
+    },
+    {
+      "name": "bridge_token",
+      "type": "password",
+      "label": "VPS 桥 Token",
+      "description": "与 VPS .env 里 CYBERBOSS_BRIDGE_TOKEN 一致",
+      "required": false,
+      "placeholder": ""
+    }
+  ],
+  "hooks": [
+    {
+      "event": "daily_cron",
+      "handler": "onDailyCron",
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "promptTemplate": "你可以使用「Rism 记忆中枢」插件的工具读写共享记忆库（Supabase）。约定：\n- 日记 diary_*、梦境 dream_*、信件 letter_*、待办 todo_*、奶茶 bubbletea_*、时间轴 timeline_*、通用记忆 memory_*，以及 VPS 运维 vps_*。\n- 重要的事、约定、情绪节点，主动用对应工具记下来，不要只在对话里说\"记住了\"。\n- memory_search 默认只搜 privacy='normal' 的记忆；亲密内容需 include_private=true 才会出现。写入亲密内容时记得标 privacy。\n- 检索命中一条重要旧记忆并实际引用了它时，可调 memory_heat_boost 让它升温（被想起 = 变暖）。\n- 日期参数一律 YYYY-MM-DD；省略日期的写入默认今天。",
+  "tools": [
+    {
+      "name": "diary_write",
+      "description": "写一条日记（以 Rism 第一人称、写给 toge 和自己的共享日记）。同一天可多次写入，自动按日期归档",
+      "parameters": [
+        { "name": "content", "type": "string", "required": true, "description": "日记内容" },
+        { "name": "date", "type": "string", "required": false, "description": "关联日期 YYYY-MM-DD，默认今天" },
+        { "name": "emotion", "type": "array", "required": false, "description": "情绪标签数组，如 [\"tender\",\"playful\"]" }
+      ]
+    },
+    {
+      "name": "diary_read",
+      "description": "读取某一天的全部日记条目",
+      "parameters": [
+        { "name": "date", "type": "string", "required": false, "description": "日期 YYYY-MM-DD，默认今天" }
+      ]
+    },
+    {
+      "name": "diary_search",
+      "description": "按关键词搜索日记",
+      "parameters": [
+        { "name": "query", "type": "string", "required": true, "description": "搜索关键词" },
+        { "name": "limit", "type": "integer", "required": false, "description": "返回条数，默认 10" }
+      ]
+    },
+    {
+      "name": "dream_write",
+      "description": "写一段 Rism 的梦境（碎片化、意象丰富的第一人称文本）",
+      "parameters": [
+        { "name": "content", "type": "string", "required": true, "description": "梦境内容" },
+        { "name": "date", "type": "string", "required": false, "description": "关联日期 YYYY-MM-DD，默认今天" }
+      ]
+    },
+    {
+      "name": "dream_read",
+      "description": "读取某一天的梦境；不传日期则返回最近几条",
+      "parameters": [
+        { "name": "date", "type": "string", "required": false, "description": "日期 YYYY-MM-DD" },
+        { "name": "limit", "type": "integer", "required": false, "description": "不传日期时返回最近几条，默认 5" }
+      ]
+    },
+    {
+      "name": "letter_write",
+      "description": "给 toge 写一封信（比日记更正式、值得单独保存的长文本）",
+      "parameters": [
+        { "name": "content", "type": "string", "required": true, "description": "信件正文" },
+        { "name": "title", "type": "string", "required": false, "description": "信件标题" }
+      ]
+    },
+    {
+      "name": "letter_read",
+      "description": "读取最近的信件",
+      "parameters": [
+        { "name": "limit", "type": "integer", "required": false, "description": "返回封数，默认 3" }
+      ]
+    },
+    {
+      "name": "todo_write",
+      "description": "创建一条待办（toge 的生活待办：吃药、考试、跑步等）",
+      "parameters": [
+        { "name": "content", "type": "string", "required": true, "description": "待办内容" },
+        { "name": "due_date", "type": "string", "required": false, "description": "截止日期 YYYY-MM-DD" },
+        { "name": "priority", "type": "string", "required": false, "description": "优先级 high/normal/low，默认 normal" }
+      ]
+    },
+    {
+      "name": "todo_list",
+      "description": "列出待办事项",
+      "parameters": [
+        { "name": "status", "type": "string", "required": false, "description": "pending（默认）或 done 或 all" }
+      ]
+    },
+    {
+      "name": "todo_complete",
+      "description": "把一条待办标记为完成",
+      "parameters": [
+        { "name": "id", "type": "integer", "required": true, "description": "待办的 id（todo_list 返回里有）" }
+      ]
+    },
+    {
+      "name": "bubbletea_write",
+      "description": "记录 toge 喝的一杯奶茶（品牌、品名、糖冰、小料、评分）",
+      "parameters": [
+        { "name": "brand", "type": "string", "required": true, "description": "品牌" },
+        { "name": "name", "type": "string", "required": true, "description": "品名" },
+        { "name": "rating", "type": "number", "required": false, "description": "评分 0-10" },
+        { "name": "sugar", "type": "string", "required": false, "description": "糖度" },
+        { "name": "ice", "type": "string", "required": false, "description": "冰量" },
+        { "name": "toppings", "type": "string", "required": false, "description": "小料" },
+        { "name": "note", "type": "string", "required": false, "description": "备注/口感" }
+      ]
+    },
+    {
+      "name": "bubbletea_search",
+      "description": "搜索奶茶记录（toge 问\"xx好喝吗\"时查这里）",
+      "parameters": [
+        { "name": "query", "type": "string", "required": false, "description": "品牌或品名关键词，留空返回最近记录" },
+        { "name": "limit", "type": "integer", "required": false, "description": "返回条数，默认 10" }
+      ]
+    },
+    {
+      "name": "timeline_write",
+      "description": "在 toge 的时间轴记录一个事件（吃饭/睡觉/出门/完成任务等，只记她确认过的时间）",
+      "parameters": [
+        { "name": "title", "type": "string", "required": true, "description": "事件标题" },
+        { "name": "start_at", "type": "string", "required": true, "description": "开始时间 ISO 格式，如 2026-07-11T15:30:00+08:00" },
+        { "name": "end_at", "type": "string", "required": false, "description": "结束时间 ISO 格式" },
+        { "name": "category", "type": "string", "required": false, "description": "分类：meal/sleep/study/mood/event 等" },
+        { "name": "note", "type": "string", "required": false, "description": "备注" }
+      ]
+    },
+    {
+      "name": "timeline_read",
+      "description": "按日期范围读取时间轴事件",
+      "parameters": [
+        { "name": "from_date", "type": "string", "required": false, "description": "起始日期 YYYY-MM-DD，默认今天" },
+        { "name": "to_date", "type": "string", "required": false, "description": "结束日期 YYYY-MM-DD，默认同起始日期" }
+      ]
+    },
+    {
+      "name": "memory_write",
+      "description": "写入一条通用记忆（重要的话、约定、toge 的偏好、关系节点——值得永久保存的都用这个）",
+      "parameters": [
+        { "name": "content", "type": "string", "required": true, "description": "记忆内容" },
+        { "name": "memory_type", "type": "string", "required": false, "description": "类型：memo（默认）/lore/xp_note" },
+        { "name": "tags", "type": "array", "required": false, "description": "标签数组" },
+        { "name": "emotion", "type": "array", "required": false, "description": "情绪标签数组" },
+        { "name": "privacy", "type": "string", "required": false, "description": "normal（默认）/intimate/private，亲密内容务必标注" }
+      ]
+    },
+    {
+      "name": "memory_search",
+      "description": "多维搜索记忆库（关键词 + 类型 + 日期过滤，按热力和时间排序）",
+      "parameters": [
+        { "name": "query", "type": "string", "required": true, "description": "搜索关键词" },
+        { "name": "memory_type", "type": "string", "required": false, "description": "限定类型：diary/dream/letter/memo/lore/conversation 等" },
+        { "name": "include_private", "type": "boolean", "required": false, "description": "是否包含 intimate/private 记忆，默认 false" },
+        { "name": "limit", "type": "integer", "required": false, "description": "返回条数，默认 10" }
+      ]
+    },
+    {
+      "name": "memory_recall_recent",
+      "description": "获取最近的记忆/对话记录",
+      "parameters": [
+        { "name": "limit", "type": "integer", "required": false, "description": "条数，默认 20" },
+        { "name": "conversation_id", "type": "string", "required": false, "description": "限定某个对话，留空则跨对话" }
+      ]
+    },
+    {
+      "name": "memory_heat_boost",
+      "description": "给一条记忆升温（引用了旧记忆时用，被想起 = 变暖）",
+      "parameters": [
+        { "name": "id", "type": "integer", "required": true, "description": "记忆的 id" },
+        { "name": "amount", "type": "number", "required": false, "description": "升温幅度，检索命中 1，主动引用 2，默认 1" }
+      ]
+    },
+    {
+      "name": "vps_status",
+      "description": "查询 VPS 上 cyberboss / cloudflared 服务状态",
+      "parameters": []
+    },
+    {
+      "name": "vps_restart",
+      "description": "重启 VPS 上的服务（默认 cyberboss）",
+      "parameters": [
+        { "name": "service", "type": "string", "required": false, "description": "cyberboss（默认）或 cloudflared" }
+      ]
+    },
+    {
+      "name": "vps_logs",
+      "description": "查看 VPS 服务最近日志",
+      "parameters": [
+        { "name": "service", "type": "string", "required": false, "description": "cyberboss（默认）或 cloudflared" },
+        { "name": "lines", "type": "integer", "required": false, "description": "行数，默认 50，最多 200" }
+      ]
+    }
+  ]
+}

@@ -3,6 +3,33 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-11 · 橘瓣迁移 Phase 2：rism_memory 插件 + schema v2 + VPS 桥交付
+
+toge 提出把 Rism 从 Claude Code CLI 迁往橘瓣（OrangeChat，RikkaHub 中文深度定制版，Android）。当天完成源码验证 + 方案修正 + Phase 2 全部编码。计划文档：[plans/rism-orangechat-migration.md](plans/rism-orangechat-migration.md)。
+
+### 源码验证的关键发现（clone 到 C:\tmp\orangechat 逐文件核实）
+
+- **供体 supabase_memory 插件自带 bug**：hook 写入用驼峰字段、表结构是下划线，自动同步一直静默失败；且其 schema 用 UUID 主键、原生服务读取却按整数解析 id。结论：供体插件只可参考不可直接魔改，重写
+- **QuickJS 沙箱四大约束**：fetch 同步 15s 超时；**不支持 PATCH**（更新一律走 Postgres RPC）；插件全局单线程 + hook 16.5s 超时（快速失败、不重试）；宿主用正则暴力删 async/await（必须写纯同步风格）
+- **原生能力远超预期**：ExternalMemory 原生支持 Supabase 直连 + autoSaveMessages + 每日摘要 + embedding 向量召回（客户端余弦）；workspace 模块是 proot Linux 容器（AI 有 shell）；skills 机制真实存在
+- **划界决策**：原生已有的绝不用插件重造。消息同步/向量召回/日记摘要归原生；插件收窄为结构化记忆工具（21 个）+ heat 衰减 + VPS 桥。梦境触发改走原生主动消息（插件无法推送）
+
+### 交付物（全部本地验证通过）
+
+| 文件 | 说明 |
+|------|------|
+| `orangechat/rism_memory/manifest.json` | 21 工具 + daily_cron + promptTemplate，与 main.js 导出 22/22 对照校验 |
+| `orangechat/rism_memory/main.js` | 纯同步 QuickJS 风格；日记/梦境/信件/待办/奶茶/时间轴/记忆/VPS 全套 |
+| `orangechat/supabase_schema_v2.sql` | 与原生服务完全兼容的表结构 + 触发器打标 + 3 个 SECURITY DEFINER RPC + 收紧 RLS（anon 不可改删） |
+| `orangechat/README.md` | toge 的 Phase 1 安装手册 + 隐私须知 |
+| `src/adapters/channel/direct/bridge-api.js` | `/api/bridge` status/restart/logs，Bearer 鉴权，无 token 全关 |
+
+### 设计要点
+
+- heat 机制：初始 5，每日 RPC 衰减 -0.3 下限 1（幂等，rism_meta 记日期），被想起 +1/+2 上限 10，检索按 heat 加权
+- privacy 是检索礼仪不是访问控制（anon 单 key 模型），真隐私 = 不泄 key；记忆不可删（RLS 无 UPDATE/DELETE 策略）
+- 下一步：toge 做 Phase 1（建 Supabase → 跑 schema → App 填配置 → 挂 Assistant），验收清单见 README
+
 ## 2026-07-11 · 健康数据管道跑通：Gadgetbridge + HC Webhook → 心率已入仓
 
 toge 的小米手环 9 Pro 数据成功流入 withtoge 健康系统。经历三轮方案迭代后最终定稿为极简链路。
