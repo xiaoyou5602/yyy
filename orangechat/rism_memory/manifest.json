@@ -38,7 +38,7 @@
       "label": "VPS 桥地址",
       "description": "cyberboss 的桥接入口，如 https://克.withtoge.us（留空则 VPS 工具不可用）",
       "required": false,
-      "placeholder": "https://xn--ruk.withtoge.us"
+      "placeholder": "https://xn--74q.withtoge.us"
     },
     {
       "name": "bridge_token",
