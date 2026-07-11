@@ -2191,6 +2191,25 @@ function mergeHealthData(stateDir, body) {
     current.heart_rate.updatedAt = now;
   }
 
+  // ── Calories: supports HC Webhook array format [{calories, start_time, end_time}] ──
+  const calTypes = ["active_calories", "total_calories"];
+  for (const ct of calTypes) {
+    if (body[ct] !== undefined) {
+      let sum = 0;
+      if (Array.isArray(body[ct])) {
+        for (const entry of body[ct]) sum += Number(entry.calories || 0);
+      }
+      const key = ct === "active_calories" ? "active_calories" : "total_calories";
+      current[key] = { total: sum, updatedAt: now };
+    }
+  }
+  // legacy single-calorie push
+  if (type === "calories" || type === "active_calories") {
+    if (!current.active_calories) current.active_calories = { total: 0, updatedAt: now };
+    current.active_calories.total += Number(data.calories || data.total || 0);
+    current.active_calories.updatedAt = now;
+  }
+
   // ── Sleep: supports HC Webhook array format [{stages, duration_seconds, session_end_time}] ──
   if (type === "sleep" || body.sleep !== undefined) {
     let d;
