@@ -133,6 +133,15 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // OAuth discovery: explicitly declare authless (Claude.ai connector checks these first)
+  if (req.url === "/.well-known/oauth-protected-resource" ||
+      req.url === "/.well-known/oauth-authorization-server" ||
+      req.url === "/register") {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "not_found" }));
+    return;
+  }
+
   // Health check (no auth required)
   if (req.url === "/health" || req.url === "/healthz") {
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -170,8 +179,8 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  res.writeHead(404);
-  res.end("Not found");
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "not_found" }));
 });
 
 httpServer.listen(PORT, "0.0.0.0", () => {
