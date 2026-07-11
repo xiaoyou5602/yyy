@@ -1025,6 +1025,7 @@ function createDirectWebSocketServer({ host, port, onMessage, htmlPath, diaryDir
       req.on("end", () => {
         try {
           const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          console.log("[health] POST body keys:", Object.keys(body).join(", "), "hr:", JSON.stringify(body.heart_rate)?.slice(0,200), "steps:", JSON.stringify(body.steps)?.slice(0,200), "sleep:", JSON.stringify(body.sleep)?.slice(0,200));
           const result = mergeHealthData(stateDir, body);
           res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
           res.end(JSON.stringify({ ok: true, date: result.date }));
