@@ -25,6 +25,7 @@
 - **`state.target` ≠ `state.replyTarget`** → 两字段不一致，新增代码注意对齐
 - **CSS inline style 优先级覆盖 class** → 显示/隐藏用 class 控制，别写 `style="display:none"`
 - **SSH 命令被安全分类器拦截** → 别硬撞。拉文件到本地用 Edit 改完 scp 回去；或者本地 clone 仓库（`/tmp/withtoge`），改完 git push + 一条 ssh 重启
+- **前端硬编码的模型 key 会和 model-routes.js 漂移** → opus/haiku 正名 rism 后前端列表没跟上，07-10 皮肤挂在幽灵 key 上白部署三轮。动模型相关前端逻辑前先 `grep MODELS src/core/model-routes.js` 对一遍真实 key；用户报"部署了没变化"先看设置页 build 号 + 控制台 `[loadModels] list=`
 
 ## Git 规范 + GitHub 工作流
 

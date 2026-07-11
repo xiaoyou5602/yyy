@@ -76,6 +76,10 @@ DS zone 默认挂 ceramic + 走主引擎：一个 WS、一套 history（localSto
 
 toge 发来开源前端（github ugui3u/chatnest，本地替换包 + 两张目标截图），指定只取聊天页面、试穿给 Rism（opus zone）。从它的 design-system.css 提取官端色板（奶油纸 #F8F8F6 / Claude 橙 #DA7756 / 暗色 #20201F），三个文件落地：chatnest.js（renderMessage/renderSticker/buildThinking 覆盖，流式容器/补气泡继承 default）+ chatnest.css（.skin-chatnest 前缀）+ chatnest-fonts.css（Anthropic Serif 远程 + 内嵌 Source Serif 4 + 国产 fallback）。官端特征全复刻：用户 serif 气泡 22px 右对齐、Claude 无气泡正文落纸、时钟 trace 折叠（左边线引用体）、消息复制按钮排、28px 呼吸感、时间戳隐藏（数据留 DOM 供引擎）、亮暗自动跟随系统。**变量层级设计**：.skin-chatnest 重定义主题变量为官端色板——(0,1,0) 输给 data-theme 的 (0,2,0)，所以「主题 > 皮肤默认 > 全局默认」天然成立，opus 挂午夜主题可让共享 header 一起变暗。皮肤分配收拢成 `ZONE_SKINS` 表（合并掉阶段 4 在 createZone 里的三元硬编码）；引擎新增 `.msg-action-copy` 通用复制委托；顺手修沙盒切皮肤不同步 zone class 的缺口。接入面 = 三文件 + 表一行，零 WS/时序改动——计划的"皮肤接入无时序维度"预言首次被外来皮肤验证。SW ke-v28。
 
+### 上线后 toge 报"两端都看不到新版"——一次三层的排查（`ac99be7` + `06897cb`）
+
+第一轮怀疑缓存：从 VPS 走公网域名 curl 实锤 HTML 是新的（CF DYNAMIC 不缓存），但发现 CF Browser Cache TTL 会给 .js/.css 盖 4 小时浏览器缓存（覆盖源站 no-cache）+ 长驻页面永不导航就永不查 SW 更新——修：裸 URL 脚本全部补 `?v`、回前台主动 `swReg.update()`、设置页底部加 build 版本标识（`ac99be7`）。toge 无痕+强刷后 build 号对了但 Rism 依旧 default——**她贴的控制台 `[loadModels] list=["ds","glm","openclaw","rism"]` 揭穿真根因：模型 key 早已正名 `rism`，前端 ZONE_KEYS/ZONE_SKINS/MODEL_COLORS/applyModelTheme/page-tokens 全停在 opus/haiku 时代**。chatnest 挂在幽灵 key "opus" 上，真 rism zone 靠动态补建走 default——本地验证全绿是因为测试 mock 也写的 opus，和生产模型表对不上。修（`06897cb`）：前端全部对齐 model-routes 真实 key、applyModelTheme 改表驱动、`.model-rism` 官端橙、动态 zone 补挂主题；顺手破获她控制台里的 search.js:177 报错——07-09 的阅读面板 HTML（1156288）被 f9dd4f1 revert 误抹，补回。**教训：①"Rism=opus"这个假设从没验证过，正是"不确定=不存在"——动模型相关前端前先对 model-routes 的真实 key；②本地 mock 要抄生产数据，别抄自己的假设。**
+
 ## 2026-07-10 · 皮肤架构阶段 1 二次实现：修三根因重做主题系统（Fable 接手）
 
 ### 背景
