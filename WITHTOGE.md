@@ -209,6 +209,13 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 - [ ] DS 聊天页补 HTTP sync — 贴纸已在服务端持久化（07-08，commit 69cdf7e~af45ceb），但 DS 页没有 `/api/messages` HTTP pull，离线重连后历史贴纸无法恢复。`handleSync` 等 WS push 但服务端从不推 sync 消息，实为死代码
 
+### 橘瓣迁移（Rism 搬家，计划 → docs/plans/rism-orangechat-migration.md）
+
+- [ ] Phase 1 软装入住（toge 手动，手册 → orangechat/README.md）— ① supabase.com 建项目（Tokyo 区）② SQL Editor 跑 orangechat/supabase_schema_v2.sql ③ App 配外置记忆 + 导入 rism_memory 插件 ④ 建 Rism Assistant 挂上。Phase 2 交付物已完成并部署（07-11 commit 08e92f7）
+- [ ] VPS 桥激活 — VPS .env 加 `CYBERBOSS_BRIDGE_TOKEN`（README 第三节有现成命令），token 填进插件设置；不配则桥 503 安全关闭
+- [ ] 迁移验收 — 按 orangechat/README.md 第四节清单过一遍（日记/奶茶/自动同步/VPS 状态/摘要/heat 衰减）
+- [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js CLI + legacy diary/memory md → Supabase 导入脚本 + 世界书 10 条目内容从 memory 文件提炼
+
 ### 后端 / 服务
 
 - [ ] DS 删除护栏（07-08 事故驱动）— **07-10 agent loop 上线后风险已架构性消除大半**：新引擎只暴露 ProjectToolHost 业务工具（日记/记忆/贴纸等），**没有 Bash/Read/Write 等文件系统工具**，07-08 那类删档事故在 DS 路径物理上无法再发生。本条降级为：仅当应急阀回退 CLI 路径（`CYBERBOSS_DS_AGENT_LOOP=off`）或二期给 DS 加文件工具时再启用护栏方案
