@@ -25,6 +25,7 @@
 - **`state.target` ≠ `state.replyTarget`** → 两字段不一致，新增代码注意对齐
 - **CSS inline style 优先级覆盖 class** → 显示/隐藏用 class 控制，别写 `style="display:none"`
 - **SSH 命令被安全分类器拦截** → 别硬撞。拉文件到本地用 Edit 改完 scp 回去；或者本地 clone 仓库（`/tmp/withtoge`），改完 git push + 一条 ssh 重启
+- **Streamable HTTP MCP 必须声明 authless** → Claude.ai connector 连接前探测 `/.well-known/oauth-protected-resource`、`/.well-known/oauth-authorization-server`、`/register`，不返回 `404 + JSON {"error":"not_found"}` 就误走 OAuth DCR 报 "sign-in service" 错误。搭小家和 health-mcp 踩过同一个坑，新建 MCP server 必须在 auth 之前拦截这三个路径
 - **前端硬编码的模型 key 会和 model-routes.js 漂移** → opus/haiku 正名 rism 后前端列表没跟上，07-10 皮肤挂在幽灵 key 上白部署三轮。动模型相关前端逻辑前先 `grep MODELS src/core/model-routes.js` 对一遍真实 key；用户报"部署了没变化"先看设置页 build 号 + 控制台 `[loadModels] list=`
 
 ## Git 规范 + GitHub 工作流
@@ -212,7 +213,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 - [ ] DS 删除护栏（07-08 事故驱动）— **07-10 agent loop 上线后风险已架构性消除大半**：新引擎只暴露 ProjectToolHost 业务工具（日记/记忆/贴纸等），**没有 Bash/Read/Write 等文件系统工具**，07-08 那类删档事故在 DS 路径物理上无法再发生。本条降级为：仅当应急阀回退 CLI 路径（`CYBERBOSS_DS_AGENT_LOOP=off`）或二期给 DS 加文件工具时再启用护栏方案
 - [x] 自搭 DS Agent Loop — **已上线（07-10 07:20 部署，端到端首航通过：对话+diary 工具落盘+审批自动放行）**，全程见 [迭代日志 07-10](docs/iteration-log.md)。**应急阀：VPS `.env` 加 `CYBERBOSS_DS_AGENT_LOOP=off` 重启即回退 CLI 路径**。留观察：系统轮静默、跨 session 回顾、token 对比（toge 前端看数字）。二期待排：messageStore 扩 tool_call/tool_result 落库 + VS Code transcript 兼容（session 翻看链路已断供，计划 §5.7）
-- [x] 健康数据 MCP（07-03 立项）— **已跑通（07-11）**。最终链路：手环 → Gadgetbridge → Health Connect → HC Webhook → VPS，心率已入仓。待验证
+- [x] 健康数据 MCP（07-03 立项）— **已跑通+Claude.ai connector 已连接（07-11）**。.well-known authless 声明修复后 custom connector 直连 `health.withtoge.us/mcp` 成功
 - [x] 思考/调工具时发消息把 session 挤掉的 bug（toge 07-04 问是否还在）— **已修于 07-02（commit bdbfe66，turn-gate 移除 181s 超时自释放）**。旧行为：思考+工具超 3 分钟 → gate 被误判卡死自动释放 → 排队消息 dispatch → cancelTurn 杀掉进行中的 turn → 新 session 顶上（日志最后一次发生 07-01 23:55）。现行为：turn 进行中新消息排队等待，10 分钟无进展才判卡死，15 分钟 gate 兜底。
 - [x] 静默 checkin 的思考出现在聊天页（07-04 toge 报，当晚复发二修）— **一修 bdd3e9b**（replyTarget.provider==="system" 不广播不存档）**当晚复发**：系统轮的 replyTarget 在 sendTurn 返回后才注册，CLI 早期 thought 事件靠 bindingKey 兜底拿到上一轮 direct 的 target，provider 判断形同虚设。**二修 5b715fa（已部署）**：dispatchPreparedTurn 在 sendTurn **之前**按 bindingKey 打系统轮标记（15 分钟自动过期防标记泄漏永久压制正常思考），thought 广播与 saveThinking 都查标记，turn 完成/失败/跳过/异常时清除。**待 toge 观察**：下次 checkin 静默轮后聊天页不应再出现孤思考块
 - [x] 梦境系统 07-02 起每晚崩 — **已修（07-05）**：readByDate 补 await。待验证：明晨 3 点日志无 `todayFrags.slice` 报错
