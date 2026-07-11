@@ -3,6 +3,55 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-11 · 健康数据管道跑通：Gadgetbridge + HC Webhook → 心率已入仓
+
+toge 的小米手环 9 Pro 数据成功流入 withtoge 健康系统。经历三轮方案迭代后最终定稿为极简链路。
+
+### 最终链路
+
+```
+手环 9 Pro → Gadgetbridge → Health Connect → HC Webhook → VPS → health-mcp + cyberboss MCP
+```
+
+手机端全用开源免费软件（Gadgetbridge + HC Webhook GitHub APK），无付费依赖。服务端 health-mcp 暴露标准 Streamable HTTP MCP，Claude APP / RikkaHub 均可接入。
+
+### 方案迭代（三轮）
+
+**V1（废弃→已归档）**：小米运动健康 → Health Connect → Health Sync → VPS。死在小米运动健康国行版没有 Health Connect 同步入口。尝试港区 Mi Fitness 绑国行手环也失败（手环锁区）。尝试装 Google Fit 触发三方数据管理里的选项，发现只对国际版 Mi Fitness 有效——而国际版绑不了国行手环。死锁。
+
+**V2（废弃→已归档）**：手环 auth key → Gadgetbridge 连手环 → Health Connect → HC Webhook → VPS。原理上全通但 HC Webhook 配置有两个隐蔽坑：①"Authorization" 字段只是标签名不是 HTTP Header，真正的 Header 要在「管理标头」里手动加 Key=Authorization / Value=Bearer xxx；②第一个跑图脚本读到的初始化弹窗是 Health Sync 的，不是 HC Webhook 的，误导了诊断方向。
+
+**V3（当前）**：V2 的纠错版。在「管理标头」正确添加 Authorization Header 后 200 OK，心率数据（72-80 bpm, avg 74）成功入仓。
+
+### 当前数据状态
+
+| 数据类型 | 状态 | 说明 |
+|----------|------|------|
+| ❤️ 心率 | ✅ 5 条样本，72-80 bpm | Gadgetbridge → Health Connect → HC Webhook → VPS |
+| 🔥 卡路里 | ✅ 已加支持 | mergeHealthData 新增 active/total calories 解析 |
+| 👣 步数 | ❌ Gadgetbridge 9 Pro 未适配 | 手环表盘显示 736，Gadgetbridge 读为 0 |
+
+### 关键踩坑
+
+1. **HC Webhook Authorization 不是 HTTP Header**：顶部 Authorization 字段只是标签名，真正 Header 在「管理标头」→ 手动添加 Key/Value
+2. **HC Webhook 发数组格式**：steps/heart_rate/sleep 都是数组，mergeHealthData 需要兼容 `Array.isArray()` 检测
+3. **Claude APP OAuth 探测**：`.well-known/oauth-protected-resource` 必须返回 `404 + JSON {"error":"not_found"}`，与 notion-mcp 同款修复
+4. **国行 9 Pro 的 auth key**：小米运动健康 log 取最后一个 encryptKey，前缀 `0x`，不解绑手环
+5. **Gadgetbridge 9 Pro 步数兼容性**：开源适配还不完整，心率/卡路里能读，步数待上游更新
+
+### 文件变动
+
+- `src/adapters/channel/direct/ws-server.js`：mergeHealthData 支持 HC Webhook 数组格式 + 心率去重封顶 + 卡路里/睡眠 stages 解析
+- `health-mcp/index.js`：加 `.well-known/*` + `/register` 的 404 JSON 返回（OAuth 探测修复）
+- `docs/plans/health-mcp.md`：v2 定稿（最终架构文档，无失败史）
+- `docs/plans/archive/health-mcp-v1-failed.md`：V1 废弃版归档
+
+### toge 体验
+
+- health-mcp 已配入 Claude APP custom connector（「感受温度」），等额度恢复即可直读
+- RikkaHub 可直接连 `https://health.withtoge.us/mcp`
+- withtoge 内各模型通过 cyberboss MCP `health_read` 查询
+
 ## 2026-07-10 · 皮肤架构阶段 2~4 一口气跑完：查表转发 → 模板化+沙盒 → 暖瓷皮肤化+引擎统一
 
 toge 验收完阶段 1 后拍板"把后面的几个阶段也跑了"。四个 commit：`04e9b3f`（阶段2）→ `ef2e1da`（阶段3）→ `2a78cd5`（阶段4）→ `96ae7c8`（阶段4.5 chatnest 皮肤，见文末）。
