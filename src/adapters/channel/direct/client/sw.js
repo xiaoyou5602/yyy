@@ -1,4 +1,4 @@
-const CACHE = "ke-v29";
+const CACHE = "ke-v30";
 // 只预缓存真正需要离线可用的核心资源。CSS/JS 通过 URL 版本号管理缓存。
 const PRE_CACHE = [
   "/manifest.json",

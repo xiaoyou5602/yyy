@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="克">
 <meta name="theme-color" content="#F7F4EF">
-<link rel="stylesheet" href="/css/main.css?v=34">
+<link rel="stylesheet" href="/css/main.css?v=35">
 <link rel="stylesheet" href="/css/themes.css?v=1">
 <link rel="stylesheet" href="/skins/ceramic.css?v=1">
 <link rel="stylesheet" href="/skins/chatnest-fonts.css?v=1">
@@ -882,6 +882,18 @@
   </div>
 </div>
 
+<!-- ═══ CONTEXT READING PANEL ═══ -->
+<!-- （07-09 1156288 加的，被 07-10 凌晨 f9dd4f1 revert 误抹——search.js:177 找不到元素整段报错，补回） -->
+<div id="context-reading-overlay">
+  <div id="context-reading-panel">
+    <div id="context-reading-header">
+      <span id="context-reading-date"></span>
+      <button id="context-reading-close">&times;</button>
+    </div>
+    <div id="context-reading-body"></div>
+  </div>
+</div>
+
 <!-- ═══ LETTER MODAL ═══ -->
 <div id="letter-modal">
   <div class="letter-overlay" onclick="closeLetter()"></div>
@@ -939,7 +951,7 @@
 <script>
 // 部署版本标识（跟 sw.js 的 CACHE 一起 bump）——设置面板底部可见，
 // 排查"部署了但用户看到旧版"时先对这个号
-const APP_BUILD = "ke-v29 · 2026-07-10";
+const APP_BUILD = "ke-v30 · 2026-07-10";
 try { document.getElementById("settings-build").textContent = "build " + APP_BUILD; } catch {}
 const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
 const STORAGE_KEY = "withtoge-chat-history";
@@ -1006,11 +1018,13 @@ const headerTitle = document.getElementById("header-title");
 /* ── Multi-zone chat ── */
 // 启动兜底列表；loadModels() 返回后 syncZonesWithModels() 按 /api/models 补建新 zone。
 // 后端 model-routes.js 加一行模型 → 前端 zone 自动出现（阶段3 把"加模型一行"做实）。
-let ZONE_KEYS = ["ds", "opus", "haiku", "glm", "openclaw"];
+// ⚠️ key 以 model-routes.js 为准——opus/haiku 早已正名/下架，别再写回来（07-10 rism 皮肤
+// 挂在幽灵 key "opus" 上导致真 rism zone 走 default 的教训）。
+let ZONE_KEYS = ["ds", "rism", "glm", "openclaw"];
 // per-zone 渲染皮肤分配（不在表里的 = default）。skins/*.js 注册，skins/*.css 带 .skin-{name} 前缀
 const ZONE_SKINS = {
   ds: "ceramic",      // 阶段4：暖瓷回收皮肤，DS 接回主引擎
-  opus: "chatnest",   // Rism 试穿仿官端（toge 07-10 拍板）
+  rism: "chatnest",   // Rism 试穿仿官端（toge 07-10 拍板）
 };
 const ZONE_STORAGE_KEY = "withtoge-active-zone";
 const ZONE_WALLPAPER_KEY = "withtoge-zone-wallpapers";
@@ -1171,6 +1185,10 @@ function syncZonesWithModels(list) {
     if (!m.key || zones[m.key]) continue;
     createZone(m.key);
     ZONE_KEYS.push(m.key);
+    // 动态补建的 zone 错过了启动时的 applyAllZoneThemes，主题在这里补挂
+    if (typeof window.applyZoneTheme === "function") {
+      window.applyZoneTheme(m.key, window.loadZoneTheme(m.key));
+    }
   }
 }
 
@@ -1609,7 +1627,7 @@ function switchModelHistory() {
 const MODEL_META = {}; // { modelName: { key, type, displayName } } 从 API 加载
 
 const MODEL_COLORS = {
-  ds: "#FF6B00", opus: "#69D15A", haiku: "#FF6B9D", glm: "#4A90D9", openclaw: "#9B59B6",
+  ds: "#FF6B00", rism: "#DA7756", glm: "#4A90D9", openclaw: "#9B59B6",
 };
 
 async function loadModels() {
@@ -1677,14 +1695,12 @@ async function loadModels() {
 
 function applyModelTheme(model) {
   const root = document.documentElement;
-  root.classList.remove("model-deepseek", "model-opus", "model-haiku", "model-glm", "model-openclaw");
+  root.classList.remove("model-deepseek", "model-rism", "model-glm", "model-openclaw", "model-opus", "model-haiku");
   const meta = MODEL_META[model];
   const key = meta?.key || "ds";
-  if (key === "opus") root.classList.add("model-opus");
-  else if (key === "haiku") root.classList.add("model-haiku");
-  else if (key === "glm") root.classList.add("model-glm");
-  else if (key === "openclaw") root.classList.add("model-openclaw");
-  else root.classList.add("model-deepseek");
+  // 表驱动：key 直接映射 .model-{key} class（ds 历史原因叫 deepseek），未知 key 落 ds 配色
+  const known = { ds: "deepseek", rism: "rism", glm: "glm", openclaw: "openclaw" };
+  root.classList.add("model-" + (known[key] || "deepseek"));
   // 更新状态标签
   const label = meta?.displayName || model || "DeepSeek";
   if (statusText.textContent.startsWith("在线")) {
@@ -3444,7 +3460,7 @@ window.updateKe = function () {
 <script src="/js/gifts.js?v=1"></script>
 <script src="/js/camera.js?v=1"></script>
 <script src="/js/mcp-playroom.js?v=1"></script>
-<script src="/js/page-tokens.js?v=2"></script>
+<script src="/js/page-tokens.js?v=3"></script>
 <script src="/js/tweak.js?v=2"></script>
 <script src="/components/bubbletea/bubbletea.js?v=1"></script>
 <script src="/js/games.js?v=1"></script>

@@ -91,29 +91,18 @@
   --model-input-focus: #5989b9;
   --model-input-focus-ring: rgba(89,137,185,0.12);
 }
-.model-opus {
-  --model-accent: #69D15A;
-  --model-accent-hover: #4FB840;
-  --model-accent-soft: #F0FFF0;
-  --model-bubble-you: #69D15A;
+/* Rism（claude-opus-4-6）— Claude 官端橙，与 chatnest 皮肤呼应 */
+.model-rism {
+  --model-accent: #DA7756;
+  --model-accent-hover: #C96846;
+  --model-accent-soft: rgba(218,119,86,0.08);
+  --model-bubble-you: #DA7756;
   --model-bubble-you-text: #FFFFFF;
-  --model-header-bg: #F0FFF0;
-  --model-header-border: rgba(105,209,90,0.12);
-  --model-status-color: #69D15A;
-  --model-input-focus: #69D15A;
-  --model-input-focus-ring: rgba(105,209,90,0.2);
-}
-.model-haiku {
-  --model-accent: #FF6B9D;
-  --model-accent-hover: #E55585;
-  --model-accent-soft: #FFF0F5;
-  --model-bubble-you: #FF6B9D;
-  --model-bubble-you-text: #FFFFFF;
-  --model-header-bg: #FFF0F5;
-  --model-header-border: rgba(255,107,157,0.12);
-  --model-status-color: #FF6B9D;
-  --model-input-focus: #FF6B9D;
-  --model-input-focus-ring: rgba(255,107,157,0.2);
+  --model-header-bg: #FAF4F1;
+  --model-header-border: rgba(218,119,86,0.12);
+  --model-status-color: #DA7756;
+  --model-input-focus: #DA7756;
+  --model-input-focus-ring: rgba(218,119,86,0.2);
 }
 
 .model-openclaw {

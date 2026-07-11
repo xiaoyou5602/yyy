@@ -248,8 +248,7 @@ window._pageTokens = {
 (function() {
   var ZONE_DEFS = [
     { key: 'ds',       label: 'DS区' },
-    { key: 'opus',     label: 'Opus区' },
-    { key: 'haiku',    label: 'Haiku区' },
+    { key: 'rism',     label: 'Rism区' },
     { key: 'glm',      label: 'GLM区' },
     { key: 'openclaw', label: '米米子区' },
   ];
