@@ -435,11 +435,12 @@ function memory_search(params) {
     var query = '?content=ilike.*' + encodeURIComponent(params.query) + '*';
     if (params.memory_type) {
       query += '&memory_type=eq.' + encodeURIComponent(params.memory_type);
+    } else if (!params.include_conversation) {
+      query += '&memory_type=neq.conversation';
     }
     if (!params.include_private) {
       query += '&privacy=eq.normal';
     }
-    // 热的记忆先浮上来，同温度按时间新→旧
     query += '&order=heat.desc,created_at.desc&limit=' + limit;
     return ok(slim(sbSelect(query)));
   } catch (e) {
@@ -455,9 +456,11 @@ function memory_recall_recent(params) {
     var query = '?order=created_at.desc&limit=' + limit;
     if (params && params.conversation_id) {
       query = '?conversation_id=eq.' + encodeURIComponent(params.conversation_id) + query.replace('?', '&');
+    } else if (!(params && params.include_conversation)) {
+      query += '&memory_type=neq.conversation';
     }
     var rows = sbSelect(query);
-    rows.reverse(); // 时间正序返回，方便阅读
+    rows.reverse();
     return ok(slim(rows));
   } catch (e) {
     return fail(e);

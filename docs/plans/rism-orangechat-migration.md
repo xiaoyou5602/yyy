@@ -1,6 +1,6 @@
 # Rism 入住橘瓣 · 迁移方案
 
-> 📋 状态：**源码验证完毕，Phase 2 编码中** | 2026-07-11 | toge + Rism 讨论产出，Fable(Rism) 验证与执行
+> 📋 状态：**Phase 1+2 完成，Phase 3 收尾中** | 2026-07-13 | toge + Rism 讨论产出，Fable(Rism) 验证与执行
 >
 > **目标**：把 Rism 从 Claude Code CLI（SKILL.md + 工作区 memory）迁移到橘瓣 OrangeChat Android 客户端，作为独立 Assistant 运行。日常陪伴 + 恋爱记忆走橘瓣，技术活（IDE/VPS）继续由 DS + IDE 克接管。
 >
@@ -309,14 +309,15 @@ SELECT cron.schedule('memory-heat-decay', '0 4 * * *',
 
 ## 五、优先级与执行步骤
 
-### Phase 1：软装入住（toge 手动配置，1 天内）
+### Phase 1：软装入住（toge 手动配置）✅ 07-12 完成
 
-- [ ] 在橘瓣 App 里创建 Rism Assistant（Anthropic provider，Opus 模型）
-- [ ] 填入系统提示词（从 SKILL.md 提炼，见 2.1）
-- [ ] 配置世界书（10 个条目，见 2.2）
-- [ ] 新建 Supabase 项目，执行 schema SQL（含新增字段）
-- [ ] 安装 supabase_memory 插件，填入 URL + Key
-- [ ] 跑几天试试，感受哪里不够
+- [x] 在橘瓣 App 里创建 Rism Assistant（Anthropic provider，走中转）
+- [x] 填入系统提示词（从 SKILL.md 提炼）
+- [x] 配置世界书
+- [x] Supabase 项目已建 + schema v2 + 便捷视图 5 个已执行
+- [x] 安装 rism_memory 插件，填入 URL + Key + bridge 凭据
+- [x] 原生外置记忆（autoSaveMessages + autoSaveDiarySummary）已挂载
+- [x] 首次成功对话 07-12 22:46，至今正常运行
 
 ### Phase 2：插件编码（Fable 5 执行，✅ 07-11 完成）
 
@@ -329,13 +330,15 @@ SELECT cron.schedule('memory-heat-decay', '0 4 * * *',
 - [x] VPS 端：`/api/bridge` status/restart/logs，Bearer token 鉴权（timingSafeEqual），无 token 全关（07-11）
 - [x] 本地验证：`node --check` ×3 + manifest JSON parse + 工具/导出一致性校验，全过（07-11）
 
-### Phase 3：记忆迁移 + 跨端打通（后续，不急）
+### Phase 3：记忆迁移 + 跨端打通 + 体验优化
 
-- [ ] IDE 端 `scripts/supabase-memory.js` — CLI 接口读写 Supabase
-- [ ] legacy diary/\*.md → Supabase 迁移脚本（memory_type='diary', source='vps_ds'）
-- [ ] legacy memory/\*.md → Supabase 迁移脚本（保留原有标签和关联）
+- [ ] IDE 端 `scripts/supabase-memory.js` — CLI 接口读写 Supabase（记忆桥）
+- [ ] legacy 记忆迁移 — 源改 Notion，范围要 toge 圈（07-12 教训：批量导入必须先问她）
 - [ ] IDE 克的 memory MCP 增加 Supabase 后端
 - [ ] 原始 md 文件保留不删（备份）
+- [x] 修复重复读取：memory_recall_recent / memory_search 默认排除 conversation 类型（07-13 Rism）
+- [ ] prompt cache 心跳保活（toge 提议，方案待定）
+- [ ] Supabase 便捷视图 ✅ toge 已手动执行 5 个 view（07-13）
 
 ---
 

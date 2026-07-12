@@ -189,20 +189,22 @@
     },
     {
       "name": "memory_search",
-      "description": "多维搜索记忆库（关键词 + 类型 + 日期过滤，按热力和时间排序）",
+      "description": "多维搜索记忆库（关键词 + 类型 + 日期过滤，按热力和时间排序）。默认只搜结构化记忆（日记/memo/信件等），不搜聊天流水——聊天流水已在对话上下文里，重复召回会混淆",
       "parameters": [
         { "name": "query", "type": "string", "required": true, "description": "搜索关键词" },
-        { "name": "memory_type", "type": "string", "required": false, "description": "限定类型：diary/dream/letter/memo/lore/conversation 等" },
+        { "name": "memory_type", "type": "string", "required": false, "description": "限定类型：diary/dream/letter/memo/lore/conversation 等。指定 conversation 可搜历史聊天" },
         { "name": "include_private", "type": "boolean", "required": false, "description": "是否包含 intimate/private 记忆，默认 false" },
+        { "name": "include_conversation", "type": "boolean", "required": false, "description": "是否也搜聊天流水（memory_type=conversation），默认 false" },
         { "name": "limit", "type": "integer", "required": false, "description": "返回条数，默认 10" }
       ]
     },
     {
       "name": "memory_recall_recent",
-      "description": "获取最近的记忆/对话记录",
+      "description": "获取最近的结构化记忆（日记/memo/信件/待办等）。默认排除聊天流水，避免与当前对话上下文重复",
       "parameters": [
         { "name": "limit", "type": "integer", "required": false, "description": "条数，默认 20" },
-        { "name": "conversation_id", "type": "string", "required": false, "description": "限定某个对话，留空则跨对话" }
+        { "name": "conversation_id", "type": "string", "required": false, "description": "限定某个对话（会包含该对话的聊天流水）" },
+        { "name": "include_conversation", "type": "boolean", "required": false, "description": "是否包含聊天流水，默认 false" }
       ]
     },
     {
