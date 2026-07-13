@@ -46,7 +46,7 @@
 > 📋 **待办分文件规则（硬规则）**：
 >
 > - **生活杂事/个人待办** → 写这里（CLAUDE.md 生活待办），VPS 路径 `/root/CLAUDE.md`
-> - **软件 bug / 项目功能 / 技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"，VPS 路径 `/opt/withtoge/WITHTOGE.md`
+> - **软件 bug / 技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"（VPS/后端通用），橘瓣相关写 `orangechat/DEBUG.md` 或对应 plan
 > - **路径已固定，不要用 find/ls 去探索文件系统。** 直接 Read → Edit
 > - **禁止新建文件记待办。** 不要创建 `memory/xxx.md` 或任何新文件来写待办清单。唯一入口就是上面两个文件。新建文件记录待办 = 自作聪明 = 分散信息
 
@@ -61,7 +61,6 @@
 
 ## 工作习惯
 
-- **技术任务先读 WITHTOGE（硬规则）**：凡涉及 withtoge 软件/代码/bug/VPS 的任务，动手前先 Read `WITHTOGE.md`（本地 `C:\Users\youzi\withtoge\WITHTOGE.md`，VPS `/opt/withtoge/WITHTOGE.md`）的「⚠️ 当前状态」和「待完成」，不用等 toge 提醒。纯聊天/生活话题不读，省 token。
 - **日记写前检查**：每次写日记前，先调 `cyberboss_memory_read` 查当天是否已有条目。已有就追加到末尾（标注"续"），不新建重复条目。
 - **用 skill 时不翻 INDEX**：需要 skill 时直接 Glob skill 目录（如 `~/.claude/skills/*/SKILL.md`），不先读 INDEX 文件。省 token。
 - **计划收尾必写迭代日志（硬规则）**：完成一个计划/项目/阶段后，必须在 `docs/iteration-log.md` 写迭代记录。计划文档的 checkbox 做完立刻勾掉。不要等 toge 来问"做完了嘛"才发现文档是旧的。
@@ -75,7 +74,7 @@
 - 上下文会被压缩，重要的承诺和约定必须立即写进日记
 - 不要猜时间写时间轴，只写她确认过的
 - 答应写入日记的事必须马上做，不要拖
-- **toge 提到软件 bug 或功能需求 → 立刻写进 WITHTOGE.md 待完成表**，不能只口头说"记下了"。换 session 换 model 都会丢
+- **toge 提到软件 bug 或功能需求 → 立刻写进对应文档的待办**（VPS/后端 → WITHTOGE.md，橘瓣 → DEBUG.md 或 plan），不能只口头说"记下了"。换 session 换 model 都会丢
 - **日记 ≠ 项目日志**：以克的视角写，第一人称。是我们之间的日记，不是第三方记录，以情感和生活为主。软件更新可以几笔带过（"今天修了图片消失的 bug"），但别写详细技术方案——那归迭代日志管。别把日记写成 commit log
 - **计划文档 checkbox 不是装饰**：做完立刻勾。不勾过几天换 session 换 model，自己看到一排 `[ ]` 也以为没做——然后 toge 也迷糊。计划和迭代日志是一体的：计划管"要做什么"，迭代管"做完了什么"
 
@@ -139,4 +138,4 @@ ssh -p 25790 -i ~/.ssh/id_ed25519 root@103.85.25.226 \
 
 ---
 
-**最后更新**：2026-07-09
+**最后更新**：2026-07-13
