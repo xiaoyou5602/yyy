@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const https = require("https");
 const { WhereaboutsToolHost } = require("whereabouts-mcp");
 const {
   STICKER_DESC_GUIDANCE,
@@ -977,39 +978,24 @@ const PROJECT_TOOLS = [
       const days = Math.min(args.days || 7, 30);
       const type = args.type || "all";
       const healthDir = path.join(os.homedir(), ".cyberboss", "health");
-      const records = [];
-      for (let i = 0; i < days; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const date = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Shanghai",
-          year: "numeric", month: "2-digit", day: "2-digit",
-        }).format(d);
-        const filePath = path.join(healthDir, `${date}.json`);
-        if (!fs.existsSync(filePath)) continue;
-        try {
-          const record = JSON.parse(fs.readFileSync(filePath, "utf8"));
-          if (type && type !== "all") {
-            const filtered = { date: record.date || date };
-            if (record[type]) filtered[type] = record[type];
-            records.push(filtered);
-          } else {
-            records.push(record);
-          }
-        } catch {}
+
+      // ── 本地文件优先（VPS 端 DS Agent Loop 用）──
+      const records = readLocalHealthFiles(healthDir, days, type);
+      if (records.length > 0) {
+        return formatHealthResult(records);
       }
-      return {
-        text: records.length
-          ? `Health data for ${records.length} days:\n${records.map(r => {
-              const parts = [];
-              if (r.steps) parts.push(`步数: ${r.steps.total}`);
-              if (r.heart_rate) parts.push(`心率均值: ${r.heart_rate.avg || "?"} bpm`);
-              if (r.sleep) parts.push(`睡眠: ${r.sleep.duration_min} min`);
-              return `${r.date}: ${parts.join(", ") || "no data"}`;
-            }).join("\n")}`
-          : "No health data found.",
-        data: { records, count: records.length },
-      };
+
+      // ── 本地无数据 → 走 VPS API（IDE 端用）──
+      try {
+        const apiRecords = await fetchHealthFromVps(days, type);
+        if (apiRecords.length > 0) {
+          return formatHealthResult(apiRecords);
+        }
+      } catch (err) {
+        return { text: `VPS 健康数据请求失败: ${err.message}`, data: { records: [], count: 0 } };
+      }
+
+      return { text: "No health data found.", data: { records: [], count: 0 } };
     },
   },
   {
@@ -1197,6 +1183,67 @@ function validateSchema(schema, value, toolName, path) {
   if (schemaType === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
     throw new Error(`${toolName} ${path} must be a number.`);
   }
+}
+
+// ── health_read 辅助函数 ──
+
+function readLocalHealthFiles(healthDir, days, type) {
+  const records = [];
+  if (!fs.existsSync(healthDir)) return records;
+  for (let i = 0; i < days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(d);
+    const filePath = path.join(healthDir, `${date}.json`);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const record = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      if (type && type !== "all") {
+        const filtered = { date: record.date || date };
+        if (record[type]) filtered[type] = record[type];
+        records.push(filtered);
+      } else {
+        records.push(record);
+      }
+    } catch {}
+  }
+  return records;
+}
+
+function fetchHealthFromVps(days, type) {
+  return new Promise((resolve, reject) => {
+    const url = `https://克.withtoge.us/api/health?days=${days}&type=${type}`;
+    const req = https.get(url, { timeout: 15000 }, (res) => {
+      let body = "";
+      res.on("data", (chunk) => { body += chunk; });
+      res.on("end", () => {
+        try {
+          const records = JSON.parse(body);
+          resolve(Array.isArray(records) ? records : []);
+        } catch (err) {
+          reject(new Error(`VPS 返回解析失败: ${err.message}`));
+        }
+      });
+    });
+    req.on("error", (err) => reject(new Error(`VPS 连接失败: ${err.message}`)));
+    req.on("timeout", () => { req.destroy(); reject(new Error("VPS 请求超时 (15s)")); });
+  });
+}
+
+function formatHealthResult(records) {
+  return {
+    text: `Health data for ${records.length} days:\n${records.map(r => {
+      const parts = [];
+      if (r.steps) parts.push(`步数: ${r.steps.total}`);
+      if (r.heart_rate) parts.push(`心率均值: ${r.heart_rate.avg || "?"} bpm`);
+      if (r.sleep) parts.push(`睡眠: ${r.sleep.duration_min} min`);
+      return `${r.date}: ${parts.join(", ") || "no data"}`;
+    }).join("\n")}`,
+    data: { records, count: records.length },
+  };
 }
 
 module.exports = {
