@@ -99,6 +99,8 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] 迁移验收 — 按 orangechat/README.md 第四节清单过一遍
 - [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js + legacy 导入 + 世界书提炼
 - [ ] 向量记忆 + 梦境生成 — 需写 plan（docs/plans/rism-vector-dream.md）
+- [ ] VPS 日记生成（替代 Edge Function / pg_cron）— VPS crontab 定时读 Supabase → 调 SiliconFlow → Rism 人格日记 + 梦境写回 memory_summaries。免费版无 pg_cron，选 VPS 自主生成路线
+- [ ] 更新橘瓣 App 到最新版 — 群 07-13 发布新版，进阶记忆接口有变，日记总结功能需要最新版配合
 
 ### 后端 / 服务
 
