@@ -53,13 +53,46 @@
 | 域名       | `克.withtoge.us`（Cloudflare Named Tunnel，自带 HTTPS） |
 | 端口       | `9726`（`0.0.0.0` 监听）                                |
 | VPS        | LocVPS 东京，Ubuntu 22.04，2 核 4G，¥36/月              |
-| Notion MCP | `https://notion.withtoge.us`，端口 3000                 |
+| Notion MCP | `https://notion.withtoge.us`，端口 3000（见下方 Notion MCP 小节） |
 | APK        | `克-v15.apk`，versionCode 15                            |
 
 ```bash
-systemctl status cloudflared cyberboss  # 看状态
-systemctl restart cyberboss              # 更新代码后重启
-journalctl -u cyberboss -f              # 看日志
+systemctl status cloudflared cyberboss notion-mcp  # 看状态
+systemctl restart cyberboss                        # 更新代码后重启
+journalctl -u cyberboss -f                        # 看日志
+systemctl restart notion-mcp                       # 重启 Notion MCP
+```
+
+### Notion MCP（轻量 Notion 工具）
+
+> 独立项目，fork 自 [suekou/mcp-notion-server](https://github.com/suekou/mcp-notion-server) → [LucieEveille/mcp-notion-server](https://github.com/LucieEveille/mcp-notion-server)。核心改进：schema 瘦身 75%、加 HTTP 远程部署、加 `create_page` 工具。
+
+| 项目 | 详情 |
+|---|---|
+| 代码位置 | VPS `/opt/mcp-notion-server/` |
+| systemd 服务 | `notion-mcp.service`，监听 3000 端口，开机自启崩溃自拉 |
+| 域名 | `notion.withtoge.us` → cloudflared tunnel → `localhost:3000` |
+| MCP 端点 | `https://notion.withtoge.us/mcp`（POST，无鉴权） |
+| 健康检查 | `https://notion.withtoge.us/health`（GET） |
+| Notion Token | toge 的 Integration Token（`ntn_25512...`），读写她的 Notion 工作区 |
+
+**使用方式**：在任何 MCP 客户端（Claude APP / Cursor / 等）添加 custom connector，URL 填 `https://notion.withtoge.us/mcp`，不需要 auth token。
+
+**启用的工具**（7 个，通过 `ENABLED_TOOLS` 环境变量控制）：
+- `notion_search` — 搜索页面/数据库
+- `notion_retrieve_page` — 读页面
+- `notion_retrieve_block_children` — 读子区块
+- `notion_append_block_children` — 追加内容
+- `notion_create_page` — 创建子页面
+- `notion_query_database` — 查数据库
+- `notion_update_page_properties` — 更新页面属性
+
+**运维命令**：
+```bash
+systemctl status notion-mcp           # 看状态
+systemctl restart notion-mcp          # 重启
+journalctl -u notion-mcp -f          # 看日志
+cd /opt/mcp-notion-server && git log --oneline -5  # 看版本
 ```
 
 ## 日记与记忆路径
