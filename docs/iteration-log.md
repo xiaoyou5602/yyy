@@ -7,10 +7,12 @@
 
 - 新仓库：`xiaoyou5602/rism-orangechat`（private）。
 - 迁出 QuickJS 插件、Supabase schema、Assistant 配置、调试手册、迁移计划和本地导入工具。
-- `withtoge` 继续负责 cyberboss、VPS 部署、健康数据和可选 bridge API。
+- OrangeChat 随后完全解除与 `withtoge`、cyberboss 和 VPS 的运行依赖。
+- 从新插件删除 `vps_status` / `vps_restart` / `vps_logs` 和 bridge 配置。
+- 从本仓库删除 `/api/bridge/*` 路由与 `bridge-api.js`，VPS token 同步下线。
 - 新仓库未携带 `_tmp_*` 聊天数据、`.env`、Supabase key 或旧 bridge token。
 - 旧仓库保留本地临时数据并通过 `.gitignore` 排除，索引统一改指向新仓库。
-- 发现旧 bridge token 曾进入公开 Git 历史；后续单独轮换凭据并评估历史清理。
+- 发现旧 bridge token 曾进入公开 Git 历史；token 已轮换并停用，历史清理仍需单独评估。
 
 ## 2026-07-11 · 橘瓣迁移 Phase 2：rism_memory 插件 + schema v2 + VPS 桥交付
 

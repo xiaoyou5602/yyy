@@ -118,13 +118,12 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 > 项目、计划、插件和调试文档已迁至
 > [xiaoyou5602/rism-orangechat](https://github.com/xiaoyou5602/rism-orangechat)。
-> 本仓库只保留 cyberboss / VPS bridge 后端。
+> OrangeChat 已与本仓库完全解耦；本仓库不再提供其运行后端。
 
-- [ ] 安全收尾 — 轮换已进入公开 Git 历史的 `CYBERBOSS_BRIDGE_TOKEN`，更新插件配置，再评估旧历史清理
-- [ ] VPS 桥验证 — token 轮换后实测 status 端点与 OrangeChat 插件调用
-- [ ] 迁移验收 — 按新仓库 README 第四节清单过一遍
+- [ ] 旧公开 Git 历史清理评估 — token 已轮换并下线，历史中仍有已失效旧值
+- [ ] 迁移验收 — 按新仓库 README 第三节清单过一遍
 - [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js + legacy 导入 + 世界书提炼
-- [ ] 向量记忆 + 梦境生成 — 计划见新仓库 `docs/plans/vector-dream.md`
+- [ ] 向量记忆 + 梦境生成 — 旧 VPS 方案已归档，后续只走 OrangeChat 原生能力 + Supabase
 - [ ] VPS 日记生成（替代 Edge Function / pg_cron）— VPS crontab 定时读 Supabase → 调 SiliconFlow → Rism 人格日记 + 梦境写回 memory_summaries。免费版无 pg_cron，选 VPS 自主生成路线
 - [ ] 更新橘瓣 App 到最新版 — 群 07-13 发布新版，进阶记忆接口有变，日记总结功能需要最新版配合
 
