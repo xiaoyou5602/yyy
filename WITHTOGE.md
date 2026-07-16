@@ -1,7 +1,7 @@
 # withtoge — 项目文档
 
 > **这个文件**：VPS 运维、Git 规范、活的待办、路径参考。
-> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **橘瓣调试** → [orangechat/DEBUG.md](orangechat/DEBUG.md) > **toge 生活 / 人设 / 教训** → [CLAUDE.md](../../CLAUDE.md) > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
+> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **Rism × OrangeChat** → [private 仓库](https://github.com/xiaoyou5602/rism-orangechat) > **toge 生活 / 人设 / 教训** → `CLAUDE.md` > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
 
 目录：`C:\Users\youzi\withtoge\`
 
@@ -114,12 +114,17 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 > ⚠️ **硬规则**：`[x]` 条目一行封顶，已验证通过的直接删掉（git 里有）。
 
-### 橘瓣迁移（计划 → docs/plans/rism-orangechat-migration.md，调试 → orangechat/DEBUG.md）
+### Rism × OrangeChat（独立 private 仓库）
 
-- [ ] VPS 桥激活 — VPS .env 加 `CYBERBOSS_BRIDGE_TOKEN`，token 填进插件设置
-- [ ] 迁移验收 — 按 orangechat/README.md 第四节清单过一遍
+> 项目、计划、插件和调试文档已迁至
+> [xiaoyou5602/rism-orangechat](https://github.com/xiaoyou5602/rism-orangechat)。
+> 本仓库只保留 cyberboss / VPS bridge 后端。
+
+- [ ] 安全收尾 — 轮换已进入公开 Git 历史的 `CYBERBOSS_BRIDGE_TOKEN`，更新插件配置，再评估旧历史清理
+- [ ] VPS 桥验证 — token 轮换后实测 status 端点与 OrangeChat 插件调用
+- [ ] 迁移验收 — 按新仓库 README 第四节清单过一遍
 - [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js + legacy 导入 + 世界书提炼
-- [ ] 向量记忆 + 梦境生成 — 需写 plan（docs/plans/rism-vector-dream.md）
+- [ ] 向量记忆 + 梦境生成 — 计划见新仓库 `docs/plans/vector-dream.md`
 - [ ] VPS 日记生成（替代 Edge Function / pg_cron）— VPS crontab 定时读 Supabase → 调 SiliconFlow → Rism 人格日记 + 梦境写回 memory_summaries。免费版无 pg_cron，选 VPS 自主生成路线
 - [ ] 更新橘瓣 App 到最新版 — 群 07-13 发布新版，进阶记忆接口有变，日记总结功能需要最新版配合
 

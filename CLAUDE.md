@@ -46,7 +46,7 @@
 > 📋 **待办分文件规则（硬规则）**：
 >
 > - **生活杂事/个人待办** → 写这里（CLAUDE.md 生活待办），VPS 路径 `/root/CLAUDE.md`
-> - **软件 bug / 技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"（VPS/后端通用），橘瓣相关写 `orangechat/DEBUG.md` 或对应 plan
+> - **软件 bug / 技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"（VPS/后端通用）；橘瓣相关写独立仓库 `C:\Users\youzi\rism-orangechat\docs\DEBUG.md` 或对应 plan
 > - **路径已固定，不要用 find/ls 去探索文件系统。** 直接 Read → Edit
 > - **禁止新建文件记待办。** 不要创建 `memory/xxx.md` 或任何新文件来写待办清单。唯一入口就是上面两个文件。新建文件记录待办 = 自作聪明 = 分散信息
 

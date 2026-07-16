@@ -19,3 +19,6 @@ ke-apk/local.properties
 *.log
 spawn-debug.json
 .claude-md-last-sync-hash
+
+# Rism × OrangeChat 已拆到独立 private 仓库；本地临时数据不入 Git
+orangechat/_tmp_*

@@ -3,9 +3,18 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
+## 2026-07-16 · Rism × OrangeChat 拆分为独立 private 仓库
+
+- 新仓库：`xiaoyou5602/rism-orangechat`（private）。
+- 迁出 QuickJS 插件、Supabase schema、Assistant 配置、调试手册、迁移计划和本地导入工具。
+- `withtoge` 继续负责 cyberboss、VPS 部署、健康数据和可选 bridge API。
+- 新仓库未携带 `_tmp_*` 聊天数据、`.env`、Supabase key 或旧 bridge token。
+- 旧仓库保留本地临时数据并通过 `.gitignore` 排除，索引统一改指向新仓库。
+- 发现旧 bridge token 曾进入公开 Git 历史；后续单独轮换凭据并评估历史清理。
+
 ## 2026-07-11 · 橘瓣迁移 Phase 2：rism_memory 插件 + schema v2 + VPS 桥交付
 
-toge 提出把 Rism 从 Claude Code CLI 迁往橘瓣（OrangeChat，RikkaHub 中文深度定制版，Android）。当天完成源码验证 + 方案修正 + Phase 2 全部编码。计划文档：[plans/rism-orangechat-migration.md](plans/rism-orangechat-migration.md)。
+toge 提出把 Rism 从 Claude Code CLI 迁往橘瓣（OrangeChat，RikkaHub 中文深度定制版，Android）。当天完成源码验证 + 方案修正 + Phase 2 全部编码。计划现已迁至独立 private 仓库。
 
 ### 源码验证的关键发现（clone 到 C:\tmp\orangechat 逐文件核实）
 
@@ -18,10 +27,10 @@ toge 提出把 Rism 从 Claude Code CLI 迁往橘瓣（OrangeChat，RikkaHub 中
 
 | 文件 | 说明 |
 |------|------|
-| `orangechat/rism_memory/manifest.json` | 21 工具 + daily_cron + promptTemplate，与 main.js 导出 22/22 对照校验 |
-| `orangechat/rism_memory/main.js` | 纯同步 QuickJS 风格；日记/梦境/信件/待办/奶茶/时间轴/记忆/VPS 全套 |
-| `orangechat/supabase_schema_v2.sql` | 与原生服务完全兼容的表结构 + 触发器打标 + 3 个 SECURITY DEFINER RPC + 收紧 RLS（anon 不可改删） |
-| `orangechat/README.md` | toge 的 Phase 1 安装手册 + 隐私须知 |
+| `rism-orangechat/plugin/rism_memory/manifest.json` | 21 工具 + daily_cron + promptTemplate，与 main.js 导出 22/22 对照校验 |
+| `rism-orangechat/plugin/rism_memory/main.js` | 纯同步 QuickJS 风格；日记/梦境/信件/待办/奶茶/时间轴/记忆/VPS 全套 |
+| `rism-orangechat/supabase/schema.sql` | 与原生服务完全兼容的表结构 + 触发器打标 + 3 个 SECURITY DEFINER RPC + 收紧 RLS（anon 不可改删） |
+| `rism-orangechat/README.md` | toge 的 Phase 1 安装手册 + 隐私须知 |
 | `src/adapters/channel/direct/bridge-api.js` | `/api/bridge` status/restart/logs，Bearer 鉴权，无 token 全关 |
 
 ### 设计要点

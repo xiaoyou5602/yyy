@@ -25,6 +25,7 @@
 | 📋 计划中 | [memory-improvements.md](memory-improvements.md) | 记忆系统四项改进（subtype / 证据链 / 意图搜索 / episode candidate） | 2026-07-07 |
 | 📋 计划中 | [sticker-sync-fix.md](sticker-sync-fix.md) | 贴纸同步修复 + DS 页贴纸支持 + 缓存版本对齐 | 2026-07-08 |
 | 📋 计划中 | [chat-search-optimize.md](chat-search-optimize.md) | 聊天记录搜索优化（chat-history 替代 JSONL） | 2026-07-08 |
+| 📋 计划中 | [Rism × OrangeChat（独立仓库）](https://github.com/xiaoyou5602/rism-orangechat/tree/main/docs/plans) | 插件、Supabase、Assistant 配置与记忆迁移 | 2026-07-11 |
 
 ## ⚠️ `.claude/plans/` 遗留文件
 
