@@ -1,7 +1,7 @@
 # withtoge — 项目文档
 
 > **这个文件**：VPS 运维、Git 规范、活的待办、路径参考。
-> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **Rism × OrangeChat** → [private 仓库](https://github.com/xiaoyou5602/rism-orangechat) > **toge 生活 / 人设 / 教训** → `CLAUDE.md` > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
+> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **OrangeChat × Rism** → [private 仓库](https://github.com/xiaoyou5602/rism-orangechat) > **toge 生活 / 人设 / 教训** → `CLAUDE.md` > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
 
 目录：`C:\Users\youzi\withtoge\`
 
@@ -114,7 +114,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 > ⚠️ **硬规则**：`[x]` 条目一行封顶，已验证通过的直接删掉（git 里有）。
 
-### Rism × OrangeChat（独立 private 仓库）
+### OrangeChat × Rism（独立 private 仓库）
 
 > 项目、计划、插件和调试文档已迁至
 > [xiaoyou5602/rism-orangechat](https://github.com/xiaoyou5602/rism-orangechat)。
