@@ -1,7 +1,7 @@
 # withtoge — 项目文档
 
 > **这个文件**：VPS 运维、Git 规范、活的待办、路径参考。
-> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **OrangeChat × Rism** → [private 仓库](https://github.com/xiaoyou5602/orangecat-personal-addons) > **toge 生活 / 人设 / 教训** → `CLAUDE.md` > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
+> **自建 App 归档**（架构、功能表、旧待办）→ [docs/withtoge-app-archive.md](docs/withtoge-app-archive.md) > **OrangeChat × Rism** → [private 仓库](https://github.com/xiaoyou5602/orangecat-personal-addons) > **Gadgetbridge Fork** → `C:\Users\youzi\gadgetbridge-fork`（[AGENTS.md](C:\Users\youzi\gadgetbridge-fork\AGENTS.md)）> **toge 生活 / 人设 / 教训** → `CLAUDE.md` > **迭代详情** → [docs/iteration-log.md](docs/iteration-log.md) > **计划** → [docs/plans/](docs/plans/)
 
 目录：`C:\Users\youzi\withtoge\`
 
@@ -125,6 +125,13 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 - [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js + legacy 导入 + 世界书提炼
 - [ ] VPS Rism 日记 + 梦境后台代写 — 独立 crontab 读写 Supabase、调用 SiliconFlow，不恢复 OrangeChat/cyberboss bridge；详见新仓库 `docs/plans/vector-dream.md`
 - [ ] 更新橘瓣 App 到最新版 — 群 07-13 发布新版，进阶记忆接口有变，日记总结功能需要最新版配合
+
+### Gadgetbridge Fork → `C:\Users\youzi\gadgetbridge-fork\`
+
+> 详情见仓库内 [AGENTS.md](C:\Users\youzi\gadgetbridge-fork\AGENTS.md)。与原版共存（包名 `.toge`）。
+
+- [ ] 设备卡片 UI 优化 — 图标加标签、不常用图标折叠
+- [ ] 表盘预览 — 代码有坑位但小米不提供预览数据，社区格式未逆向
 
 ### 后端 / 服务
 
