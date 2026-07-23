@@ -119,12 +119,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 > 项目、计划、插件和调试文档已迁至
 > [xiaoyou5602/orangecat-personal-addons](https://github.com/xiaoyou5602/orangecat-personal-addons)。
 > OrangeChat 已与本仓库完全解耦；本仓库不再提供其运行后端。
-
-- [ ] 旧公开 Git 历史清理评估 — token 已轮换并下线，历史中仍有已失效旧值
-- [ ] 迁移验收 — 按新仓库 README 第三节清单过一遍
-- [ ] Phase 3 记忆迁移（不急）— IDE 端 supabase-memory.js + legacy 导入 + 世界书提炼
-- [ ] VPS Rism 日记 + 梦境后台代写 — 独立 crontab 读写 Supabase、调用 SiliconFlow，不恢复 OrangeChat/cyberboss bridge；详见新仓库 `docs/plans/vector-dream.md`
-- [ ] 更新橘瓣 App 到最新版 — 群 07-13 发布新版，进阶记忆接口有变，日记总结功能需要最新版配合
+> **橘瓣相关待办 → [orangechat-rism/docs/ROADMAP.md](C:\Users\youzi\orangechat-rism\docs\ROADMAP.md)**
 
 ### Gadgetbridge Fork → `C:\Users\youzi\gadgetbridge-fork\`
 
