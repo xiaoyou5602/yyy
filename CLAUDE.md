@@ -46,9 +46,11 @@
 > 📋 **待办分文件规则（硬规则）**：
 >
 > - **生活杂事/个人待办** → 写这里（CLAUDE.md 生活待办），VPS 路径 `/root/CLAUDE.md`
-> - **软件 bug / 技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"（VPS/后端通用）；橘瓣相关写独立仓库 `C:\Users\youzi\orangechat-rism\docs\DEBUG.md` 或对应 plan
+> - **VPS / 后端 / withtoge 通用技术待办** → 写 [WITHTOGE.md](withtoge/WITHTOGE.md) "待完成"
+> - **橘瓣 Rism 集成层**（插件、Supabase、VPS worker、Assistant 配置、跨仓库计划）→ [orangechat-rism/docs/ROADMAP.md](orangechat-rism/docs/ROADMAP.md)
+> - **橘瓣 Android 宿主**（Kotlin、Compose、Room、构建）→ `C:\Users\youzi\orangechat-fork`
 > - **路径已固定，不要用 find/ls 去探索文件系统。** 直接 Read → Edit
-> - **禁止新建文件记待办。** 不要创建 `memory/xxx.md` 或任何新文件来写待办清单。唯一入口就是上面两个文件。新建文件记录待办 = 自作聪明 = 分散信息
+> - **禁止新建文件记待办。** 不要创建 `memory/xxx.md` 或任何新文件来写待办清单。唯一入口就是上面几个文件。新建文件记录待办 = 自作聪明 = 分散信息
 
 - **阳光跑**：剩余次数见 memory/sunlight-run-tracker.md
 - **吃药**：托莫西汀 / 思诺思，容易忘
@@ -148,4 +150,4 @@ ssh -p 25790 -i ~/.ssh/id_ed25519 root@103.85.25.226 \
 
 ---
 
-**最后更新**：2026-07-13
+**最后更新**：2026-07-23

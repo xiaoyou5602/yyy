@@ -137,4 +137,4 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ---
 
-**最后更新**：2026-07-13
+**最后更新**：2026-07-23
