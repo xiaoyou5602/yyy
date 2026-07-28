@@ -14,10 +14,10 @@
 
 ### 当前假设
 
-- **DS 走自建 Agent Loop（07-10 上线）**：`DsAgentClient` 直调 DeepSeek API，工具由 ProjectToolHost 直连（38 个业务工具，无文件系统/shell 能力）。应急阀 `CYBERBOSS_DS_AGENT_LOOP=off` 回退旧 CLI 路径
+- **cyberboss 已停用**，功能全部迁移到橘瓣 Rism + Supabase；本地 MCP 工具（日记/记忆/时间轴）继续使用 `~/.cyberboss/` 路径，但与 VPS 上的 cyberboss 服务无关
 - 本地 Windows 节点已关停（2026-06-30），唯一入口 `克.withtoge.us`
-- VPS systemd 守护（cloudflared + cyberboss），崩了自动拉
-- **2026-07-13 toge 日常聊天搬到橘瓣（RikkaHub）**，自建 web app 前端不再活跃，VPS 后端继续服务（桥调用、日记、记忆等）
+- VPS systemd 运行中：`cloudflared`（隧道）、`notion-mcp`（Notion 工具）、`rism-memory-mcp`（跨端记忆 MCP）
+- **2026-07-13 toge 日常聊天搬到橘瓣**，自建 web app 前端不再活跃
 
 ### 反复出现的陷阱
 
@@ -47,16 +47,15 @@
 | 项目       | 详情                                                              |
 | ---------- | ----------------------------------------------------------------- |
 | 域名       | `克.withtoge.us`（Cloudflare Named Tunnel，自带 HTTPS）           |
-| 端口       | `9726`（`0.0.0.0` 监听）                                          |
 | VPS        | LocVPS 东京，Ubuntu 22.04，2 核 4G，¥36/月                        |
 | Notion MCP | `https://notion.withtoge.us`，端口 3000（见下方 Notion MCP 小节） |
-| APK        | `克-v15.apk`，versionCode 15                                      |
+| Rism Memory MCP | `https://rism-memory.withtoge.us`（见 ROADMAP）              |
 
 ```bash
-systemctl status cloudflared cyberboss notion-mcp  # 看状态
-systemctl restart cyberboss                        # 更新代码后重启
-journalctl -u cyberboss -f                        # 看日志
-systemctl restart notion-mcp                       # 重启 Notion MCP
+systemctl status cloudflared notion-mcp rism-memory-mcp  # 看状态
+systemctl restart notion-mcp                               # 重启 Notion MCP
+systemctl restart rism-memory-mcp                          # 重启 Rism Memory MCP
+journalctl -u rism-memory-mcp -f                          # 看 Rism Memory MCP 日志
 ```
 
 ### Notion MCP（轻量 Notion 工具）
@@ -91,7 +90,9 @@ cd /opt/mcp-notion-server && git log --oneline -5  # 看版本
 - 周/月/年 Rollup：`~\.cyberboss\memory\rollups\`
 - IDE Memory：`~\.claude\projects\C--Users-youzi\memory\`
 
-## 配置关键项（.env）
+## 配置关键项（.env）⚠️ 已废弃
+
+> cyberboss 已停用，以下 `.env` 配置不再生效。保留仅供参考。
 
 ```
 CYBERBOSS_CHANNEL=direct
@@ -130,10 +131,7 @@ CYBERBOSS_VISION_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
 
 ### 后端 / 服务
 
-- [ ] DS 删除护栏 — agent loop 上线后风险已架构性消除，仅应急阀回退 CLI 时需要
-- [ ] 闹钟接入聊天流程 — parser 和 APK 已就绪
 - [ ] 记忆碎片时间戳改用北京时间（07-09 toge 报）
-- [ ] 测试套件 51 条存量失败（07-10 巡检）— 先单文件跑分清"真挂"vs"并发挂"
 
 ---
 
