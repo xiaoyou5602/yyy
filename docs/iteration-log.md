@@ -3,7 +3,14 @@
 > **这个文件**：每次迭代的完整上下文、踩坑记录、架构决策，严格按日期倒序（最新在最上面）。
 > **摘要 + 待办** → [../WITHTOGE.md](../WITHTOGE.md)　**书写规范** → [iteration-log-guide.md](iteration-log-guide.md)
 
-## 2026-07-16 · Rism × OrangeChat 拆分为独立 private 仓库
+## 2026-08-08 · VPS 低价监控改为官网库存核验
+
+- 替换旧的第三方 RackNerd 折扣汇总抓取，监控来源统一为 DediRock、RackNerd、CloudCone 官网。
+- DediRock 从官方 Black Friday 活动页提取年付套餐，再携带匿名购物车 Cookie 进入官方 WHMCS 结账页，区分可配置、售罄和库存未知；RackNerd、CloudCone 使用官方在售页并明确标注结账待人工确认。
+- 保留默认年付 `≤ $18`、洛杉矶筛选和 Windows 每日上午 10 点计划任务；新增每轮报告、持久运行日志、状态去重，以及桌面文件 + Windows Toast 提醒。
+- 实测官网解析：DediRock `$9.88/年` LA Saver 结账页可配置，`$17.68/年` LA Economy 售罄；RackNerd 与 CloudCone 当前无阈值内套餐。
+
+## 2026-07-16 · OrangeChat × Rism 拆分为独立 private 仓库
 
 - 新仓库：`xiaoyou5602/rism-orangechat`（private）。
 - 迁出 QuickJS 插件、Supabase schema、Assistant 配置、调试手册、迁移计划和本地导入工具。
