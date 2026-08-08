@@ -9,6 +9,7 @@
 - DediRock 从官方 Black Friday 活动页提取年付套餐，再携带匿名购物车 Cookie 进入官方 WHMCS 结账页，区分可配置、售罄和库存未知；RackNerd、CloudCone 使用官方在售页并明确标注结账待人工确认。
 - 保留默认年付 `≤ $18`、洛杉矶筛选和 Windows 每日上午 10 点计划任务；新增每轮报告、持久运行日志、状态去重，以及桌面文件 + Windows Toast 提醒。
 - 实测官网解析：DediRock `$9.88/年` LA Saver 结账页可配置，`$17.68/年` LA Economy 售罄；RackNerd 与 CloudCone 当前无阈值内套餐。
+- 首次 Toast 验证发现 WinRT 通知调用超时，改用当前 Windows 已实测可点击的 WScript 系统弹窗（20 秒自动关闭），增加 `--test-notification` 自检入口，桌面提醒文件继续作为可靠兜底。
 
 ## 2026-07-16 · OrangeChat × Rism 拆分为独立 private 仓库
 

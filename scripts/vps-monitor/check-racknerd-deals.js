@@ -336,18 +336,16 @@ function renderReport({ checks, deals, alerts, errors }) {
   return lines.join('\n');
 }
 
-function showToast(title, message) {
-  const safeTitle = title.replace(/[<>&]/g, '');
-  const safeMessage = message.replace(/[<>&]/g, '');
+function showPopup(title, message) {
+  const safeTitle = title.replace(/'/g, "''");
+  const safeMessage = message.replace(/'/g, "''");
   const command = [
-    '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null',
-    '$xml = New-Object Windows.Data.Xml.Dom.XmlDocument',
-    `$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>${safeTitle}</text><text>${safeMessage}</text></binding></visual></toast>')`,
-    "$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
-    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('VPS官网监控').Show($toast)",
+    '$shell = New-Object -ComObject WScript.Shell',
+    `$result = $shell.Popup('${safeMessage}', 20, '${safeTitle}', 64)`,
+    "if ($result -notin @(-1, 1)) { throw 'unexpected popup result' }",
   ].join('; ');
   const encoded = Buffer.from(command, 'utf16le').toString('base64');
-  execFileSync('powershell.exe', ['-NoProfile', '-EncodedCommand', encoded], { windowsHide: true, timeout: 8000 });
+  execFileSync('powershell.exe', ['-NoProfile', '-EncodedCommand', encoded], { windowsHide: true, timeout: 25000 });
 }
 
 function notify(alerts) {
@@ -361,7 +359,7 @@ function notify(alerts) {
 
   try {
     const best = alerts.slice().sort((a, b) => a.price - b.price)[0];
-    showToast('发现 VPS 官网低价现货', `$${best.price}/年 · ${best.provider} · ${best.title}`);
+    showPopup('发现 VPS 官网低价现货', `$${best.price}/年 · ${best.provider} · ${best.title}`);
     appendLog(`通知成功：${alerts.length} 个提醒`);
   } catch (error) {
     appendLog(`通知弹窗失败（桌面文件已写入）：${error.message}`);
@@ -370,6 +368,11 @@ function notify(alerts) {
 
 async function main() {
   if (!Number.isFinite(MAX_PRICE) || MAX_PRICE <= 0) throw new Error('价格阈值必须是正数');
+  if (args.includes('--test-notification')) {
+    showPopup('VPS 官网监控测试', '弹窗通道正常；真实低价出现时会在这里提醒');
+    output('✅ Windows 系统弹窗测试通过');
+    return;
+  }
   output(`🔎 VPS 官网监控：年付 ≤ $${MAX_PRICE}，${CHECK_ALL_LOCATIONS ? '不限地区' : '洛杉矶'}`);
   if (DRY_RUN) output('🧪 dry-run：不写状态、不发通知');
 
